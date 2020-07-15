@@ -1,0 +1,11 @@
+title = "test experiment"
+date = "2020-JUN-11"
+description = "An experiment to test rust-ncc."
+
+[[cell_groups]]
+    num_cells = 1
+    [cell_groups.layout]
+        width = 1
+        height = 1
+        centroid = [0.0, 0.0]
+    [cell_groups.parameter_overrides]
