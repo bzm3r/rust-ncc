@@ -6,4 +6,4 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub const NVERTS: usize = 16;
+pub const NVERTS: u32 = 16;

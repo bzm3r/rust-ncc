@@ -1,15 +1,10 @@
 [package]
-name = "rust-ncc"
+name = "playground"
 version = "0.1.0"
 authors = ["Brian Merchant <bhmerchant@gmail.com>"]
 edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
 [dependencies]
 rand = "0.7.3"
-toml = "0.5.6"
-serde = { version = "1.0.114", features = ["derive"] }
-override-derive = { path = "./override-derive" }
-avro-schema-derive = { path = "./avro-schema-derive" }
-avro-rs = "0.10.0"
-

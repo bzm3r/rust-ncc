@@ -6,72 +6,82 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use crate::math::{P2D, calc_poly_area, max_f32};
-use crate::utils::{circ_ix_plus, circ_ix_minus};
+use crate::consts::NVERTS;
+use crate::math::{calc_poly_area, capped_linear_function, P2D};
+use crate::utils::circ_ix_plus;
 
-pub fn calc_edge_unit_vecs(vertex_coords: &[P2D]) -> Vec<P2D> {
-    let nvs = vertex_coords.len();
-    (0..nvs)
-        .map(|i| {
-            let plus_i = circ_ix_plus(i, nvs);
-            (vertex_coords[plus_i] - vertex_coords[i]).unitize()
-        })
-        .collect()
+pub fn calc_edge_unit_vecs(vertex_coords: &[P2D; NVERTS as usize]) -> [P2D; NVERTS as usize] {
+    let mut r = [P2D::default(); NVERTS as usize];
+    (0..NVERTS as usize).for_each(|i| {
+        let plus_i = circ_ix_plus(i, NVERTS as usize);
+        r[i] = (vertex_coords[plus_i] - vertex_coords[i]).unitize();
+    });
+    r
 }
 
-pub fn calc_edge_lens(edge_unit_vecs: &[P2D]) -> Vec<f32> {
-    edge_unit_vecs.iter().map(|euv| euv.mag()).collect()
+pub fn calc_edge_lens(edge_unit_vecs: &[P2D; NVERTS as usize]) -> [f32; NVERTS as usize] {
+    let mut r = [0.0_f32; NVERTS as usize];
+    (0..NVERTS as usize).for_each(|i| r[i] = edge_unit_vecs[i].mag());
+    r
 }
 
-pub fn calc_edge_strains(edge_lens: &[f32], rel: f32) -> Vec<f32> {
-    edge_lens.iter().map(|&el| (el / rel) - 1.0).collect()
+pub fn calc_edge_strains(edge_lens: &[f32; NVERTS as usize], rel: f32) -> [f32; NVERTS as usize] {
+    let mut r = [0.0_f32; NVERTS as usize];
+    (0..NVERTS as usize).for_each(|i| r[i] = (edge_lens[i] / rel) - 1.0);
+    r
 }
 
-pub fn calc_global_strain(edge_lens: &[f32], rel: f32, nverts: usize) -> f32 {
+pub fn calc_global_strain(edge_lens: &[f32; NVERTS as usize], rel: f32, nverts: u32) -> f32 {
     edge_lens.iter().sum::<f32>() / (nverts as f32 * rel)
 }
 
 pub fn calc_edge_forces(
-    edge_strains: &[f32],
-    edge_unit_vecs: &[P2D],
+    edge_strains: &[f32; NVERTS as usize],
+    edge_unit_vecs: &[P2D; NVERTS as usize],
     stiffness_edge: f32,
-) -> Vec<P2D> {
-    let nvs = edge_strains.len();
-    (0..nvs)
-        .map(|i| {
-            edge_unit_vecs[i].scalar_mul(edge_strains[i] * stiffness_edge)
-        })
-        .collect()
+) -> [P2D; NVERTS as usize] {
+    let mut r = [P2D::default(); NVERTS as usize];
+    (0..NVERTS as usize)
+        .for_each(|i| r[i] = (edge_strains[i] * stiffness_edge) * edge_unit_vecs[i]);
+    r
 }
 
-pub fn calc_cyto_forces(vertex_coords: &[P2D], unit_inward_vecs: &[P2D], rest_area: f32, stiffness_cyto: f32) -> Vec<P2D> {
+pub fn calc_cyto_forces(
+    vertex_coords: &[P2D; NVERTS as usize],
+    unit_inward_vecs: &[P2D; NVERTS as usize],
+    rest_area: f32,
+    stiffness_cyto: f32,
+) -> [P2D; NVERTS as usize] {
     let area = calc_poly_area(vertex_coords);
-    let areal_strain = area/rest_area - 1.0;
+    let areal_strain = area / rest_area - 1.0;
     let mag = stiffness_cyto * areal_strain / (vertex_coords.len() as f32);
-    unit_inward_vecs.iter().map(|uiv| uiv.scalar_mul(mag)).collect()
+    let mut r = [P2D::default(); NVERTS as usize];
+    (0..NVERTS as usize).for_each(|i| r[i] = mag * unit_inward_vecs[i]);
+    r
 }
 
 pub fn calc_rgtp_forces(
-    rac_acts: &[f32],
-    rho_acts: &[f32],
-    unit_inward_vecs: &[P2D],
-    max_protrusive_f: f32,
-    max_retractive_f: f32,
-    max_f_activity: f32,
-) -> Vec<P2D> {
-    let const_protrusive = max_protrusive_f / max_f_activity;
-    let const_retractive = max_retractive_f / max_f_activity;
-    unit_inward_vecs
-        .iter()
-        .zip(rac_acts.iter().zip(rho_acts.iter()))
-        .map(|(uiv, (ra, pa))| {
-            if ra > pa {
-                uiv * -1.0 * max_f32(ra - pa, max_f_activity) * const_protrusive
-            } else {
-                uiv * max_f32(pa - ra, max_f_activity) * const_retractive
-            }
-        })
-        .collect()
+    rac_acts: &[f32; NVERTS as usize],
+    rho_acts: &[f32; NVERTS as usize],
+    unit_inward_vecs: &[P2D; NVERTS as usize],
+    halfmax_vertex_rgtp_act: f32,
+    const_protrusive: f32,
+    const_retractive: f32,
+) -> [P2D; NVERTS as usize] {
+    let nvs = unit_inward_vecs.len();
+    let mut r = [P2D::default(); NVERTS as usize];
+    for i in 0..nvs {
+        let uiv = unit_inward_vecs[i];
+        let ra = rac_acts[i];
+        let pa = rho_acts[i];
+
+        let mag = if ra > pa {
+            -1.0 * const_protrusive * capped_linear_function(ra - pa, 2.0 * halfmax_vertex_rgtp_act)
+        } else {
+            const_retractive * capped_linear_function(pa - ra, 2.0 * halfmax_vertex_rgtp_act)
+        };
+
+        r[i] = mag * uiv;
+    }
+    r
 }
-
-

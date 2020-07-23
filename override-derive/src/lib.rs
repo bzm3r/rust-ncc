@@ -1,9 +1,7 @@
 use proc_macro::TokenStream;
 use quote::{format_ident, quote};
 use std::iter::Iterator;
-use syn::{
-    parse_macro_input, DeriveInput, Fields, Ident, Type,
-};
+use syn::{parse_macro_input, DeriveInput, Fields, Ident, Type};
 
 #[proc_macro_derive(Overrides)]
 pub fn derive(input: TokenStream) -> TokenStream {
@@ -17,11 +15,7 @@ pub fn derive(input: TokenStream) -> TokenStream {
         syn::Data::Struct(ds) => match ds.fields {
             Fields::Named(nfs) => {
                 for nf in nfs.named {
-                    let syn::Field {
-                        ident: id,
-                        ty,
-                        ..
-                    } = nf;
+                    let syn::Field { ident: id, ty, .. } = nf;
                     fids.push(id.unwrap());
                     ftys.push(ty);
                 }

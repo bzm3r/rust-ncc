@@ -6,11 +6,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use serde::Deserialize;
-use crate::parameters::UserParamsOverrides;
-use crate::math::P2D;
-use std::path::Path;
+use crate::parameters::InputParametersOverrides;
 use crate::quantity::Length;
+use serde::Deserialize;
+use std::path::Path;
 
 #[derive(Deserialize)]
 pub struct GroupLayout {
@@ -23,7 +22,7 @@ pub struct GroupLayout {
 pub struct CellGroup {
     pub num_cells: u32,
     pub layout: GroupLayout,
-    pub parameter_overrides: UserParamsOverrides,
+    pub parameter_overrides: InputParametersOverrides,
 }
 
 #[derive(Deserialize)]

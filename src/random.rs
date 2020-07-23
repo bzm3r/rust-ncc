@@ -17,5 +17,5 @@ pub enum RandomizationType {
 //
 // pub struct RandomState {
 //     randomization_type: RandomizationType,
-//     next_random_event_step: usize,
+//     next_random_event_step: u32,
 // }

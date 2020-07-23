@@ -3,17 +3,18 @@
 // Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 // http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// optension_inhibon. This file may not be copied, modified, or distributed
+// option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
 use crate::consts::NVERTS;
 use crate::quantity::{Diffusion, Force, Length, Quantity, Stress, Time, Tinv, Viscosity};
 use crate::random::RandomizationType;
 use override_derive::Overrides;
+use std::cmp::Ordering;
 use std::f32::consts::PI;
 
-/// Characteristic parameters used for normalization, or elimination of third dimension.
-pub struct CharQuants {
+/// World-wide parameters.
+pub struct WorldParameters {
     eta: Viscosity,
     f: Force,
     l: Length,
@@ -23,10 +24,9 @@ pub struct CharQuants {
     k_mem_on: Tinv,
     kgtp: Tinv,
     kdgtp: Tinv,
-    //coa_dist: Length,
 }
 
-impl CharQuants {
+impl WorldParameters {
     pub fn normalize<T: Quantity>(&self, q: &T) -> f32 {
         let q = q.g();
         let u = q.units();
@@ -38,23 +38,15 @@ impl CharQuants {
     }
 }
 
-impl Default for CharQuants {
+impl Default for WorldParameters {
     fn default() -> Self {
-        let eta = {
-            let force = Force(290.0_f32).nano().g();
-            let time = Time(1.0).g();
-            let length = Length(1.0).micro().g();
+        // Stress on lamellipod is on order of 1kPa, height of lamellipod on order of 100 nm, length of edge on order of 10 um
+        let f = (Stress(1.0).kilo().g() * Length(100.0).nano().g() * Length(10.0).micro().g())
+            .to_force()
+            .unwrap();
+        let eta = Viscosity(0.29);
 
-            (force * time / length)
-                .mulf(1.0 / (NVERTS as f32))
-                .to_viscosity()
-                .unwrap()
-        };
-
-        let velocity = Length(3.0).micro().g() / Time(60.0).g();
-        let f = (eta.g() * velocity.g()).to_force().unwrap();
-
-        CharQuants {
+        WorldParameters {
             eta,
             l: Length(1.0).micro(),
             t: Time(2.0),
@@ -70,13 +62,13 @@ impl Default for CharQuants {
 }
 
 #[derive(Overrides)]
-pub struct UserParams {
+pub struct InputParameters {
     /// Cell diameter.
     pub cell_diam: Length,
     /// Length criterion to determine if two vertices are "close".
     close_criterion: Length,
-    /// Activity at max force.
-    rgtp_act_at_max_f: f32,
+    /// Fraction of max force achieved at `rgtp_act_at_max_f`.
+    halfmax_rgtp_max_f_frac: f32,
     /// Stiffness of the membrane-cortex complex.
     stiffness_cortex: Stress,
     /// Typical lamellipod height.
@@ -150,14 +142,12 @@ pub struct Parameters {
     pub close_criterion: f32,
     /// Viscosity.
     pub vertex_eta: f32,
-    /// Rho GTPase at max force.
-    pub vertex_rgtp_act_at_max_f: f32,
     /// Stiffness of edge.
     pub stiffness_edge: f32,
-    /// RhoA mediated retractive force constant.
-    pub max_retractive_f: f32,
-    /// Max protrusive force.
-    pub max_protrusive_f: f32,
+    /// Rac1 mediated protrusive force constant.
+    pub const_protrusive: f32,
+    /// RhoA mediated protrusive force constant.
+    pub const_retractive: f32,
     /// Stiffness of cytoplasm.
     pub stiffness_ctyo: f32,
     /// Rate of Rho GTPase GDI unbinding and subsequent membrane attachment.
@@ -174,7 +164,9 @@ pub struct Parameters {
     pub init_frac_inactive: f32,
     /// Hill function exponent for Rho GTPase chemistry.
     pub h_exp: f32,
-    /// Halfmax Rho GTPase activity.
+    /// Halfmax Rho GTPase activity per vertex.
+    pub halfmax_vertex_rgtp_act: f32,
+    /// Halfmax Rho GTPase activity per vertex as concentration.
     pub halfmax_vertex_rgtp_conc: f32,
     /// Total amount of Rac1 in cell.
     pub tot_rac: f32,
@@ -215,18 +207,18 @@ pub struct Parameters {
     pub rand_vs: f32,
 }
 
-impl Default for UserParams {
+impl Default for InputParameters {
     fn default() -> Self {
         let rgtp_d = (Length(0.1).micro().pow(2.0).g() / Time(1.0).g())
             .to_diffusion()
             .unwrap();
 
-        UserParams {
+        InputParameters {
             cell_diam: Length(40.0).micro(),
             close_criterion: Length(0.5).micro(),
-            rgtp_act_at_max_f: 0.4,
             stiffness_cortex: Stress(8.0).kilo(),
-            lm_h: Length(300.0).nano(),
+            lm_h: Length(200.0).nano(),
+            halfmax_rgtp_max_f_frac: 0.3,
             halfmax_rgtp_frac: 0.4,
             lm_ss: Stress(10.0).kilo(),
             rho_friction: 0.2,
@@ -259,27 +251,30 @@ impl Default for UserParams {
     }
 }
 
-impl UserParams {
-    pub fn gen_params(&self, cq: &CharQuants) -> Parameters {
+impl InputParameters {
+    pub fn gen_params(&self, cq: &WorldParameters) -> Parameters {
         let cell_r = self.cell_diam.mulf(0.5);
         let rel = self.cell_diam.mulf((PI / (NVERTS as f32)).sin());
         let ra = cell_r.pow(2.0).mulf(PI);
         let close_criterion = self.close_criterion.pow(2.0);
-        let max_protrusion_f = self.lm_h.g() * self.lm_ss.g() * rel.g();
-        let max_retraction_f = max_protrusion_f.mulf(self.rho_friction);
+        let max_protrusive_f = self.lm_h.g() * self.lm_ss.g() * rel.g();
+        let const_protrusive = max_protrusive_f
+            .mulf((NVERTS as f32 / self.halfmax_rgtp_frac) * self.halfmax_rgtp_max_f_frac);
+        let const_retractive = const_protrusive.mulf(self.rho_friction);
+        //let const_protrusive_normalized = cq.normalize(&const_protrusive);
         let halfmax_rgtp_conc = rel.pow(-1.0).mulf(0.4 / (NVERTS as f32));
-
+        let stiffness_edge = self.stiffness_cortex.g() * cq.l3d.g();
+        let stiffness_cyto = self.stiffness_ctyo.g();
         Parameters {
             cell_r: cq.normalize(&cell_r),
             rest_edge_len: cq.normalize(&rel),
             rest_area: cq.normalize(&ra),
             close_criterion: cq.normalize(&close_criterion),
             vertex_eta: cq.normalize(&cq.eta) / (NVERTS as f32),
-            vertex_rgtp_act_at_max_f: self.rgtp_act_at_max_f / (NVERTS as f32 / 2.0),
-            stiffness_edge: cq.normalize(&(self.stiffness_cortex.g() * cq.l3d.g())),
-            max_retractive_f: cq.normalize(&max_retraction_f),
-            max_protrusive_f: cq.normalize(&max_protrusion_f),
-            stiffness_ctyo: cq.normalize(&self.stiffness_ctyo),
+            stiffness_edge: cq.normalize(&stiffness_edge),
+            const_protrusive: cq.normalize(&const_protrusive),
+            const_retractive: cq.normalize(&const_retractive),
+            stiffness_ctyo: cq.normalize(&stiffness_cyto),
             k_mem_on: cq.normalize(&cq.k_mem_on),
             k_mem_off: cq.normalize(&cq.k_mem_off),
             diffusion_rgtp: cq.normalize(&self.diffusion_rgtp),
@@ -287,14 +282,15 @@ impl UserParams {
             init_frac_active: self.init_frac_cyto,
             init_frac_inactive: {
                 let ifi = 1.0 - self.init_frac_active - self.init_frac_cyto;
-                if !(ifi < 0.0) {
-                    ifi
-                } else {
+                if let Some(Ordering::Less) = ifi.partial_cmp(&0.0) {
                     panic!("Initial fraction of inactive Rho GTPase is negative.")
+                } else {
+                    ifi
                 }
             },
             h_exp: self.h_exp,
-            halfmax_vertex_rgtp_conc: cq.normalize(&halfmax_rgtp_conc) / (NVERTS as f32 / 2.0),
+            halfmax_vertex_rgtp_act: self.halfmax_rgtp_frac / NVERTS as f32,
+            halfmax_vertex_rgtp_conc: cq.normalize(&halfmax_rgtp_conc) / NVERTS as f32,
             tot_rac: self.tot_rac,
             tot_rho: self.tot_rho,
             kgtp_rac: cq.normalize(&cq.kgtp.mulf(self.kgtp_rac)),

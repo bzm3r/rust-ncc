@@ -5,12 +5,12 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
+use serde::Deserialize;
 use std::fmt;
 use std::fmt::{Display, Formatter};
 use std::ops::{Div, Mul};
-use serde::Deserialize;
 
-#[derive(Deserialize, Copy, Clone)]
+#[derive(Deserialize, Clone, Copy)]
 pub struct Units {
     pub f: f32,
     pub l: f32,
@@ -20,10 +20,6 @@ pub struct Units {
 impl PartialEq for Units {
     fn eq(&self, other: &Self) -> bool {
         self.f == other.f && self.l == other.l && self.t == other.t
-    }
-
-    fn ne(&self, other: &Self) -> bool {
-        self.f != other.f || self.l != other.l || self.t != other.t
     }
 }
 
@@ -104,6 +100,7 @@ impl Units {
 impl Mul for Units {
     type Output = Units;
 
+    #[allow(clippy::suspicious_arithmetic_impl)]
     fn mul(self, rhs: Self) -> Self::Output {
         Units {
             f: self.f + rhs.f,
@@ -122,6 +119,7 @@ impl Display for Units {
 impl Div for Units {
     type Output = Units;
 
+    #[allow(clippy::suspicious_arithmetic_impl)]
     fn div(self, rhs: Self) -> Self::Output {
         Units {
             f: self.f - rhs.f,
@@ -150,7 +148,7 @@ pub trait Quantity {
     fn pow(&self, exp: f32) -> General;
 }
 
-#[derive(Deserialize, Copy, Clone)]
+#[derive(Deserialize, Clone, Copy)]
 pub struct General {
     v: f32,
     u: Units,
@@ -173,24 +171,24 @@ impl General {
         }
     }
 
-    pub fn to_viscosity(&self) -> Result<Viscosity, String> {
-        if self.units() == Units::viscosity() {
-            Ok(Viscosity(self.value()))
-        } else {
-            Err(format!(
-                "Quantity ({}) does not have units of viscosity ({}).",
-                self,
-                Units::viscosity()
-            ))
-        }
-    }
+    // pub fn to_viscosity(&self) -> Result<Viscosity, String> {
+    //     if self.units() == Units::viscosity() {
+    //         Ok(Viscosity(self.value()))
+    //     } else {
+    //         Err(format!(
+    //             "Quantity ({}) does not have units of viscosity ({}).",
+    //             self,
+    //             Units::viscosity()
+    //         ))
+    //     }
+    // }
 }
 
 impl Quantity for General {
     fn mulf(&self, other: f32) -> Self {
         General {
             v: self.v * other,
-            u: self.u.clone(),
+            u: self.u,
         }
     }
 
@@ -211,11 +209,11 @@ impl Quantity for General {
     }
 
     fn units(&self) -> Units {
-        self.u.clone()
+        self.u
     }
 
     fn g(&self) -> General {
-        self.clone()
+        *self
     }
 
     fn pow(&self, exp: f32) -> General {
@@ -254,7 +252,7 @@ impl Display for General {
     }
 }
 
-#[derive(Deserialize, Copy, Clone)]
+#[derive(Deserialize, Clone, Copy)]
 pub struct Force(pub f32);
 
 impl Quantity for Force {
@@ -334,7 +332,7 @@ impl Quantity for Length {
     }
 }
 
-#[derive(Deserialize, Copy, Clone)]
+#[derive(Deserialize, Clone, Copy)]
 pub struct Time(pub f32);
 
 impl Quantity for Time {
@@ -374,7 +372,7 @@ impl Quantity for Time {
     }
 }
 
-#[derive(Deserialize, Copy, Clone)]
+#[derive(Deserialize, Clone, Copy)]
 pub struct Tinv(pub f32);
 
 impl Quantity for Tinv {
@@ -414,7 +412,7 @@ impl Quantity for Tinv {
     }
 }
 
-#[derive(Deserialize, Copy, Clone)]
+#[derive(Deserialize, Clone, Copy)]
 pub struct Diffusion(pub f32);
 
 impl Quantity for Diffusion {
@@ -454,7 +452,7 @@ impl Quantity for Diffusion {
     }
 }
 
-#[derive(Deserialize, Copy, Clone)]
+#[derive(Deserialize, Clone, Copy)]
 pub struct Stress(pub f32);
 
 impl Quantity for Stress {
@@ -494,7 +492,7 @@ impl Quantity for Stress {
     }
 }
 
-#[derive(Deserialize, Copy, Clone)]
+#[derive(Deserialize, Clone, Copy)]
 pub struct Viscosity(pub f32);
 
 impl Quantity for Viscosity {
@@ -534,7 +532,7 @@ impl Quantity for Viscosity {
     }
 }
 
-#[derive(Deserialize, Copy, Clone)]
+#[derive(Deserialize, Clone, Copy)]
 pub struct Unitless(pub f32);
 
 impl Quantity for Unitless {

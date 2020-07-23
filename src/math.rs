@@ -1,10 +1,11 @@
 use crate::utils::{circ_ix_minus, circ_ix_plus};
+use avro_schema_derive::Schematize;
+use serde::{Deserialize, Serialize};
 use std::f32::consts::PI;
-use std::ops::{Add, Div, Mul, Sub};
-use serde::Deserialize;
+use std::ops::{Add, Sub, Div, Mul};
 
 /// Value always between `[0.0, 2*PI]`.
-#[derive(PartialOrd, PartialEq, Copy, Clone)]
+#[derive(PartialOrd, PartialEq, Clone, Copy)]
 pub struct Radians(f32);
 
 const RAD_2PI: Radians = Radians(2.0 * PI);
@@ -31,11 +32,7 @@ impl Sub for Radians {
 impl Radians {
     /// Helper function for `Radians::between`.
     fn _between(&self, t0: Radians, t1: Radians) -> bool {
-        if t0 < *self && *self < t1 {
-            true
-        } else {
-            false
-        }
+        t0 < *self && *self < t1
     }
 
     /// Calculates if `self` is between `t0` and `t1`, where `t1` is assumed to be counter-clockwise after `t0`.
@@ -53,7 +50,7 @@ impl Radians {
 }
 
 /// 2D vector with `f32` elements.
-#[derive(Deserialize, Default, Copy, Clone, Debug)]
+#[derive(Clone, Copy, Debug, Default, Deserialize, Serialize, Schematize)]
 pub struct P2D {
     pub x: f32,
     pub y: f32,
@@ -74,16 +71,30 @@ impl P2D {
         self.x * other.x + self.y * other.y
     }
 
-    pub fn scalar_mul(&self, s: f32) -> P2D {
+    pub fn abs(&self) -> P2D {
         P2D {
-            x: self.x * s,
-            y: self.y * s,
+            x: self.x.abs(),
+            y: self.y.abs(),
+        }
+    }
+
+    pub fn max(&self, other: &P2D) -> P2D {
+        P2D {
+            x: max_f32(self.x, other.x),
+            y: max_f32(self.y, other.y),
+        }
+    }
+
+    pub fn min(&self, other: &P2D) -> P2D {
+        P2D {
+            x: min_f32(self.x, other.x),
+            y: min_f32(self.y, other.y),
         }
     }
 
     pub fn unitize(&self) -> P2D {
         let m = self.mag();
-        self.scalar_mul(1.0/m)
+        (1.0 / m) * self
     }
 
     pub fn normal(&self) -> P2D {
@@ -93,17 +104,24 @@ impl P2D {
         }
     }
 
-    pub fn scalar_mulx(&self, s: f32) -> P2D {
+    pub fn scalar_mul_x(&self, s: f32) -> P2D {
         P2D {
             x: self.x * s,
             y: self.y,
         }
     }
 
-    pub fn scalar_muly(&self, s: f32) -> P2D {
+    pub fn scalar_mul_y(&self, s: f32) -> P2D {
         P2D {
             x: self.x,
             y: self.y * s,
+        }
+    }
+
+    pub fn powi(&self, x: i32) -> P2D {
+        P2D {
+            x: self.x.powi(x),
+            y: self.y.powi(x),
         }
     }
 }
@@ -119,57 +137,68 @@ impl Add for P2D {
     }
 }
 
-impl Mul<f32> for P2D {
+impl Add for &P2D {
+    type Output = P2D;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        P2D {
+            x: self.x + rhs.x,
+            y: self.y + rhs.y,
+        }
+    }
+}
+
+impl Div for P2D {
     type Output = Self;
 
-    fn mul(self, rhs: f32) -> Self::Output {
+    fn div(self, rhs: Self) -> Self::Output {
         P2D {
-            x: self.x * rhs,
-            y: self.y * rhs,
+            x: self.x / rhs.x,
+            y: self.y / rhs.y,
         }
     }
 }
 
-impl Div<f32> for P2D {
-    type Output = Self;
-
-    fn div(self, rhs: f32) -> Self::Output {
-        P2D {
-            x: self.x / rhs,
-            y: self.y / rhs,
-        }
-    }
-}
-
-impl<'a, 'b> Add<&'b P2D> for &'a P2D {
+impl Mul<P2D> for f32 {
     type Output = P2D;
 
-    fn add(self, other: &'b P2D) -> P2D {
+    fn mul(self, rhs: P2D) -> Self::Output {
         P2D {
-            x: self.x + other.x,
-            y: self.y + other.y,
+            x: self * rhs.x,
+            y: self * rhs.y,
         }
     }
 }
 
-impl<'a> Mul<f32> for &'a P2D {
+impl Mul<&P2D> for f32 {
     type Output = P2D;
 
-    fn mul(self, rhs: f32) -> P2D {
+    fn mul(self, rhs: &P2D) -> Self::Output {
         P2D {
-            x: self.x * rhs,
-            y: self.y * rhs,
+            x: self * rhs.x,
+            y: self * rhs.y,
         }
     }
 }
 
-impl<'a> Div<f32> for &'a P2D {
+impl Mul<P2D> for &f32 {
     type Output = P2D;
 
-    fn div(self, rhs: f32) -> P2D {
+    fn mul(self, rhs: P2D) -> Self::Output {
         P2D {
-            x: self.x / rhs,
-            y: self.y / rhs,
+            x: self * rhs.x,
+            y: self * rhs.y,
+        }
+    }
+}
+
+impl Add<P2D> for f32 {
+    type Output = P2D;
+
+    fn add(self, rhs: P2D) -> Self::Output {
+        P2D {
+            x: self + rhs.x,
+            y: self + rhs.y,
         }
     }
 }
@@ -217,37 +246,46 @@ pub fn calc_poly_area(xys: &[P2D]) -> f32 {
         area += xys[i].x * (xys[j].y - xys[k].y);
     }
 
-    return area * 0.5;
+    area * 0.5
 }
 
-/// Given three points `p0`, `p1`, `p2`, check if `p2` is left of the line through `p0` and `p1`.
-/// Greater than 0 if `p2` is left of, `0` if `p2` is on, and less than 0 if `p2` is right of.
-pub fn is_point_left_of_line(p0: &P2D, p1: &P2D, p2: &P2D) -> f32 {
-    (p1.x - p0.x) * (p2.y - p0.y) - (p2.x - p0.x) * (p1.y - p0.y)
-}
+// /// Given three points `p0`, `p1`, `p2`, check if `p2` is left of the line through `p0` and `p1`.
+// /// Greater than 0 if `p2` is left of, `0` if `p2` is on, and less than 0 if `p2` is right of.
+// pub fn is_point_left_of_line(p0: &P2D, p1: &P2D, p2: &P2D) -> f32 {
+//     (p1.x - p0.x) * (p2.y - p0.y) - (p2.x - p0.x) * (p1.y - p0.y)
+// }
 
-pub struct Bbox {
-    xmin: f32,
-    ymin: f32,
-    xmax: f32,
-    ymax: f32,
-}
+// pub struct Bbox {
+//     xmin: f32,
+//     ymin: f32,
+//     xmax: f32,
+//     ymax: f32,
+// }
+//
+// impl Bbox {
+//     pub fn point_in(&self, p: &P2D) -> bool {
+//         (self.xmin < p.x) && (self.ymin < p.y) && (self.xmax > p.x) && (self.ymax > p.y)
+//     }
+// }
+//
+// pub fn min_f32s(xs: &[f32]) -> f32 {
+//     let mut r = -1.0 * std::f32::INFINITY;
+//     for &x in xs {
+//         if (x - r) < -1.0 * std::f32::EPSILON {
+//             r = x
+//         }
+//     }
+//     r
+// }
 
-impl Bbox {
-    pub fn point_in(&self, p: &P2D) -> bool {
-        (self.xmin < p.x) && (self.ymin < p.y) && (self.xmax > p.x) && (self.ymax > p.y)
+pub fn min_f32(x: f32, y: f32) -> f32 {
+    if x - y < 0.0 {
+        x
+    } else {
+        y
     }
 }
 
-pub fn min_f32s(xs: &[f32]) -> f32 {
-    let mut r = -1.0 * std::f32::INFINITY;
-    for &x in xs {
-        if (x - r) < -1.0 * std::f32::EPSILON {
-            r = x
-        }
-    }
-    r
-}
 
 pub fn max_f32(x: f32, y: f32) -> f32 {
     if x - y > 0.0 {
@@ -256,61 +294,69 @@ pub fn max_f32(x: f32, y: f32) -> f32 {
         y
     }
 }
+//
+// pub fn max_f32s(xs: &[f32]) -> f32 {
+//     let mut r = std::f32::MIN;
+//     for &x in xs {
+//         r = max_f32(r, x);
+//     }
+//     r
+// }
 
-pub fn max_f32s(xs: &[f32]) -> f32 {
-    let mut r = std::f32::MIN;
-    for &x in xs {
-        r = max_f32(r, x);
-    }
-    r
-}
+// pub fn poly_bbox(xys: &[P2D]) -> Bbox {
+//     let xs: Vec<f32> = xys.iter().map(|v| v.x).collect();
+//     let ys: Vec<f32> = xys.iter().map(|v| v.y).collect();
+//     Bbox {
+//         xmin: min_f32s(&xs),
+//         ymin: min_f32s(&ys),
+//         xmax: max_f32s(&xs),
+//         ymax: max_f32s(&xs),
+//     }
+// }
 
-pub fn poly_bbox(xys: &[P2D]) -> Bbox {
-    let xs: Vec<f32> = xys.iter().map(|v| v.x).collect();
-    let ys: Vec<f32> = xys.iter().map(|v| v.y).collect();
-    Bbox {
-        xmin: min_f32s(&xs),
-        ymin: min_f32s(&ys),
-        xmax: max_f32s(&xs),
-        ymax: max_f32s(&xs),
-    }
-}
-
-pub fn point_in_poly(xys: &[P2D], p: &P2D) -> bool {
-    if poly_bbox(xys).point_in(p) {
-        let nvs = xys.len();
-        let mut wn: i32 = 0;
-
-        (0..nvs).for_each(|i| {
-            let p_start = xys[i];
-            let p_end = xys[circ_ix_plus(i, nvs)];
-            let is_left = is_point_left_of_line(&p_start, &p_end, p);
-
-            if p_start.y <= p.y && p.y < p_end.y {
-                // upward crossing
-                if is_left > 0.0 {
-                    wn += 1;
-                }
-            } else if p_end.y < p.y && p.y <= p_start.y {
-                // downward crossing
-                if is_point_left_of_line(&p_start, &p_end, p) < 0.0 {
-                    wn -= 1;
-                }
-            }
-        });
-
-        if wn == 0 {
-            false
-        } else {
-            true
-        }
-    } else {
-        false
-    }
-}
+// pub fn point_in_poly(xys: &[P2D], p: &P2D) -> bool {
+//     if poly_bbox(xys).point_in(p) {
+//         let nvs = xys.len();
+//         let mut wn: i32 = 0;
+//
+//         (0..nvs).for_each(|i| {
+//             let p_start = xys[i];
+//             let p_end = xys[circ_ix_plus(i, nvs)];
+//             let is_left = is_point_left_of_line(&p_start, &p_end, p);
+//
+//             if p_start.y <= p.y && p.y < p_end.y {
+//                 // upward crossing
+//                 if is_left > 0.0 {
+//                     wn += 1;
+//                 }
+//             } else if p_end.y < p.y && p.y <= p_start.y {
+//                 // downward crossing
+//                 if is_point_left_of_line(&p_start, &p_end, p) < 0.0 {
+//                     wn -= 1;
+//                 }
+//             }
+//         });
+//
+//         if wn == 0 {
+//             false
+//         } else {
+//             true
+//         }
+//     } else {
+//         false
+//     }
+// }
 
 pub fn hill_function(thresh: f32, x: f32) -> f32 {
     let x_cubed = x.powi(3);
     x_cubed / (thresh.powi(3) + x_cubed)
 }
 
+/// Assumes that x, max_x > 0.
+pub fn capped_linear_function(max_x: f32, x: f32) -> f32 {
+    if x > max_x {
+        1.0
+    } else {
+        x / max_x
+    }
+}
