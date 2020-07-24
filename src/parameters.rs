@@ -252,7 +252,7 @@ impl Default for InputParameters {
 }
 
 impl InputParameters {
-    pub fn gen_params(&self, cq: &WorldParameters) -> Parameters {
+    pub fn gen_parameters(&self, cq: &WorldParameters) -> Parameters {
         let cell_r = self.cell_diam.mulf(0.5);
         let rel = self.cell_diam.mulf((PI / (NVERTS as f32)).sin());
         let ra = cell_r.pow(2.0).mulf(PI);

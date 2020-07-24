@@ -1,4 +1,3 @@
-mod rkdp5;
 mod cell;
 mod chemistry;
 mod consts;
@@ -9,16 +8,19 @@ mod mechanics;
 mod parameters;
 mod quantity;
 mod random;
+mod rkdp5;
 mod utils;
 mod world;
 
-use std::path::PathBuf;
 use crate::experiment::load_experiment;
+use std::path::PathBuf;
 
 fn main() {
     let exp = load_experiment("2020-JUL-11-test");
     let output_dir = PathBuf::from("C:\\Users\\bhmer\\Desktop\\rust-ncc\\output\\");
-    let mut w = world::World::new(exp, output_dir);
+    let mut w = world::World::new(exp);
     w.simulate(60.0);
-    w.save_history();
+    w.save_history(&output_dir);
+    w.save_geom_history(&output_dir);
+    w.save_mech_history(&output_dir);
 }

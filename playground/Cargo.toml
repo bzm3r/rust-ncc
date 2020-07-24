@@ -8,3 +8,6 @@ edition = "2018"
 
 [dependencies]
 rand = "0.7.3"
+avro-rs = "0.10.0"
+avro-schema-derive = { path = "../avro-schema-derive" }
+serde = "1.0.114"

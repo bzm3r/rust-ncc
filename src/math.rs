@@ -2,7 +2,7 @@ use crate::utils::{circ_ix_minus, circ_ix_plus};
 use avro_schema_derive::Schematize;
 use serde::{Deserialize, Serialize};
 use std::f32::consts::PI;
-use std::ops::{Add, Sub, Div, Mul};
+use std::ops::{Add, Div, Mul, Sub};
 
 /// Value always between `[0.0, 2*PI]`.
 #[derive(PartialOrd, PartialEq, Clone, Copy)]
@@ -285,7 +285,6 @@ pub fn min_f32(x: f32, y: f32) -> f32 {
         y
     }
 }
-
 
 pub fn max_f32(x: f32, y: f32) -> f32 {
     if x - y > 0.0 {
