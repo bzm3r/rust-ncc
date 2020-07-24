@@ -11,3 +11,4 @@ rand = "0.7.3"
 avro-rs = "0.10.0"
 avro-schema-derive = { path = "../avro-schema-derive" }
 serde = "1.0.114"
+serde_json = "1.0.56"

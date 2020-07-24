@@ -12,12 +12,11 @@ use crate::experiment::{Experiment, GroupLayout};
 use crate::math::P2D;
 use crate::parameters::{InputParameters, Parameters, WorldParameters};
 use crate::quantity::Length;
-use avro_rs::{Schema, Writer};
+use avro_rs::Writer;
 use avro_schema_derive::Schematize;
 use serde::{Deserialize, Serialize};
-use std::fs::OpenOptions;
-use std::io::Write;
 use std::path::PathBuf;
+use crate::schema::{save_schema, save_data};
 
 #[derive(Copy, Clone, Debug, Default, Deserialize, Schematize, Serialize)]
 pub struct InteractionState {
@@ -192,22 +191,20 @@ impl World {
 
     pub fn save_history(&self, output_dir: &PathBuf) {
         let name = "history";
-        let raw_schema = WorldState::raw_schema();
-        World::save_schema(name, &raw_schema, output_dir);
-        let schema = Schema::parse_str(&raw_schema).unwrap();
+        let schema = WorldState::schematize(None);
+        save_schema(name, &schema, output_dir);
         let mut writer = Writer::new(&schema, Vec::new()); //Writer::with_codec(&self.state_schema, Vec::new(), avro_rs::Codec::Deflate);
         for ws in self.history.iter() {
             writer.append_ser(ws).unwrap();
         }
         let encoded = writer.into_inner().unwrap();
-        World::save_data(name, &encoded, output_dir);
+        save_data(name, &encoded, output_dir);
     }
 
     pub fn save_mech_history(&self, output_dir: &PathBuf) {
         let name = "mech_hist";
-        let raw_schema = WorldMechState::raw_schema();
-        World::save_schema(name, &raw_schema, output_dir);
-        let schema = Schema::parse_str(&raw_schema).unwrap();
+        let schema = WorldMechState::schematize(None);
+        save_schema(name, &schema, output_dir);
         let mut writer = Writer::new(&schema, Vec::new()); //Writer::with_codec(&self.state_schema, Vec::new(), avro_rs::Codec::Deflate);
         for ws in self.history.iter() {
             writer
@@ -215,14 +212,14 @@ impl World {
                 .unwrap();
         }
         let encoded = writer.into_inner().unwrap();
-        World::save_data(name, &encoded, output_dir);
+        save_data(name, &encoded, output_dir);
     }
 
+    #[allow(unused)]
     pub fn save_chem_history(&self, output_dir: &PathBuf) {
         let name = "chem_hist";
-        let raw_schema = WorldChemState::raw_schema();
-        World::save_schema(name, &raw_schema, output_dir);
-        let schema = Schema::parse_str(&raw_schema).unwrap();
+        let schema = WorldChemState::schematize(None);
+        save_schema(name, &schema, output_dir);
         let mut writer = Writer::new(&schema, Vec::new()); //Writer::with_codec(&self.state_schema, Vec::new(), avro_rs::Codec::Deflate);
         for ws in self.history.iter() {
             writer
@@ -230,48 +227,19 @@ impl World {
                 .unwrap();
         }
         let encoded = writer.into_inner().unwrap();
-        World::save_data(name, &encoded, output_dir);
+        save_data(name, &encoded, output_dir);
     }
 
     pub fn save_geom_history(&self, output_dir: &PathBuf) {
         let name = "geom_hist";
-        let raw_schema = WorldGeomState::raw_schema();
-        World::save_schema(name, &raw_schema, output_dir);
-        let schema = Schema::parse_str(&raw_schema).unwrap();
+        let schema = WorldGeomState::schematize(None);
+        save_schema(name, &schema, output_dir);
         let mut writer = Writer::new(&schema, Vec::new()); //Writer::with_codec(&self.state_schema, Vec::new(), avro_rs::Codec::Deflate);
         for ws in self.history.iter() {
             writer.append_ser(ws.extract_geom_state()).unwrap();
         }
         let encoded = writer.into_inner().unwrap();
-        World::save_data(name, &encoded, output_dir);
-    }
-
-    pub fn save_schema(name: &str, raw_schema: &str, output_dir: &PathBuf) {
-        let mut avsc_path = output_dir.clone();
-        avsc_path.push(format!("{}_schema", name));
-        avsc_path.set_extension("avsc");
-
-        let mut f = OpenOptions::new()
-            .write(true)
-            .create(true)
-            .truncate(true)
-            .open(avsc_path)
-            .unwrap();
-        f.write_all(raw_schema.as_bytes()).unwrap();
-    }
-
-    pub fn save_data(name: &str, encoded: &[u8], output_dir: &PathBuf) {
-        let mut path = output_dir.clone();
-        path.push(format!("{}_dat", name));
-        path.set_extension("avro");
-
-        let mut f = OpenOptions::new()
-            .write(true)
-            .create(true)
-            .truncate(true)
-            .open(path)
-            .unwrap();
-        f.write_all(&encoded).unwrap();
+        save_data(name, &encoded, output_dir);
     }
 }
 

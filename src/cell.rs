@@ -345,24 +345,6 @@ pub struct CellDepVars {
 //     cyto_fs: Option<[P2D; NVERTS as usize]>,
 // }
 
-fn increment_f32s(
-    xs: &[f32; NVERTS as usize],
-    dxs: &[f32; NVERTS as usize],
-) -> [f32; NVERTS as usize] {
-    let mut r = [0.0_f32; NVERTS as usize];
-    (0..NVERTS as usize).for_each(|i| r[i] = xs[i] + dxs[i]);
-    r
-}
-
-fn increment_vec2ds(
-    xs: &[P2D; NVERTS as usize],
-    dxs: &[P2D; NVERTS as usize],
-) -> [P2D; NVERTS as usize] {
-    let mut r = [P2D::default(); NVERTS as usize];
-    (0..NVERTS as usize).for_each(|i| r[i] = xs[i] + dxs[i]);
-    r
-}
-
 impl CellState {
     pub fn num_vars() -> usize {
         (NVERTS * 6) as usize
@@ -553,9 +535,9 @@ impl CellState {
         parameters: &Parameters,
     ) -> CellState {
         let CellDepVars {
-            geom_state,
             chem_state,
             mech_state,
+            ..
         } = CellState::calc_dep_vars(state, rac_rand_state, inter_state, parameters);
         let mut delta = CellState::default();
         for i in 0..NVERTS as usize {
@@ -856,6 +838,7 @@ fn gen_vertex_coords(centroid: P2D, radius: f32) -> [P2D; NVERTS as usize] {
     r
 }
 
+#[allow(unused)]
 pub enum VertexGenInfo {
     Centroid(P2D),
     Coordinates([P2D; NVERTS as usize]),
@@ -894,6 +877,7 @@ impl Cell {
         }
     }
 
+    #[allow(unused)]
     pub fn simulate_euler(
         &self,
         tstep: u32,
@@ -917,9 +901,6 @@ impl Cell {
             #[cfg(debug_assertions)]
             println!("state: {:?}", state);
         }
-        println!("state: {:?}", state);
-        let dep_vars =
-            CellState::calc_dep_vars(&state, &self.rac_randomization, &inter_state, parameters);
         Cell {
             ix: self.ix,
             group_ix: self.group_ix,
@@ -956,8 +937,6 @@ impl Cell {
         );
         let state = result.y.expect("too many iterations!");
         println!("state: {:?}", state);
-        let dep_vars =
-            CellState::calc_dep_vars(&state, &self.rac_randomization, inter_state, parameters);
         Cell {
             ix: self.ix,
             group_ix: self.group_ix,

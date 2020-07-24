@@ -42,7 +42,7 @@ pub fn calc_edge_forces(
 ) -> [P2D; NVERTS as usize] {
     let mut r = [P2D::default(); NVERTS as usize];
     (0..NVERTS as usize)
-        .for_each(|i| r[i] = (edge_strains[i] * stiffness_edge) * edge_unit_vecs[i]);
+        .for_each(|i| r[i] = (-1.0 * edge_strains[i] * stiffness_edge) * edge_unit_vecs[i]);
     r
 }
 
@@ -53,7 +53,7 @@ pub fn calc_cyto_forces(
     stiffness_cyto: f32,
 ) -> [P2D; NVERTS as usize] {
     let area = calc_poly_area(vertex_coords);
-    let areal_strain = area / rest_area - 1.0;
+    let areal_strain = (area / rest_area) - 1.0;
     let mag = stiffness_cyto * areal_strain / (vertex_coords.len() as f32);
     let mut r = [P2D::default(); NVERTS as usize];
     (0..NVERTS as usize).for_each(|i| r[i] = mag * unit_inward_vecs[i]);

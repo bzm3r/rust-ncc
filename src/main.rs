@@ -1,3 +1,4 @@
+mod schema;
 mod cell;
 mod chemistry;
 mod consts;

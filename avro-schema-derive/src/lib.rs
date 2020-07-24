@@ -1,7 +1,4 @@
 mod avro_schema;
-mod print;
-
-use crate::avro_schema::AvroType;
 use quote::quote;
 use std::iter::Iterator;
 use syn::{parse_macro_input, DeriveInput, Fields, Ident, Type};
@@ -29,31 +26,47 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         _ => panic!("Override macro expects struct, but found enum/union"),
     };
 
-    let mut fid_strings: Vec<String> = fids.iter().map(|fid| fid.to_string()).collect();
-    let mut fschemas: Vec<proc_macro2::TokenStream> = ftys
-        .iter()
-        .map(|fty| {
-            let pt = avro_schema::RustType::from_syn_type(fty);
-            AvroType::from_rust_type(&pt).schema_macro_entry()
+    let fid_strings: Vec<String> = fids.iter().map(|fid| fid.to_string()).collect();
+    let fschemas: Vec<proc_macro2::TokenStream> = ftys
+        .iter().zip(fid_strings.iter())
+        .map(|(fty, fstr)| {
+            avro_schema::from_syn(fstr.as_str(), fty)
         })
         .collect();
-    let last_fid_string = fid_strings.remove(fid_strings.len() - 1);
-    let last_fschema = fschemas.remove(fschemas.len() - 1);
-    let output = quote!(
+    let fpositions = fids.iter().enumerate().map(|(i, _)| i).collect::<Vec<usize>>();
+
+    proc_macro::TokenStream::from(quote!(
         impl #id {
-            pub fn raw_schema() -> String {
-                use std::fmt::Write;
-                let mut s = std::string::String::new();
-
-                write!(s, "{{ \"type\": \"record\", \"name\": \"{}\", \"fields\": [ ", #id_string).unwrap();
-                #(write!(s, "{{ \"name\": \"{}\", \"type\": {} }}, ", #fid_strings, #fschemas).unwrap();)*
-                write!(s, "{{ \"name\": \"{}\", \"type\": {} }} ", #last_fid_string, #last_fschema).unwrap();
-                write!(s, "] }}").unwrap();
-
-                return s
+            pub fn schematize(prev_namespace: Option<String>) -> avro_rs::schema::Schema {
+                let new_namespace = if let Some(pns) = prev_namespace.as_ref() {
+                    Some(vec![String::from(pns), String::from(#id_string)].join("."))
+                } else {
+                    Some(String::from(#id_string))
+                };
+                avro_rs::schema::Schema::Record {
+                    name: avro_rs::schema::Name {
+                        name: String::from(#id_string),
+                        namespace: prev_namespace.clone(),
+                        aliases: None,
+                    },
+                    doc: None,
+                    fields: vec![#(
+                        avro_rs::schema::RecordField {
+                            name: std::string::String::from(#fid_strings),
+                            doc: None,
+                            default: None,
+                            schema: #fschemas,
+                            order: avro_rs::schema::RecordFieldOrder::Ignore,
+                            position: #fpositions,
+                        }
+                    ),*],
+                    lookup: {
+                        let mut r: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
+                        #(r.insert(std::string::String::from(#fid_strings), #fpositions);)*
+                        r
+                    },
+                }
             }
         }
-    );
-
-    proc_macro::TokenStream::from(output)
+    ))
 }
