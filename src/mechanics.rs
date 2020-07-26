@@ -25,8 +25,7 @@ pub fn calc_edge_forces(
     stiffness_edge: f32,
 ) -> [P2D; NVERTS as usize] {
     let mut r = [P2D::default(); NVERTS as usize];
-    (0..NVERTS as usize)
-        .for_each(|i| r[i] = edge_strains[i] * stiffness_edge * edge_unit_vecs[i]);
+    (0..NVERTS as usize).for_each(|i| r[i] = edge_strains[i] * stiffness_edge * edge_unit_vecs[i]);
     r
 }
 

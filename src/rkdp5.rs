@@ -268,13 +268,17 @@ pub fn rkdp5(
 
         let PreMulA { a6, .. } = premul_as;
         // because B is the same as A6, except with last value 0, we can again use the premultiplied values of A6
-        let y1 = init_state
-            + a6[0] * k0
-            + a6[1] * k1
-            + a6[2] * k2
-            + a6[3] * k3
-            + a6[4] * k4
-            + a6[5] * k5;
+        let y1 = {
+            let mut r = init_state
+                + a6[0] * k0
+                + a6[1] * k1
+                + a6[2] * k2
+                + a6[3] * k3
+                + a6[4] * k4
+                + a6[5] * k5;
+            r.sanitize_small_negs();
+            r
+        };
 
         if last_iter {
             assert!((h - dt).abs() < f32::EPSILON);
@@ -286,14 +290,19 @@ pub fn rkdp5(
         }
 
         // on the other hand, we don't have pre-multiplied values for B_HAT
-        let y1_hat = init_state
-            + h * (B_HAT[0] * k0
+        let y1_hat = {
+            let mut r = init_state
+                + h * (B_HAT[0] * k0
                 + B_HAT[1] * k1
                 + B_HAT[2] * k2
                 + B_HAT[3] * k3
                 + B_HAT[4] * k4
                 + B_HAT[5] * k5
                 + B_HAT[6] * k6);
+            r.sanitize_small_negs();
+            r
+        };
+
 
         // Equations 4.10, 4.11, Hairer,Wanner&Norsett Solving ODEs Vol. 1
         let sc = init_state

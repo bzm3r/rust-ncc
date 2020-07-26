@@ -18,53 +18,43 @@ use rand::{thread_rng, Rng};
 
 pub enum RgtpLayout {
     Random,
+    BiasedVertices(Vec<usize>),
     //Biased(BiasDefn),
 }
 
 impl RgtpLayout {
-    pub fn gen_distrib(&self) -> [f32; NVERTS as usize] {
-        let mut rgtp: [f32; NVERTS as usize] = [0.0_f32; NVERTS as usize];
+    pub fn gen_distrib(&self, frac_to_distrib: f32) -> [f32; NVERTS as usize] {
+        let mut rgtp_distrib: [f32; NVERTS as usize] = [0.0_f32; NVERTS as usize];
         match self {
             RgtpLayout::Random => {
                 let distrib: Uniform<f32> = Uniform::new_inclusive(0.0, 1.0);
                 let mut rng = thread_rng();
-                rgtp.iter_mut().for_each(|e| {
+                rgtp_distrib.iter_mut().for_each(|e| {
                     *e = rng.sample(distrib);
                 });
-            } // RgtpLayout::Biased(bd) => {
-              //     rgtp.iter_mut().enumerate().for_each(|(i, e)| {
-              //         if vertex_coords[i].direction().between(bd.range.0, bd.range.1) {
-              //             *e = 1.0;
-              //         }
-              //     });
-              // }
+            }
+            RgtpLayout::BiasedVertices(verts) => {
+                (0..NVERTS as usize).for_each(|ix| {
+                    if let Some(_) = verts.iter().find(|&&v| ix == v) {
+                        rgtp_distrib[ix] = 1.0;
+                    }
+                });
+            }
         }
-        let sum: f32 = rgtp.iter().sum();
-        rgtp.iter_mut().for_each(|e| *e /= sum);
-        rgtp
+        let sum: f32 = rgtp_distrib.iter().sum();
+        rgtp_distrib.iter_mut().for_each(|e| *e = *e * frac_to_distrib / sum);
+        rgtp_distrib
     }
-}
-
-pub fn distribute_frac(frac_to_distib: f32, bias: &RgtpLayout) -> [f32; NVERTS as usize] {
-    let distrib = bias.gen_distrib();
-    let frac_per_vertex = frac_to_distib / (NVERTS as f32);
-
-    let mut r = [0.0_f32; NVERTS as usize];
-    distrib
-        .iter()
-        .enumerate()
-        .for_each(|(i, &x)| r[i] = frac_per_vertex * x);
-    r
 }
 
 pub fn gen_rgtp_distrib(
     active_frac: f32,
     inactive_frac: f32,
-    bias: &RgtpLayout,
+    rgtp_layout: &RgtpLayout,
 ) -> ([f32; NVERTS as usize], [f32; NVERTS as usize]) {
     (
-        distribute_frac(active_frac, &bias),
-        distribute_frac(inactive_frac, &bias),
+        rgtp_layout.gen_distrib(active_frac),
+        rgtp_layout.gen_distrib(inactive_frac),
     )
 }
 
@@ -193,14 +183,4 @@ pub fn calc_kdgtps_rho(
     }
 
     kdgtps_rho
-}
-
-pub fn calc_k_mem_on(cytosol_frac: f32, k_mem_on_vertex: f32) -> f32 {
-    cytosol_frac * k_mem_on_vertex
-}
-
-pub fn calc_k_mem_offs(inacts: &[f32; NVERTS as usize], k_mem_off: f32) -> [f32; NVERTS as usize] {
-    let mut r = [0.0_f32; NVERTS as usize];
-    (0..NVERTS as usize).for_each(|i| r[i] = k_mem_off * inacts[i]);
-    r
 }

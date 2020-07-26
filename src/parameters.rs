@@ -10,7 +10,6 @@ use crate::consts::NVERTS;
 use crate::quantity::{Diffusion, Force, Length, Quantity, Stress, Time, Tinv, Viscosity};
 use crate::random::RandomizationType;
 use override_derive::Overrides;
-use std::cmp::Ordering;
 use std::f32::consts::PI;
 
 /// World-wide parameters.
@@ -84,11 +83,9 @@ pub struct InputParameters {
     /// Diffusion rate of Rho GTPase on membrane as a multiple of characteristic.
     diffusion_rgtp: Diffusion,
     /// Initial fraction of Rho GTPase in cytosol (inactive).
-    init_frac_cyto: f32,
+    init_frac_inactive: f32,
     /// Initial fraction of Rho GTPase active.
     init_frac_active: f32,
-    /// Hill function exponent for Rho GTPase chemistry.
-    h_exp: f32,
     /// Total amount of Rac1 in cell.
     tot_rac: f32,
     /// Total amount of RhoA in cell.
@@ -156,14 +153,10 @@ pub struct Parameters {
     pub k_mem_off: f32,
     /// Diffusion rate of Rho GTPase on membrane.
     pub diffusion_rgtp: f32,
-    /// Initial fraction of Rho GTPase in cytosol (inactive).
-    pub init_frac_cyto: f32,
-    /// Initial fraction of Rho GTPase active.
-    pub init_frac_active: f32,
     /// Initial fraction of Rho GTPase inactive.
     pub init_frac_inactive: f32,
-    /// Hill function exponent for Rho GTPase chemistry.
-    pub h_exp: f32,
+    /// Initial fraction of Rho GTPase active.
+    pub init_frac_active: f32,
     /// Halfmax Rho GTPase activity per vertex.
     pub halfmax_vertex_rgtp_act: f32,
     /// Halfmax Rho GTPase activity per vertex as concentration.
@@ -224,9 +217,8 @@ impl Default for InputParameters {
             rho_friction: 0.2,
             stiffness_ctyo: Force(1e-5),
             diffusion_rgtp: rgtp_d,
-            init_frac_cyto: 0.8,
+            init_frac_inactive: 0.1,
             init_frac_active: 0.1,
-            h_exp: 3.0,
             tot_rac: 2.5e6,
             tot_rho: 1e6,
             kgtp_rac: 24.0,
@@ -257,12 +249,18 @@ impl InputParameters {
         let rel = self.cell_diam.mulf((PI / (NVERTS as f32)).sin());
         let ra = cell_r.pow(2.0).mulf(PI);
         let close_criterion = self.close_criterion.pow(2.0);
-        let const_protrusive = (self.lm_h.g() * self.lm_ss.g() * rel.g()).mulf(self.halfmax_rgtp_max_f_frac);
+        let const_protrusive =
+            (self.lm_h.g() * self.lm_ss.g() * rel.g()).mulf(self.halfmax_rgtp_max_f_frac);
         let const_retractive = const_protrusive.mulf(self.rho_friction);
         let halfmax_vertex_rgtp_act = self.halfmax_rgtp_frac / NVERTS as f32;
         let halfmax_vertex_rgtp_conc = rel.pow(-1.0).mulf(halfmax_vertex_rgtp_act);
         let stiffness_edge = self.stiffness_cortex.g() * cq.l3d.g();
         let stiffness_cyto = self.stiffness_ctyo.g().mulf(1.0 / NVERTS as f32);
+        let (init_frac_active, init_frac_inactive) = if 1.0 - self.init_frac_active - self.init_frac_inactive < 0.0 {
+            panic!("Cytosolic fraction is negative. init_frac_active: {}, init_frac_inactive: {}", self.init_frac_active, self.init_frac_inactive);
+        } else {
+            (self.init_frac_active, self.init_frac_inactive)
+        };
         Parameters {
             cell_r: cq.normalize(&cell_r),
             rest_edge_len: cq.normalize(&rel),
@@ -276,17 +274,8 @@ impl InputParameters {
             k_mem_on_vertex: cq.normalize(&cq.k_mem_on) / NVERTS as f32,
             k_mem_off: cq.normalize(&cq.k_mem_off),
             diffusion_rgtp: cq.normalize(&self.diffusion_rgtp),
-            init_frac_cyto: self.init_frac_active,
-            init_frac_active: self.init_frac_cyto,
-            init_frac_inactive: {
-                let ifi = 1.0 - self.init_frac_active - self.init_frac_cyto;
-                if let Some(Ordering::Less) = ifi.partial_cmp(&0.0) {
-                    panic!("Initial fraction of inactive Rho GTPase is negative.")
-                } else {
-                    ifi
-                }
-            },
-            h_exp: self.h_exp,
+            init_frac_inactive,
+            init_frac_active,
             halfmax_vertex_rgtp_act,
             halfmax_vertex_rgtp_conc: cq.normalize(&halfmax_vertex_rgtp_conc),
             tot_rac: self.tot_rac,

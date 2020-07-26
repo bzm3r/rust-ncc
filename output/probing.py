@@ -19,6 +19,26 @@ for rec in state_recs:
     poly_per_tstep.append(copy.deepcopy(poly))
 poly_per_tstep = np.array(poly_per_tstep)
 
+rac_acts_per_tstep = []
+for rec in state_recs:
+    rac_acts_per_tstep.append(rec['cells'][0]['state']['rac_acts'])
+rac_acts_per_tstep = np.array(rac_acts_per_tstep)
+
+rac_inacts_per_tstep = []
+for rec in state_recs:
+    rac_inacts_per_tstep.append(rec['cells'][0]['state']['rac_inacts'])
+rac_inacts_per_tstep = np.array(rac_inacts_per_tstep)
+
+rho_acts_per_tstep = []
+for rec in state_recs:
+    rho_acts_per_tstep.append(rec['cells'][0]['state']['rho_acts'])
+rho_acts_per_tstep = np.array(rho_acts_per_tstep)
+
+rho_inacts_per_tstep = []
+for rec in state_recs:
+    rho_inacts_per_tstep.append(rec['cells'][0]['state']['rho_inacts'])
+rho_inacts_per_tstep = np.array(rho_inacts_per_tstep)
+
 geom_recs = []
 with open('geom_hist_schema.avsc') as sf:
     fastavro.parse_schema(json.load(sf))
@@ -48,24 +68,24 @@ for poly, rec in zip(poly_per_tstep, geom_recs):
         uevs.append([uev['x'], uev['y']])
     uevs_per_tstep.append(copy.deepcopy(uevs))
 uevs_per_tstep = np.array(uevs_per_tstep)
-
-rac_acts_per_tstep = []
-for tstep, rec in enumerate(state_recs):
-    rac_acts = []
-    for (vix, x) in enumerate(rec['cells'][0]['state']['rac_acts']):
-        arrow_deltas = -750 * x* uivs_per_tstep[tstep][vix]
-        rac_acts.append([poly_per_tstep[tstep][vix][0] + uevs_per_tstep[tstep][vix][0]*0.1, poly_per_tstep[tstep][vix][1] + uevs_per_tstep[tstep][vix][0]*0.1, arrow_deltas[0], arrow_deltas[1]])
-    rac_acts_per_tstep.append(copy.deepcopy(rac_acts))
-rac_acts_per_tstep = np.array(rac_acts_per_tstep)
-
-rho_acts_per_tstep = []
-for tstep, rec in enumerate(state_recs):
-    rho_acts = []
-    for (vix, x) in enumerate(rec['cells'][0]['state']['rho_acts']):
-        arrow_deltas = -750 * x * uivs_per_tstep[tstep][vix]
-        rho_acts.append([poly_per_tstep[tstep][vix][0] + uevs_per_tstep[tstep][vix][0]*-0.1, poly_per_tstep[tstep][vix][1] + uevs_per_tstep[tstep][vix][0]*-0.1, arrow_deltas[0], arrow_deltas[1]])
-    rho_acts_per_tstep.append(copy.deepcopy(rho_acts))
-rho_acts_per_tstep = np.array(rho_acts_per_tstep)
+#
+# rac_acts_per_tstep = []
+# for tstep, rec in enumerate(state_recs):
+#     rac_acts_per_tstep = []
+#     for (vix, x) in enumerate(rec['cells'][0]['state']['rac_acts']):
+#         arrow_deltas = -1500 * x * uivs_per_tstep[tstep][vix]
+#         rac_acts_per_tstep.append([poly_per_tstep[tstep][vix][0] + uevs_per_tstep[tstep][vix][0]*0.1, poly_per_tstep[tstep][vix][1] + uevs_per_tstep[tstep][vix][0]*0.1, arrow_deltas[0], arrow_deltas[1]])
+#     rac_acts_per_tstep.append(copy.deepcopy(rac_acts_per_tstep))
+# rac_acts_per_tstep = np.array(rac_acts_per_tstep)
+#
+# rho_acts_per_tstep = []
+# for tstep, rec in enumerate(state_recs):
+#     rho_acts_per_tstep = []
+#     for (vix, x) in enumerate(rec['cells'][0]['state']['rho_acts']):
+#         arrow_deltas = -750 * x * uivs_per_tstep[tstep][vix]
+#         rho_acts_per_tstep.append([poly_per_tstep[tstep][vix][0] + uevs_per_tstep[tstep][vix][0]*-0.1, poly_per_tstep[tstep][vix][1] + uevs_per_tstep[tstep][vix][0]*-0.1, arrow_deltas[0], arrow_deltas[1]])
+#     rho_acts_per_tstep.append(copy.deepcopy(rho_acts_per_tstep))
+# rho_acts_per_tstep = np.array(rho_acts_per_tstep)
 
 cyto_forces_per_tstep = []
 for tstep, rec in enumerate(mech_recs):
@@ -123,8 +143,8 @@ def paint(delta):
     global num_tsteps
     ax.cla()
     ax.set_aspect('equal')
-    ax.set_xlim([20.0 - 50.0, 20.0 + 50.0])
-    ax.set_ylim([20.0 - 50.0, 20.0 + 50.0])
+    ax.set_xlim([20.0 - 150.0, 20.0 + 150.0])
+    ax.set_ylim([20.0 - 150.0, 20.0 + 150.0])
     for vix in range(16):
         print(edge_strains_per_tstep[tstep])
         if False:#edge_strains_per_tstep[tstep][vix] > 0.0:
@@ -167,8 +187,8 @@ def on_press(event):
         paint(100)
     fig.canvas.draw()
 
-
-num_tsteps = poly_per_tstep.shape[0]
-tstep = 0
-fig, ax = plt.subplots()
-fig.canvas.mpl_connect('key_press_event', on_press)
+#
+# num_tsteps = poly_per_tstep.shape[0]
+# tstep = 0
+# fig, ax = plt.subplots()
+# fig.canvas.mpl_connect('key_press_event', on_press)

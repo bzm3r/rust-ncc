@@ -55,7 +55,7 @@ impl WorldState {
     fn simulate(&self, group_parameters: &[Parameters]) -> WorldState {
         let mut cells = Vec::with_capacity(self.cells.len());
         for c in self.cells.iter() {
-            cells.push(c.simulate_rkdp5(
+            cells.push(c.simulate_euler(
                 self.tstep,
                 &self.interactions[c.ix as usize],
                 &group_parameters[c.group_ix as usize],
@@ -114,7 +114,11 @@ impl WorldState {
                 .iter()
                 .map(|c| {
                     let gs = CellState::calc_geom_state(&c.state);
-                    let ms = CellState::calc_mech_state(&c.state, &gs, &group_parameters[c.group_ix as usize]);
+                    let ms = CellState::calc_mech_state(
+                        &c.state,
+                        &gs,
+                        &group_parameters[c.group_ix as usize],
+                    );
                     CellState::calc_chem_state(
                         &c.state,
                         &gs,
