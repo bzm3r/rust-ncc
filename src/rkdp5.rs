@@ -152,7 +152,13 @@ impl Ks {
         } = premul_ajs;
 
         // since dt_primes[0] = 0.0, the function evaluated at that point will return init_state
-        let k0 = init_state.clone();
+        let k0 = f(
+            dt_primes[0],
+            &init_state,
+            rand_state,
+            inter_state,
+            parameters,
+        );
 
         let k1 = {
             let kp = init_state + a1 * &k0;

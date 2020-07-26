@@ -10,29 +10,13 @@ use crate::consts::NVERTS;
 use crate::math::{calc_poly_area, capped_linear_function, P2D};
 use crate::utils::circ_ix_plus;
 
-pub fn calc_edge_unit_vecs(vertex_coords: &[P2D; NVERTS as usize]) -> [P2D; NVERTS as usize] {
+pub fn calc_edge_vecs(vertex_coords: &[P2D; NVERTS as usize]) -> [P2D; NVERTS as usize] {
     let mut r = [P2D::default(); NVERTS as usize];
     (0..NVERTS as usize).for_each(|i| {
         let plus_i = circ_ix_plus(i, NVERTS as usize);
-        r[i] = (vertex_coords[plus_i] - vertex_coords[i]).unitize();
+        r[i] = vertex_coords[plus_i] - vertex_coords[i];
     });
     r
-}
-
-pub fn calc_edge_lens(edge_unit_vecs: &[P2D; NVERTS as usize]) -> [f32; NVERTS as usize] {
-    let mut r = [0.0_f32; NVERTS as usize];
-    (0..NVERTS as usize).for_each(|i| r[i] = edge_unit_vecs[i].mag());
-    r
-}
-
-pub fn calc_edge_strains(edge_lens: &[f32; NVERTS as usize], rel: f32) -> [f32; NVERTS as usize] {
-    let mut r = [0.0_f32; NVERTS as usize];
-    (0..NVERTS as usize).for_each(|i| r[i] = (edge_lens[i] / rel) - 1.0);
-    r
-}
-
-pub fn calc_global_strain(edge_lens: &[f32; NVERTS as usize], rel: f32, nverts: u32) -> f32 {
-    edge_lens.iter().sum::<f32>() / (nverts as f32 * rel)
 }
 
 pub fn calc_edge_forces(
@@ -42,7 +26,7 @@ pub fn calc_edge_forces(
 ) -> [P2D; NVERTS as usize] {
     let mut r = [P2D::default(); NVERTS as usize];
     (0..NVERTS as usize)
-        .for_each(|i| r[i] = (-1.0 * edge_strains[i] * stiffness_edge) * edge_unit_vecs[i]);
+        .for_each(|i| r[i] = edge_strains[i] * stiffness_edge * edge_unit_vecs[i]);
     r
 }
 

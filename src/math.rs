@@ -346,7 +346,7 @@ pub fn max_f32(x: f32, y: f32) -> f32 {
 //     }
 // }
 
-pub fn hill_function(thresh: f32, x: f32) -> f32 {
+pub fn hill_function3(thresh: f32, x: f32) -> f32 {
     let x_cubed = x.powi(3);
     x_cubed / (thresh.powi(3) + x_cubed)
 }

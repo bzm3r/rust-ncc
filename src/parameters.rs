@@ -52,8 +52,8 @@ impl Default for WorldParameters {
             t: Time(2.0),
             f,
             l3d: Length(10e-6),
-            k_mem_off: Tinv(0.02),
-            k_mem_on: Tinv(0.15),
+            k_mem_off: Tinv(0.15),
+            k_mem_on: Tinv(0.02),
             kgtp: Tinv(1e-4),
             kdgtp: Tinv(1e-4),
             //coa_dist: Length(110.0).micro(),
@@ -151,7 +151,7 @@ pub struct Parameters {
     /// Stiffness of cytoplasm.
     pub stiffness_ctyo: f32,
     /// Rate of Rho GTPase GDI unbinding and subsequent membrane attachment.
-    pub k_mem_on: f32,
+    pub k_mem_on_vertex: f32,
     /// Rate of Rho GTPase membrane disassociation.
     pub k_mem_off: f32,
     /// Diffusion rate of Rho GTPase on membrane.
@@ -209,7 +209,7 @@ pub struct Parameters {
 
 impl Default for InputParameters {
     fn default() -> Self {
-        let rgtp_d = (Length(0.1).micro().pow(2.0).g() / Time(1.0).g())
+        let rgtp_d = (Length(0.1_f32.sqrt()).micro().pow(2.0).g() / Time(1.0).g())
             .to_diffusion()
             .unwrap();
 
@@ -233,7 +233,7 @@ impl Default for InputParameters {
             kgtp_rac_auto: 500.0,
             chemoa: 7.5,
             coa_half_d: Length(110.0e-6),
-            kdgtp_rac: 4.0,
+            kdgtp_rac: 8.0,
             kdgtp_rho_on_rac: 4000.0,
             halfmax_tension_inhib: 0.1,
             tension_inhib: 40.0,
@@ -257,14 +257,12 @@ impl InputParameters {
         let rel = self.cell_diam.mulf((PI / (NVERTS as f32)).sin());
         let ra = cell_r.pow(2.0).mulf(PI);
         let close_criterion = self.close_criterion.pow(2.0);
-        let max_protrusive_f = self.lm_h.g() * self.lm_ss.g() * rel.g();
-        let const_protrusive = max_protrusive_f
-            .mulf((NVERTS as f32 / self.halfmax_rgtp_frac) * self.halfmax_rgtp_max_f_frac);
+        let const_protrusive = (self.lm_h.g() * self.lm_ss.g() * rel.g()).mulf(self.halfmax_rgtp_max_f_frac);
         let const_retractive = const_protrusive.mulf(self.rho_friction);
-        //let const_protrusive_normalized = cq.normalize(&const_protrusive);
-        let halfmax_rgtp_conc = rel.pow(-1.0).mulf(0.4 / (NVERTS as f32));
+        let halfmax_vertex_rgtp_act = self.halfmax_rgtp_frac / NVERTS as f32;
+        let halfmax_vertex_rgtp_conc = rel.pow(-1.0).mulf(halfmax_vertex_rgtp_act);
         let stiffness_edge = self.stiffness_cortex.g() * cq.l3d.g();
-        let stiffness_cyto = self.stiffness_ctyo.g();
+        let stiffness_cyto = self.stiffness_ctyo.g().mulf(1.0 / NVERTS as f32);
         Parameters {
             cell_r: cq.normalize(&cell_r),
             rest_edge_len: cq.normalize(&rel),
@@ -275,7 +273,7 @@ impl InputParameters {
             const_protrusive: cq.normalize(&const_protrusive),
             const_retractive: cq.normalize(&const_retractive),
             stiffness_ctyo: cq.normalize(&stiffness_cyto),
-            k_mem_on: cq.normalize(&cq.k_mem_on),
+            k_mem_on_vertex: cq.normalize(&cq.k_mem_on) / NVERTS as f32,
             k_mem_off: cq.normalize(&cq.k_mem_off),
             diffusion_rgtp: cq.normalize(&self.diffusion_rgtp),
             init_frac_cyto: self.init_frac_active,
@@ -289,8 +287,8 @@ impl InputParameters {
                 }
             },
             h_exp: self.h_exp,
-            halfmax_vertex_rgtp_act: self.halfmax_rgtp_frac / NVERTS as f32,
-            halfmax_vertex_rgtp_conc: cq.normalize(&halfmax_rgtp_conc) / NVERTS as f32,
+            halfmax_vertex_rgtp_act,
+            halfmax_vertex_rgtp_conc: cq.normalize(&halfmax_vertex_rgtp_conc),
             tot_rac: self.tot_rac,
             tot_rho: self.tot_rho,
             kgtp_rac: cq.normalize(&cq.kgtp.mulf(self.kgtp_rac)),

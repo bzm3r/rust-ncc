@@ -12,11 +12,11 @@ use crate::experiment::{Experiment, GroupLayout};
 use crate::math::P2D;
 use crate::parameters::{InputParameters, Parameters, WorldParameters};
 use crate::quantity::Length;
+use crate::schema::{save_data, save_schema};
 use avro_rs::Writer;
 use avro_schema_derive::Schematize;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
-use crate::schema::{save_schema, save_data};
 
 #[derive(Copy, Clone, Debug, Default, Deserialize, Schematize, Serialize)]
 pub struct InteractionState {
@@ -114,9 +114,11 @@ impl WorldState {
                 .iter()
                 .map(|c| {
                     let gs = CellState::calc_geom_state(&c.state);
+                    let ms = CellState::calc_mech_state(&c.state, &gs, &group_parameters[c.group_ix as usize]);
                     CellState::calc_chem_state(
                         &c.state,
                         &gs,
+                        &ms,
                         &c.rac_randomization,
                         &self.interactions[c.ix as usize],
                         &group_parameters[c.group_ix as usize],

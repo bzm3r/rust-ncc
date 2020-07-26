@@ -6,7 +6,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 use crate::consts::NVERTS;
-use crate::math::hill_function;
+use crate::math::hill_function3;
 use crate::utils::circ_ix_plus;
 use rand::distributions::Uniform;
 use rand::{thread_rng, Rng};
@@ -82,7 +82,7 @@ fn calc_directed_fluxes(
         let dst_avg_el = avg_edge_lens[plus_i];
         let src_avg_el = avg_edge_lens[i];
         let el_src_to_dst = edge_lens[i];
-        r[i] = rgtp_d * ((dst_conc / dst_avg_el) + (src_conc / src_avg_el)) / el_src_to_dst;
+        r[i] = rgtp_d * ((dst_conc / dst_avg_el) - (src_conc / src_avg_el)) / el_src_to_dst;
     });
     r
 }
@@ -127,7 +127,7 @@ pub fn calc_kgtps_rac(
 
     for i in 0..nvs {
         let base = (x_rands[i] + x_coas[i] + 1.0) * kgtp_rac_base;
-        let auto = hill_function(halfmax_rac_conc, conc_rac_acts[i])
+        let auto = hill_function3(halfmax_rac_conc, conc_rac_acts[i])
             * (1.0 + x_chemoas[i])
             * kgtp_rac_auto;
         kgtps_rac[i] = base + auto;
@@ -150,7 +150,7 @@ pub fn calc_kdgtps_rac(
 
     for i in 0..nvs {
         let base = (1.0 + x_tens + x_cils[i]) * kdgtp_rac_base;
-        let mutual = hill_function(halfmax_conc_rho, conc_rho_acts[i]) * kdgtp_rho_on_rac;
+        let mutual = hill_function3(halfmax_conc_rho, conc_rho_acts[i]) * kdgtp_rho_on_rac;
         kdgtps_rac[i] = base + mutual;
     }
 
@@ -170,7 +170,7 @@ pub fn calc_kgtps_rho(
 
     for i in 0..nvs {
         let base = (1.0 + x_cils[i]) * kgtp_rho_base;
-        let auto = hill_function(halfmax_rho_thresh, conc_rho_acts[i]) * kgtp_rho_auto;
+        let auto = hill_function3(halfmax_rho_thresh, conc_rho_acts[i]) * kgtp_rho_auto;
         kgtps_rho[i] = base + auto;
     }
 
@@ -188,15 +188,15 @@ pub fn calc_kdgtps_rho(
     let mut kdgtps_rho = [0.0_f32; NVERTS as usize];
 
     for i in 0..nvs {
-        let mutual = hill_function(halfmax_conc_rac, conc_rac_acts[i]) * kdgtp_rac_on_rho;
+        let mutual = hill_function3(halfmax_conc_rac, conc_rac_acts[i]) * kdgtp_rac_on_rho;
         kdgtps_rho[i] = kdgtp_rho_base + mutual;
     }
 
     kdgtps_rho
 }
 
-pub fn calc_k_mem_on(cytosol_frac: f32, k_mem_on: f32) -> f32 {
-    (cytosol_frac * k_mem_on) / (NVERTS as f32)
+pub fn calc_k_mem_on(cytosol_frac: f32, k_mem_on_vertex: f32) -> f32 {
+    cytosol_frac * k_mem_on_vertex
 }
 
 pub fn calc_k_mem_offs(inacts: &[f32; NVERTS as usize], k_mem_off: f32) -> [f32; NVERTS as usize] {

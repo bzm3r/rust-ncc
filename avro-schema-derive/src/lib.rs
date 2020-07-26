@@ -28,12 +28,15 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
     let fid_strings: Vec<String> = fids.iter().map(|fid| fid.to_string()).collect();
     let fschemas: Vec<proc_macro2::TokenStream> = ftys
-        .iter().zip(fid_strings.iter())
-        .map(|(fty, fstr)| {
-            avro_schema::from_syn(fstr.as_str(), fty)
-        })
+        .iter()
+        .zip(fid_strings.iter())
+        .map(|(fty, fstr)| avro_schema::from_syn(fstr.as_str(), fty))
         .collect();
-    let fpositions = fids.iter().enumerate().map(|(i, _)| i).collect::<Vec<usize>>();
+    let fpositions = fids
+        .iter()
+        .enumerate()
+        .map(|(i, _)| i)
+        .collect::<Vec<usize>>();
 
     proc_macro::TokenStream::from(quote!(
         impl #id {

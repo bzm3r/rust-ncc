@@ -1,7 +1,7 @@
 use avro_rs::Schema;
-use std::path::PathBuf;
 use std::fs::OpenOptions;
 use std::io::Write;
+use std::path::PathBuf;
 
 pub fn save_schema(name: &str, schema: &Schema, output_dir: &PathBuf) {
     let mut avsc_path = output_dir.clone();
@@ -31,4 +31,3 @@ pub fn save_data(name: &str, encoded: &[u8], output_dir: &PathBuf) {
         .unwrap();
     f.write_all(&encoded).unwrap();
 }
-
