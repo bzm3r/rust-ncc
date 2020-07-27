@@ -55,7 +55,7 @@ impl WorldState {
     fn simulate(&self, group_parameters: &[Parameters]) -> WorldState {
         let mut cells = Vec::with_capacity(self.cells.len());
         for c in self.cells.iter() {
-            cells.push(c.simulate_euler(
+            cells.push(c.simulate_rkdp5(
                 self.tstep,
                 &self.interactions[c.ix as usize],
                 &group_parameters[c.group_ix as usize],
@@ -189,9 +189,12 @@ impl World {
         let num_tsteps = (final_tpoint / self.world_parameters.time()).ceil() as u32;
 
         while self.state.tstep < num_tsteps {
+            println!("========================================");
+            println!("tstep: {}/{}", self.state.tstep, num_tsteps);
             let new_state = self.state.simulate(&self.group_parameters);
             self.history.push(new_state.clone());
             self.state = new_state;
+            println!("========================================")
         }
     }
 

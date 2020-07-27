@@ -11,6 +11,7 @@ use crate::quantity::{Diffusion, Force, Length, Quantity, Stress, Time, Tinv, Vi
 use crate::random::RandomizationType;
 use override_derive::Overrides;
 use std::f32::consts::PI;
+use crate::math::calc_init_cell_area;
 
 /// World-wide parameters.
 pub struct WorldParameters {
@@ -247,7 +248,7 @@ impl InputParameters {
     pub fn gen_parameters(&self, cq: &WorldParameters) -> Parameters {
         let cell_r = self.cell_diam.mulf(0.5);
         let rel = self.cell_diam.mulf((PI / (NVERTS as f32)).sin());
-        let ra = cell_r.pow(2.0).mulf(PI);
+        let ra = Length(1.0).pow(2.0).mulf(calc_init_cell_area(cell_r.value(), NVERTS));
         let close_criterion = self.close_criterion.pow(2.0);
         let const_protrusive =
             (self.lm_h.g() * self.lm_ss.g() * rel.g()).mulf(self.halfmax_rgtp_max_f_frac);

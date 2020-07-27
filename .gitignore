@@ -13,3 +13,7 @@ Cargo.lock
 
 **/*.avro
 **/*.avsc
+
+# piped output from runs
+out.txt
+out_*.txt

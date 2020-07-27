@@ -7,7 +7,7 @@
 // except according to those terms.
 use crate::consts::NVERTS;
 use crate::math::hill_function3;
-use crate::utils::circ_ix_plus;
+use crate::utils::{circ_ix_plus, circ_ix_minus};
 use rand::distributions::Uniform;
 use rand::{thread_rng, Rng};
 
@@ -60,33 +60,26 @@ pub fn gen_rgtp_distrib(
 
 fn calc_directed_fluxes(
     edge_lens: &[f32; NVERTS as usize],
-    avg_edge_lens: &[f32; NVERTS as usize],
     rgtp_d: f32,
     conc_rgtps: &[f32; NVERTS as usize],
 ) -> [f32; NVERTS as usize] {
     let mut r = [0.0_f32; NVERTS as usize];
-    (0..NVERTS as usize).for_each(|i| {
-        let src_conc = conc_rgtps[i];
+    for i in 0..NVERTS as usize {
         let plus_i = circ_ix_plus(i, NVERTS as usize);
-        let dst_conc = conc_rgtps[plus_i];
-        let dst_avg_el = avg_edge_lens[plus_i];
-        let src_avg_el = avg_edge_lens[i];
-        let el_src_to_dst = edge_lens[i];
-        r[i] = rgtp_d * ((dst_conc / dst_avg_el) - (src_conc / src_avg_el)) / el_src_to_dst;
-    });
+        r[i] = -1.0 * rgtp_d * (conc_rgtps[plus_i] - conc_rgtps[i]) / edge_lens[i];
+    }
     r
 }
 
 pub fn calc_net_fluxes(
     edge_lens: &[f32; NVERTS as usize],
-    avg_edge_lens: &[f32; NVERTS as usize],
     rgtp_d: f32,
     conc_rgtps: &[f32; NVERTS as usize],
 ) -> [f32; NVERTS as usize] {
-    let directed_fluxes = calc_directed_fluxes(edge_lens, avg_edge_lens, rgtp_d, conc_rgtps);
+    let directed_fluxes = calc_directed_fluxes(edge_lens, rgtp_d, conc_rgtps);
     let mut r = [0.0_f32; NVERTS as usize];
     (0..NVERTS as usize).for_each(|i| {
-        let min_i = circ_ix_plus(i, NVERTS as usize);
+        let min_i = circ_ix_minus(i, NVERTS as usize);
         r[i] = directed_fluxes[min_i] - directed_fluxes[i];
     });
     r

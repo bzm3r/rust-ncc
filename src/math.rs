@@ -3,6 +3,8 @@ use avro_schema_derive::Schematize;
 use serde::{Deserialize, Serialize};
 use std::f32::consts::PI;
 use std::ops::{Add, Div, Mul, Sub};
+use std::fmt::Display;
+use std::fmt;
 
 /// Value always between `[0.0, 2*PI]`.
 #[derive(PartialOrd, PartialEq, Clone, Copy)]
@@ -225,6 +227,12 @@ impl<'a, 'b> Sub<&'b P2D> for &'a P2D {
     }
 }
 
+impl Display for P2D {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "[{}, {}]", self.x, self.y)
+    }
+}
+
 /// Determine four-quadrant arctan of (y/x) constrained between `0.0` and `2*PI`.
 pub fn arctan(x: f32, y: f32) -> Radians {
     Radians(modulo_f32(y.atan2(x), RAD_2PI.0))
@@ -247,6 +255,18 @@ pub fn calc_poly_area(xys: &[P2D]) -> f32 {
     }
 
     area * 0.5
+}
+
+/// Calculate the area of an "ideal" initial cell of radius R, if it has n vertices.
+pub fn calc_init_cell_area(r: f32, n: u32) -> f32 {
+    let poly_coords = (0..n).map(|vix| {
+        let theta = (vix as f32)/(n as f32) * 2.0 * PI;
+        P2D {
+            x: r * theta.cos(),
+            y: r * theta.sin(),
+        }
+    }).collect::<Vec<P2D>>();
+    calc_poly_area(&poly_coords)
 }
 
 // /// Given three points `p0`, `p1`, `p2`, check if `p2` is left of the line through `p0` and `p1`.
@@ -352,7 +372,7 @@ pub fn hill_function3(thresh: f32, x: f32) -> f32 {
 }
 
 /// Assumes that x, max_x > 0.
-pub fn capped_linear_function(max_x: f32, x: f32) -> f32 {
+pub fn capped_linear_function(x: f32, max_x: f32) -> f32 {
     if x > max_x {
         1.0
     } else {

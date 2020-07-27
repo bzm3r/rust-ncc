@@ -19,26 +19,6 @@ for rec in state_recs:
     poly_per_tstep.append(copy.deepcopy(poly))
 poly_per_tstep = np.array(poly_per_tstep)
 
-rac_acts_per_tstep = []
-for rec in state_recs:
-    rac_acts_per_tstep.append(rec['cells'][0]['state']['rac_acts'])
-rac_acts_per_tstep = np.array(rac_acts_per_tstep)
-
-rac_inacts_per_tstep = []
-for rec in state_recs:
-    rac_inacts_per_tstep.append(rec['cells'][0]['state']['rac_inacts'])
-rac_inacts_per_tstep = np.array(rac_inacts_per_tstep)
-
-rho_acts_per_tstep = []
-for rec in state_recs:
-    rho_acts_per_tstep.append(rec['cells'][0]['state']['rho_acts'])
-rho_acts_per_tstep = np.array(rho_acts_per_tstep)
-
-rho_inacts_per_tstep = []
-for rec in state_recs:
-    rho_inacts_per_tstep.append(rec['cells'][0]['state']['rho_inacts'])
-rho_inacts_per_tstep = np.array(rho_inacts_per_tstep)
-
 geom_recs = []
 with open('geom_hist_schema.avsc') as sf:
     fastavro.parse_schema(json.load(sf))
@@ -68,24 +48,34 @@ for poly, rec in zip(poly_per_tstep, geom_recs):
         uevs.append([uev['x'], uev['y']])
     uevs_per_tstep.append(copy.deepcopy(uevs))
 uevs_per_tstep = np.array(uevs_per_tstep)
-#
-# rac_acts_per_tstep = []
-# for tstep, rec in enumerate(state_recs):
-#     rac_acts_per_tstep = []
-#     for (vix, x) in enumerate(rec['cells'][0]['state']['rac_acts']):
-#         arrow_deltas = -1500 * x * uivs_per_tstep[tstep][vix]
-#         rac_acts_per_tstep.append([poly_per_tstep[tstep][vix][0] + uevs_per_tstep[tstep][vix][0]*0.1, poly_per_tstep[tstep][vix][1] + uevs_per_tstep[tstep][vix][0]*0.1, arrow_deltas[0], arrow_deltas[1]])
-#     rac_acts_per_tstep.append(copy.deepcopy(rac_acts_per_tstep))
-# rac_acts_per_tstep = np.array(rac_acts_per_tstep)
-#
-# rho_acts_per_tstep = []
-# for tstep, rec in enumerate(state_recs):
-#     rho_acts_per_tstep = []
-#     for (vix, x) in enumerate(rec['cells'][0]['state']['rho_acts']):
-#         arrow_deltas = -750 * x * uivs_per_tstep[tstep][vix]
-#         rho_acts_per_tstep.append([poly_per_tstep[tstep][vix][0] + uevs_per_tstep[tstep][vix][0]*-0.1, poly_per_tstep[tstep][vix][1] + uevs_per_tstep[tstep][vix][0]*-0.1, arrow_deltas[0], arrow_deltas[1]])
-#     rho_acts_per_tstep.append(copy.deepcopy(rho_acts_per_tstep))
-# rho_acts_per_tstep = np.array(rho_acts_per_tstep)
+
+rac_acts_arrows_per_tstep = []
+rac_acts_per_tstep = []
+for tstep, rec in enumerate(state_recs):
+    rac_acts = []
+    rac_acts_arrows = []
+    for (vix, x) in enumerate(rec['cells'][0]['state']['rac_acts']):
+        rac_acts.append(x)
+        arrow_deltas = -1500 * x * uivs_per_tstep[tstep][vix]
+        rac_acts_arrows.append([poly_per_tstep[tstep][vix][0] + uevs_per_tstep[tstep][vix][0]*0.1, poly_per_tstep[tstep][vix][1] + uevs_per_tstep[tstep][vix][0]*0.1, arrow_deltas[0], arrow_deltas[1]])
+    rac_acts_arrows_per_tstep.append(copy.deepcopy(rac_acts_arrows))
+    rac_acts_per_tstep.append(rac_acts)
+rac_acts_per_tstep = np.array(rac_acts_per_tstep)
+rac_acts_arrows_per_tstep = np.array(rac_acts_arrows_per_tstep)
+
+rho_acts_arrows_per_tstep = []
+rho_acts_per_tstep = []
+for tstep, rec in enumerate(state_recs):
+    rho_acts = []
+    rho_acts_arrows = []
+    for (vix, x) in enumerate(rec['cells'][0]['state']['rho_acts']):
+        rho_acts.append(x)
+        arrow_deltas = -1500 * x * uivs_per_tstep[tstep][vix]
+        rho_acts_arrows.append([poly_per_tstep[tstep][vix][0] + uevs_per_tstep[tstep][vix][0]*0.1, poly_per_tstep[tstep][vix][1] + uevs_per_tstep[tstep][vix][0]*0.1, arrow_deltas[0], arrow_deltas[1]])
+    rho_acts_arrows_per_tstep.append(copy.deepcopy(rho_acts_arrows))
+    rho_acts_per_tstep.append(rho_acts)
+rho_acts_per_tstep = np.array(rho_acts_per_tstep)
+rho_acts_arrows_per_tstep = np.array(rho_acts_arrows_per_tstep)
 
 cyto_forces_per_tstep = []
 for tstep, rec in enumerate(mech_recs):
@@ -152,9 +142,9 @@ def paint(delta):
         else:
             strain_ls = "-"
         ax.plot([poly_per_tstep[tstep, vix, 0], poly_per_tstep[tstep, (vix + 1)%16, 0]], [poly_per_tstep[tstep, vix, 1], poly_per_tstep[tstep, (vix + 1)%16, 1]], color='k', ls=strain_ls)
-    for rac_act in rac_acts_per_tstep[tstep]:
+    for rac_act in rac_acts_arrows_per_tstep[tstep]:
         ax.arrow(rac_act[0], rac_act[1], rac_act[2], rac_act[3], color="b", length_includes_head=True, head_width=0.0)
-    for rho_act in rho_acts_per_tstep[tstep]:
+    for rho_act in rho_acts_arrows_per_tstep[tstep]:
         ax.arrow(rho_act[0], rho_act[1], rho_act[2], rho_act[3], color="r", length_includes_head=True, head_width=0.0)
     # for cyto_force in cyto_forces_per_tstep[tstep]:
     #     ax.arrow(cyto_force[0], cyto_force[1], cyto_force[2], cyto_force[3], color="cyan", length_includes_head=True, head_width=0.5)
@@ -187,8 +177,8 @@ def on_press(event):
         paint(100)
     fig.canvas.draw()
 
-#
-# num_tsteps = poly_per_tstep.shape[0]
-# tstep = 0
-# fig, ax = plt.subplots()
-# fig.canvas.mpl_connect('key_press_event', on_press)
+
+num_tsteps = poly_per_tstep.shape[0]
+tstep = 0
+fig, ax = plt.subplots()
+fig.canvas.mpl_connect('key_press_event', on_press)

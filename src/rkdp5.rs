@@ -5,7 +5,6 @@ use crate::parameters::Parameters;
 use crate::world::InteractionState;
 
 type CellDynamicsFn = fn(
-    dt: f32,
     state: &CellState,
     rac_random_state: &RacRandomState,
     interaction_state: &InteractionState,
@@ -79,49 +78,6 @@ pub struct Solution {
     pub num_iters: u32,
 }
 
-pub struct PreMulA {
-    // a0s are all zeros
-    a1: f32,
-    a2: [f32; 2],
-    a3: [f32; 3],
-    a4: [f32; 4],
-    a5: [f32; 5],
-    a6: [f32; 6],
-}
-
-impl PreMulA {
-    fn premul_by(h: f32) -> PreMulA {
-        PreMulA {
-            a1: h * A1,
-            a2: {
-                let mut a2 = [0.0_f32; 2];
-                (0..2).for_each(|j| a2[j] = h * A2[j]);
-                a2
-            },
-            a3: {
-                let mut a3 = [0.0_f32; 3];
-                (0..3).for_each(|j| a3[j] = h * A3[j]);
-                a3
-            },
-            a4: {
-                let mut a4 = [0.0_f32; 4];
-                (0..4).for_each(|j| a4[j] = h * A4[j]);
-                a4
-            },
-            a5: {
-                let mut a5 = [0.0_f32; 5];
-                (0..5).for_each(|j| a5[j] = h * A5[j]);
-                a5
-            },
-            a6: {
-                let mut a6 = [0.0_f32; 6];
-                (0..6).for_each(|j| a6[j] = h * A6[j]);
-                a6
-            },
-        }
-    }
-}
-
 pub struct Ks {
     k0: CellState,
     k1: CellState,
@@ -134,67 +90,44 @@ pub struct Ks {
 
 impl Ks {
     fn calc(
-        premul_ajs: &PreMulA,
         f: CellDynamicsFn,
-        dt_primes: [f32; 7],
+        h: f32,
         init_state: &CellState,
         rand_state: &RacRandomState,
         inter_state: &InteractionState,
         parameters: &Parameters,
     ) -> Ks {
-        let PreMulA {
-            a1,
-            a2,
-            a3,
-            a4,
-            a5,
-            a6,
-        } = premul_ajs;
-
-        // since dt_primes[0] = 0.0, the function evaluated at that point will return init_state
-        let k0 = f(
-            dt_primes[0],
-            &init_state,
-            rand_state,
-            inter_state,
-            parameters,
-        );
+        // since C[0] = 0.0, the function evaluated at that point will return 0
+        let k0 = f(init_state, rand_state, inter_state, parameters);
 
         let k1 = {
-            let kp = init_state + a1 * &k0;
-            f(dt_primes[1], &kp, rand_state, inter_state, parameters)
+            let kp = init_state + h * A1 * &k0;
+            f(&kp, rand_state, inter_state, parameters)
         };
 
         let k2 = {
-            let kp = init_state + a2[0] * &k0 + a2[1] * &k1;
-            f(dt_primes[2], &kp, rand_state, inter_state, parameters)
+            let kp = init_state + h * (A2[0] * &k0 + A2[1] * &k1);
+            f(&kp, rand_state, inter_state, parameters)
         };
 
         let k3 = {
-            let kp = init_state + a3[0] * &k0 + a3[1] * &k1 + a3[2] * &k2;
-            f(dt_primes[3], &kp, rand_state, inter_state, parameters)
+            let kp = init_state + h * (A3[0] * &k0 + A3[1] * &k1 + A3[2] * &k2);
+            f(&kp, rand_state, inter_state, parameters)
         };
 
         let k4 = {
-            let kp = init_state + a4[0] * &k0 + a4[1] * &k1 + a4[2] * &k2 + a4[3] * &k3;
-            f(dt_primes[4], &kp, rand_state, inter_state, parameters)
+            let kp = init_state + h * (A4[0] * &k0 + A4[1] * &k1 + A4[2] * &k2 + A4[3] * &k3);
+            f(&kp, rand_state, inter_state, parameters)
         };
 
         let k5 = {
-            let kp =
-                init_state + a5[0] * &k0 + a5[1] * &k1 + a5[2] * &k2 + a5[3] * &k3 + a5[4] * &k4;
-            f(dt_primes[5], &kp, rand_state, inter_state, parameters)
+            let kp = init_state + h * (A5[0] * &k0 + A5[1] * &k1 + A5[2] * &k2 + A5[3] * &k3 + A5[4] * &k4);
+            f(&kp, rand_state, inter_state, parameters)
         };
 
         let k6 = {
-            let kp = init_state
-                + a6[0] * &k0
-                + a6[1] * &k1
-                + a6[2] * &k2
-                + a6[3] * &k3
-                + a6[4] * &k4
-                + a6[5] * &k5;
-            f(dt_primes[6], &kp, rand_state, inter_state, parameters)
+            let kp = init_state + h * (A6[0] * &k0 + A6[1] * &k1 + A6[2] * &k2 + A6[3] * &k3 + A6[4] * &k4 + A6[5] * &k5);
+            f(&kp, rand_state, inter_state, parameters)
         };
 
         Ks {
@@ -212,13 +145,13 @@ impl Ks {
 pub fn rkdp5(
     mut dt: f32,
     f: CellDynamicsFn,
-    mut init_state: &CellState,
+    init_state: &CellState,
     rand_state: &RacRandomState,
     inter_state: &InteractionState,
     parameters: &Parameters,
     mut aux_args: AuxArgs,
 ) -> Solution {
-    let mut init_state = init_state.clone();
+    let mut y0 = init_state.clone();
 
     let AuxArgs {
         max_iters,
@@ -239,15 +172,6 @@ pub fn rkdp5(
     let mut num_rejections: u32 = 0;
 
     while num_iters < max_iters {
-        // premultiply Ajs (j in 0..6) by h
-        let premul_as = PreMulA::premul_by(h);
-
-        let dt_primes = {
-            let mut dt_primes = [0.0_f32; 7];
-            (0..7).for_each(|j| dt_primes[j] = h * C[j]);
-            dt_primes
-        };
-
         let Ks {
             k0,
             k1,
@@ -257,28 +181,22 @@ pub fn rkdp5(
             k5,
             k6,
         } = Ks::calc(
-            &premul_as,
             f,
-            dt_primes,
-            &init_state,
+            h,
+            &y0,
             rand_state,
             inter_state,
             parameters,
         );
-
-        let PreMulA { a6, .. } = premul_as;
-        // because B is the same as A6, except with last value 0, we can again use the premultiplied values of A6
-        let y1 = {
-            let mut r = init_state
-                + a6[0] * k0
-                + a6[1] * k1
-                + a6[2] * k2
-                + a6[3] * k3
-                + a6[4] * k4
-                + a6[5] * k5;
-            r.sanitize_small_negs();
-            r
-        };
+        
+        let y1 = y0
+            + h * (B[0] * &k0
+            + B[1] * &k1
+            + B[2] * &k2
+            + B[3] * &k3
+            + B[4] * &k4
+            + B[5] * &k5
+            + B[6] * &k6);
 
         if last_iter {
             assert!((h - dt).abs() < f32::EPSILON);
@@ -289,45 +207,39 @@ pub fn rkdp5(
             };
         }
 
-        // on the other hand, we don't have pre-multiplied values for B_HAT
-        let y1_hat = {
-            let mut r = init_state
-                + h * (B_HAT[0] * k0
-                + B_HAT[1] * k1
-                + B_HAT[2] * k2
-                + B_HAT[3] * k3
-                + B_HAT[4] * k4
-                + B_HAT[5] * k5
-                + B_HAT[6] * k6);
-            r.sanitize_small_negs();
-            r
-        };
+        let y1_hat = y0
+            + h * (B_HAT[0] * &k0
+            + B_HAT[1] * &k1
+            + B_HAT[2] * &k2
+            + B_HAT[3] * &k3
+            + B_HAT[4] * &k4
+            + B_HAT[5] * &k5
+            + B_HAT[6] * &k6);
 
 
         // Equations 4.10, 4.11, Hairer,Wanner&Norsett Solving ODEs Vol. 1
-        let sc = init_state
+        let sc = y0
             .abs()
             .max(&y1.abs())
             .scalar_mul(rtol)
             .scalar_add(atol);
-        let delta = y1 - y1_hat;
-        let error = (delta.powi(2) / sc).average().sqrt();
+        let error = ((y1 - y1_hat).powi(2) / sc).average().sqrt();
         let mut h_new = h * min_f32(fac_max, FAC * (1.0 / error).powf(INV_QP1));
 
         // see explanation for equation 4.13 in HNWvol1
         if error <= 1.0 {
             fac_max = FAC_MAX;
-            init_state = y1;
-            if h_new > dt - h {
+            y0 = y1;
+            if h + h_new > dt {
                 h_new = dt - h;
                 last_iter = true;
             };
-            dt -= h;
+            dt = dt - h;
             h = h_new;
         } else {
+            fac_max = 1.0;
             num_rejections += 1;
             h = h_new;
-            fac_max = 1.0;
         }
 
         num_iters += 1;
