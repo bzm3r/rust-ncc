@@ -20,7 +20,7 @@ fn main() {
     let exp = load_experiment("2020-JUL-11-test");
     let output_dir = PathBuf::from("C:\\Users\\bhmer\\Desktop\\rust-ncc\\output\\");
     let mut w = world::World::new(exp);
-    w.simulate(6.0 * 3600.0);
+    w.simulate(3600.0);
     w.save_history(&output_dir);
     w.save_geom_history(&output_dir);
     w.save_mech_history(&output_dir);

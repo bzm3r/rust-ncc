@@ -55,7 +55,7 @@ impl WorldState {
     fn simulate(&self, group_parameters: &[Parameters]) -> WorldState {
         let mut cells = Vec::with_capacity(self.cells.len());
         for c in self.cells.iter() {
-            cells.push(c.simulate_rkdp5(
+            cells.push(c.simulate_euler(
                 self.tstep,
                 &self.interactions[c.ix as usize],
                 &group_parameters[c.group_ix as usize],

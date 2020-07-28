@@ -624,6 +624,7 @@ impl CellState {
             let sum_f =
                 mech_state.rgtp_forces[i] + mech_state.cyto_forces[i] + mech_state.edge_forces[i]
                     - mech_state.edge_forces[circ_ix_minus(i as usize, NVERTS as usize)];
+            let delta_x = (1.0 / parameters.vertex_eta) * sum_f.x;
             delta.vertex_coords[i] = (1.0 / parameters.vertex_eta) * sum_f;
         }
         delta
@@ -966,6 +967,11 @@ impl Cell {
         let nsteps: u32 = 10;
         let dt = 1.0 / (nsteps as f32);
         for i in 0..nsteps {
+            println!("++++++++++++");
+            println!("{}", state);
+            let dep_vars = CellState::calc_dep_vars(&state, &self.rac_randomization, inter_state, parameters);
+            println!("{}", dep_vars);
+            println!("++++++++++++");
             let delta = CellState::dynamics_f(
                 &state,
                 &self.rac_randomization,
@@ -974,11 +980,13 @@ impl Cell {
             );
             state = state + dt * delta;
         }
-        #[cfg(debug_assertions)]
-        state.validate("euler");
-        println!("{}", state);
-        let dep_vars = CellState::calc_dep_vars(&state, &self.rac_randomization, inter_state, parameters);
-        println!("{}", dep_vars);
+        // println!("++++++++++++");
+        // #[cfg(debug_assertions)]
+        // state.validate("euler");
+        // println!("{}", state);
+        // let dep_vars = CellState::calc_dep_vars(&state, &self.rac_randomization, inter_state, parameters);
+        // println!("{}", dep_vars);
+        // println!("++++++++++++");
         Cell {
             ix: self.ix,
             group_ix: self.group_ix,
