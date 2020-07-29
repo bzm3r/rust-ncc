@@ -24,6 +24,7 @@ pub struct WorldParameters {
     k_mem_on: Tinv,
     kgtp: Tinv,
     kdgtp: Tinv,
+    frac_rgtp: f32,
 }
 
 impl WorldParameters {
@@ -56,6 +57,7 @@ impl Default for WorldParameters {
             k_mem_on: Tinv(0.02),
             kgtp: Tinv(1e-4),
             kdgtp: Tinv(1e-4),
+            frac_rgtp: 0.1,
             //coa_dist: Length(110.0).micro(),
         }
     }
@@ -199,6 +201,7 @@ pub struct Parameters {
     pub rand: f32,
     /// Fraction of vertices to be selected for increased Rac1 activation due to random events.
     pub rand_vs: f32,
+    pub total_rgtp: f32
 }
 
 impl Default for InputParameters {
@@ -253,14 +256,14 @@ impl InputParameters {
         let const_protrusive =
             (self.lm_h.g() * self.lm_ss.g() * rel.g()).mulf(self.halfmax_rgtp_max_f_frac);
         let const_retractive = const_protrusive.mulf(self.rho_friction);
-        let halfmax_vertex_rgtp_act = self.halfmax_rgtp_frac / NVERTS as f32;
+        let halfmax_vertex_rgtp_act = (self.halfmax_rgtp_frac/cq.frac_rgtp) / NVERTS as f32;
         let halfmax_vertex_rgtp_conc = rel.pow(-1.0).mulf(halfmax_vertex_rgtp_act);
         let stiffness_edge = self.stiffness_cortex.g() * cq.l3d.g();
         let stiffness_cyto = self.stiffness_ctyo.g().mulf(1.0 / NVERTS as f32);
         let (init_frac_active, init_frac_inactive) = if 1.0 - self.init_frac_active - self.init_frac_inactive < 0.0 {
             panic!("Cytosolic fraction is negative. init_frac_active: {}, init_frac_inactive: {}", self.init_frac_active, self.init_frac_inactive);
         } else {
-            (self.init_frac_active, self.init_frac_inactive)
+            (self.init_frac_active / cq.frac_rgtp, self.init_frac_inactive / cq.frac_rgtp)
         };
         Parameters {
             cell_r: cq.normalize(&cell_r),
@@ -298,6 +301,7 @@ impl InputParameters {
             rand_std_t: cq.normalize(&self.rand_std_t),
             rand: self.rand,
             rand_vs: self.rand_vs,
+            total_rgtp: 1.0/cq.frac_rgtp,
         }
     }
 }

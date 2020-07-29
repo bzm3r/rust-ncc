@@ -306,7 +306,8 @@ pub struct MechState {
     pub rgtp_forces: [P2D; NVERTS as usize],
     pub cyto_forces: [P2D; NVERTS as usize],
     pub edge_forces: [P2D; NVERTS as usize],
-    pub avg_tens_strain: f32
+    pub avg_tens_strain: f32,
+    pub sum_fs: [P2D; NVERTS as usize],
 }
 
 #[derive(Copy, Clone, Debug, Default, Deserialize, Serialize, Schematize)]
@@ -369,7 +370,8 @@ impl Display for MechState {
         fmt_var_arr(f, "edge_strains", &self.edge_strains)?;
         write!(f, "avg_tens_strain: {}\n", self.avg_tens_strain)?;
         fmt_var_arr(f, "edge_forces", &self.edge_forces)?;
-        fmt_var_arr(f, "cyto_forces", &self.cyto_forces)
+        fmt_var_arr(f, "cyto_forces", &self.cyto_forces)?;
+        fmt_var_arr(f, "tot_forces", &self.sum_fs)
     }
 }
 
@@ -450,12 +452,18 @@ impl CellState {
         } else {
             es
         }).sum::<f32>() / NVERTS as f32;
+        let mut sum_fs = [P2D::default(); NVERTS as usize];
+        (0..NVERTS as usize).for_each(|i| {
+            sum_fs[i] = rgtp_forces[i] + cyto_forces[i] + edge_forces[i]
+                - edge_forces[circ_ix_minus(i as usize, NVERTS as usize)];
+        });
         MechState {
             edge_strains,
             rgtp_forces,
             cyto_forces,
             edge_forces,
             avg_tens_strain,
+            sum_fs,
         }
     }
 
@@ -540,9 +548,9 @@ impl CellState {
         );
 
         let rac_cyto =
-            1.0 - state.rac_acts.iter().sum::<f32>() - state.rac_inacts.iter().sum::<f32>();
+            parameters.total_rgtp - state.rac_acts.iter().sum::<f32>() - state.rac_inacts.iter().sum::<f32>();
         let rho_cyto =
-            1.0 - state.rho_acts.iter().sum::<f32>() - state.rho_inacts.iter().sum::<f32>();
+            parameters.total_rgtp - state.rho_acts.iter().sum::<f32>() - state.rho_inacts.iter().sum::<f32>();
         ChemState {
             x_tens,
             kdgtps_rac,
@@ -620,12 +628,7 @@ impl CellState {
             let vertex_rho_inact_flux = chem_state.rho_inact_net_fluxes[i];
             delta.rho_acts[i] = delta_rho_activated + vertex_rho_act_flux;
             delta.rho_inacts[i] = rho_cyto_exchange + vertex_rho_inact_flux - delta_rho_activated;
-
-            let sum_f =
-                mech_state.rgtp_forces[i] + mech_state.cyto_forces[i] + mech_state.edge_forces[i]
-                    - mech_state.edge_forces[circ_ix_minus(i as usize, NVERTS as usize)];
-            let delta_x = (1.0 / parameters.vertex_eta) * sum_f.x;
-            delta.vertex_coords[i] = (1.0 / parameters.vertex_eta) * sum_f;
+            delta.vertex_coords[i] = (1.0 / parameters.vertex_eta) * mech_state.sum_fs[i];
         }
         delta
     }
@@ -866,7 +869,7 @@ impl CellState {
         self.sum() / (Self::num_vars() as f32)
     }
 
-    pub fn validate(&self, loc_str: &str) {
+    pub fn validate(&self, loc_str: &str, parameters: &Parameters) {
         if self.rac_acts.iter().any(|&r| r < 0.0_f32) {
             panic!("{}: neg rac_acts: {:?}", loc_str, self.rac_acts);
         }
@@ -880,11 +883,11 @@ impl CellState {
             panic!("{}: neg rho_inacts: {:?}", loc_str, self.rho_inacts);
         }
         let sum_rac_mem = self.rac_inacts.iter().sum::<f32>() + self.rac_acts.iter().sum::<f32>();
-        if sum_rac_mem > 1.0 || sum_rac_mem < 0.0 {
+        if sum_rac_mem > parameters.total_rgtp || sum_rac_mem < 0.0 {
             panic!("{}: problem in sum of rac_mem: {}", loc_str, sum_rac_mem);
         }
         let sum_rho_mem = self.rho_inacts.iter().sum::<f32>() + self.rho_acts.iter().sum::<f32>();
-        if sum_rho_mem > 1.0 || sum_rho_mem < 0.0 {
+        if sum_rho_mem > parameters.total_rgtp || sum_rho_mem < 0.0 {
             panic!("{}: problem in sum of rho_mem: {}", loc_str, sum_rho_mem);
         }
         println!("{}: successfully validated", loc_str)
@@ -981,8 +984,8 @@ impl Cell {
             state = state + dt * delta;
         }
         // println!("++++++++++++");
-        // #[cfg(debug_assertions)]
-        // state.validate("euler");
+        #[cfg(debug_assertions)]
+        state.validate("euler", &parameters);
         // println!("{}", state);
         // let dep_vars = CellState::calc_dep_vars(&state, &self.rac_randomization, inter_state, parameters);
         // println!("{}", dep_vars);
@@ -1024,7 +1027,7 @@ impl Cell {
         );
         let state = result.y.expect("too many iterations!");
         #[cfg(debug_assertions)]
-        state.validate("rkdp5");
+        state.validate("rkdp5", parameters);
         println!("{}", state);
         let dep_vars = CellState::calc_dep_vars(&state, &self.rac_randomization, inter_state, parameters);
         println!("{}", dep_vars);
