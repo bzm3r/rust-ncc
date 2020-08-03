@@ -7,7 +7,7 @@
 // except according to those terms.
 
 use crate::parameters::InputParametersOverrides;
-use crate::quantity::Length;
+use crate::parameters::quantity::Length;
 use serde::Deserialize;
 use std::path::Path;
 

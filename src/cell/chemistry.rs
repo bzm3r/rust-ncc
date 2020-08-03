@@ -5,16 +5,14 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-use crate::consts::NVERTS;
+
 use crate::math::hill_function3;
-use crate::utils::{circ_ix_plus, circ_ix_minus};
+use crate::utils::{circ_ix_minus, circ_ix_plus};
+use crate::NVERTS;
+use avro_schema_derive::Schematize;
 use rand::distributions::Uniform;
 use rand::{thread_rng, Rng};
-
-// pub struct BiasDefn {
-//     range: (Radians, Radians),
-//     //strength: f32,
-// }
+use serde::{Deserialize, Serialize};
 
 pub enum RgtpLayout {
     Random,
@@ -42,7 +40,9 @@ impl RgtpLayout {
             }
         }
         let sum: f32 = rgtp_distrib.iter().sum();
-        rgtp_distrib.iter_mut().for_each(|e| *e = *e * frac_to_distrib / sum);
+        rgtp_distrib
+            .iter_mut()
+            .for_each(|e| *e = *e * frac_to_distrib / sum);
         rgtp_distrib
     }
 }
@@ -176,4 +176,21 @@ pub fn calc_kdgtps_rho(
     }
 
     kdgtps_rho
+}
+
+#[derive(Clone, Deserialize, Serialize, Schematize)]
+pub struct RacRandomState {
+    pub x_rands: [f32; NVERTS as usize],
+}
+
+impl RacRandomState {
+    pub fn init() -> RacRandomState {
+        RacRandomState {
+            x_rands: [0.0; NVERTS as usize],
+        }
+    }
+
+    pub fn update(&self, _tstep: u32) -> RacRandomState {
+        Self::init()
+    }
 }

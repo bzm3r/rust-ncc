@@ -11,7 +11,7 @@ pub(crate) fn from_syn(fstr: &str, ty: &syn::Type) -> proc_macro2::TokenStream {
     }
 }
 
-pub fn process_id(fstr: &str, id: &syn::Ident) -> proc_macro2::TokenStream {
+pub fn map_id(fstr: &str, id: &syn::Ident) -> proc_macro2::TokenStream {
     let id_string = id.to_string();
     match id_string.as_str() {
         "bool" => quote!(avro_rs::schema::Schema::Boolean),
@@ -26,7 +26,7 @@ pub fn process_id(fstr: &str, id: &syn::Ident) -> proc_macro2::TokenStream {
     }
 }
 
-fn process_single_seg_path(fstr: &str, seg: &syn::PathSegment) -> proc_macro2::TokenStream {
+fn map_single_seg_path(fstr: &str, seg: &syn::PathSegment) -> proc_macro2::TokenStream {
     let seg_id_string = seg.ident.to_string();
     match seg_id_string.as_str() {
         "Vec" => match &seg.arguments {
@@ -66,9 +66,9 @@ fn from_path(fstr: &str, tp: &syn::TypePath) -> proc_macro2::TokenStream {
     if tp.path.segments.is_empty() {
         panic!("Schematize: path contains no segments.");
     } else if let Some(id) = tp.path.get_ident() {
-        process_id(fstr, id)
+        map_id(fstr, id)
     } else if tp.path.segments.len() == 1 {
-        process_single_seg_path(fstr, tp.path.segments.first().unwrap())
+        map_single_seg_path(fstr, tp.path.segments.first().unwrap())
     } else {
         let ids = tp
             .path

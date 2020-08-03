@@ -6,9 +6,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use crate::consts::NVERTS;
-use crate::math::{calc_poly_area, capped_linear_function, P2D};
 use crate::utils::circ_ix_plus;
+use crate::math::p2d::P2D;
+use crate::NVERTS;
+use crate::math::geometry::calc_poly_area;
+use crate::math::capped_linear_function;
 
 pub fn calc_edge_vecs(vertex_coords: &[P2D; NVERTS as usize]) -> [P2D; NVERTS as usize] {
     let mut r = [P2D::default(); NVERTS as usize];

@@ -56,7 +56,7 @@ for tstep, rec in enumerate(state_recs):
     rac_acts_arrows = []
     for (vix, x) in enumerate(rec['cells'][0]['state']['rac_acts']):
         rac_acts.append(x)
-        arrow_deltas = -1500 * x * uivs_per_tstep[tstep][vix]
+        arrow_deltas = -150 * x * uivs_per_tstep[tstep][vix]
         rac_acts_arrows.append([poly_per_tstep[tstep][vix][0] + uevs_per_tstep[tstep][vix][0]*0.1, poly_per_tstep[tstep][vix][1] + uevs_per_tstep[tstep][vix][0]*0.1, arrow_deltas[0], arrow_deltas[1]])
     rac_acts_arrows_per_tstep.append(copy.deepcopy(rac_acts_arrows))
     rac_acts_per_tstep.append(rac_acts)
@@ -70,7 +70,7 @@ for tstep, rec in enumerate(state_recs):
     rho_acts_arrows = []
     for (vix, x) in enumerate(rec['cells'][0]['state']['rho_acts']):
         rho_acts.append(x)
-        arrow_deltas = -1500 * x * uivs_per_tstep[tstep][vix]
+        arrow_deltas = -150 * x * uivs_per_tstep[tstep][vix]
         rho_acts_arrows.append([poly_per_tstep[tstep][vix][0] + uevs_per_tstep[tstep][vix][0]*0.1, poly_per_tstep[tstep][vix][1] + uevs_per_tstep[tstep][vix][0]*0.1, arrow_deltas[0], arrow_deltas[1]])
     rho_acts_arrows_per_tstep.append(copy.deepcopy(rho_acts_arrows))
     rho_acts_per_tstep.append(rho_acts)
@@ -171,9 +171,9 @@ def on_press(event):
         paint(1)
     elif event.key == 'z':
         paint(-1)
-    elif event.key == 'q':
+    elif event.key == 'n':
         paint(-100)
-    elif event.key == 'w':
+    elif event.key == 'm':
         paint(100)
     fig.canvas.draw()
 

@@ -6,25 +6,22 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use crate::cell::{Cell, CellState, ChemState, GeomState, MechState, VertexGenInfo};
-use crate::consts::NVERTS;
+pub mod hardio;
+pub mod interactions;
+
+use crate::cell::state::{ChemState, GeomState, MechState, State};
+use crate::cell::{Cell, VertexGenInfo};
 use crate::experiment::{Experiment, GroupLayout};
-use crate::math::P2D;
+use crate::math::p2d::P2D;
+use crate::parameters::quantity::Length;
 use crate::parameters::{InputParameters, Parameters, WorldParameters};
-use crate::quantity::Length;
-use crate::schema::{save_data, save_schema};
+use crate::world::hardio::{save_data, save_schema};
+use crate::world::interactions::InteractionState;
+use crate::NVERTS;
 use avro_rs::Writer;
 use avro_schema_derive::Schematize;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
-
-#[derive(Copy, Clone, Debug, Default, Deserialize, Schematize, Serialize)]
-pub struct InteractionState {
-    pub(crate) x_cils: [f32; NVERTS as usize],
-    pub(crate) x_chemoas: [f32; NVERTS as usize],
-    pub(crate) x_coas: [f32; NVERTS as usize],
-    x_bdrys: [f32; NVERTS as usize],
-}
 
 #[derive(Clone, Deserialize, Serialize, Schematize)]
 struct WorldState {
@@ -70,9 +67,16 @@ impl WorldState {
     }
 
     fn calc_interactions(cells: &[Cell]) -> Vec<InteractionState> {
+        //let contact_mat = ContactMatrix::calc(&cells);
         let mut r = vec![];
         for _ in cells.iter() {
-            r.push(InteractionState::default())
+            let x_cil = [0.0; NVERTS as usize];
+            r.push(InteractionState {
+                x_cil,
+                x_chemoas: [0.0; NVERTS as usize],
+                x_coas: [0.0; NVERTS as usize],
+                x_bdrys: [0.0; NVERTS as usize],
+            })
         }
         r
     }
@@ -83,7 +87,7 @@ impl WorldState {
             state: self
                 .cells
                 .iter()
-                .map(|c| CellState::calc_geom_state(&c.state))
+                .map(|c| State::calc_geom_state(&c.state))
                 .collect::<Vec<GeomState>>(),
         }
     }
@@ -95,12 +99,8 @@ impl WorldState {
                 .cells
                 .iter()
                 .map(|c| {
-                    let gs = CellState::calc_geom_state(&c.state);
-                    CellState::calc_mech_state(
-                        &c.state,
-                        &gs,
-                        &group_parameters[c.group_ix as usize],
-                    )
+                    let gs = State::calc_geom_state(&c.state);
+                    State::calc_mech_state(&c.state, &gs, &group_parameters[c.group_ix as usize])
                 })
                 .collect::<Vec<MechState>>(),
         }
@@ -113,13 +113,13 @@ impl WorldState {
                 .cells
                 .iter()
                 .map(|c| {
-                    let gs = CellState::calc_geom_state(&c.state);
-                    let ms = CellState::calc_mech_state(
+                    let gs = State::calc_geom_state(&c.state);
+                    let ms = State::calc_mech_state(
                         &c.state,
                         &gs,
                         &group_parameters[c.group_ix as usize],
                     );
-                    CellState::calc_chem_state(
+                    State::calc_chem_state(
                         &c.state,
                         &gs,
                         &ms,

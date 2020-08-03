@@ -1,20 +1,14 @@
 mod cell;
-mod chemistry;
-mod consts;
 mod experiment;
-mod mat2d;
 mod math;
-mod mechanics;
 mod parameters;
-mod quantity;
-mod random;
-mod rkdp5;
-mod schema;
 mod utils;
 mod world;
 
 use crate::experiment::load_experiment;
 use std::path::PathBuf;
+
+pub const NVERTS: u32 = 16;
 
 fn main() {
     let exp = load_experiment("2020-JUL-11-test");

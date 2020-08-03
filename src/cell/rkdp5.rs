@@ -1,15 +1,15 @@
 #![allow(unused)]
-use crate::cell::{CellState, RacRandomState};
+use crate::cell::{chemistry::RacRandomState, state::State};
 use crate::math::{max_f32, min_f32};
 use crate::parameters::Parameters;
-use crate::world::InteractionState;
+use crate::world::interactions::InteractionState;
 
 type CellDynamicsFn = fn(
-    state: &CellState,
+    state: &State,
     rac_random_state: &RacRandomState,
     interaction_state: &InteractionState,
     parameters: &Parameters,
-) -> CellState;
+) -> State;
 const C: [f32; 7] = [0.0, 1.0 / 5.0, 3.0 / 10.0, 4.0 / 5.0, 8.0 / 9.0, 1.0, 1.0];
 // A0s are all zeros
 const A1: f32 = 1.0 / 5.0;
@@ -54,45 +54,45 @@ const B_HAT: [f32; 7] = [
     187.0 / 2100.0,
     1.0 / 40.0,
 ];
-const INV_QP1: f32 = 1.0 / 5.0; // inverse (max of p and p_hat) + 1, see explanation for equation 4.12 in HNWvol1
-const FAC: f32 = 0.8; // safety factor, approximately 0.38^QP1, see explanation for equation 4.12 in HWNvol1
-const FAC_MAX: f32 = (5.0 - 1.5) / 2.0; // see explanation for equation 4.12 in HWNvol1
+const INV_QP1: f32 = 1.0 / 5.0; // inverse (max of p and p_hat) + 1, see explanation for equation 4.12 in HNW vol1
+const FAC: f32 = 0.8; // safety factor, approximately 0.38^QP1, see explanation for equation 4.12 in HWN vol1
+const FAC_MAX: f32 = (5.0 - 1.5) / 2.0; // see explanation for equation 4.12 in HWN vol1
 
 pub struct AuxArgs {
-    pub(crate) max_iters: u32,
-    pub(crate) atol: f32,
-    pub(crate) rtol: f32,
-    pub(crate) init_h_factor: Option<f32>,
+    pub max_iters: u32,
+    pub atol: f32,
+    pub rtol: f32,
+    pub init_h_factor: Option<f32>,
 }
 
 pub struct SolverArgs {
-    f: fn(dt: f32, state: &CellState, parameters: &Parameters) -> CellState,
-    init_state: CellState,
+    f: fn(dt: f32, state: &State, parameters: &Parameters) -> State,
+    init_state: State,
     t0: f32,
     t1: f32,
 }
 
 pub struct Solution {
-    pub y: Result<CellState, String>,
+    pub y: Result<State, String>,
     pub num_rejections: u32,
     pub num_iters: u32,
 }
 
 pub struct Ks {
-    k0: CellState,
-    k1: CellState,
-    k2: CellState,
-    k3: CellState,
-    k4: CellState,
-    k5: CellState,
-    k6: CellState,
+    k0: State,
+    k1: State,
+    k2: State,
+    k3: State,
+    k4: State,
+    k5: State,
+    k6: State,
 }
 
 impl Ks {
     fn calc(
         f: CellDynamicsFn,
         h: f32,
-        init_state: &CellState,
+        init_state: &State,
         rand_state: &RacRandomState,
         inter_state: &InteractionState,
         parameters: &Parameters,
@@ -121,12 +121,19 @@ impl Ks {
         };
 
         let k5 = {
-            let kp = init_state + h * (A5[0] * &k0 + A5[1] * &k1 + A5[2] * &k2 + A5[3] * &k3 + A5[4] * &k4);
+            let kp = init_state
+                + h * (A5[0] * &k0 + A5[1] * &k1 + A5[2] * &k2 + A5[3] * &k3 + A5[4] * &k4);
             f(&kp, rand_state, inter_state, parameters)
         };
 
         let k6 = {
-            let kp = init_state + h * (A6[0] * &k0 + A6[1] * &k1 + A6[2] * &k2 + A6[3] * &k3 + A6[4] * &k4 + A6[5] * &k5);
+            let kp = init_state
+                + h * (A6[0] * &k0
+                    + A6[1] * &k1
+                    + A6[2] * &k2
+                    + A6[3] * &k3
+                    + A6[4] * &k4
+                    + A6[5] * &k5);
             f(&kp, rand_state, inter_state, parameters)
         };
 
@@ -142,10 +149,10 @@ impl Ks {
     }
 }
 
-pub fn rkdp5(
+pub fn integrator(
     mut dt: f32,
     f: CellDynamicsFn,
-    init_state: &CellState,
+    init_state: &State,
     rand_state: &RacRandomState,
     inter_state: &InteractionState,
     parameters: &Parameters,
@@ -180,23 +187,16 @@ pub fn rkdp5(
             k4,
             k5,
             k6,
-        } = Ks::calc(
-            f,
-            h,
-            &y0,
-            rand_state,
-            inter_state,
-            parameters,
-        );
-        
+        } = Ks::calc(f, h, &y0, rand_state, inter_state, parameters);
+
         let y1 = y0
             + h * (B[0] * &k0
-            + B[1] * &k1
-            + B[2] * &k2
-            + B[3] * &k3
-            + B[4] * &k4
-            + B[5] * &k5
-            + B[6] * &k6);
+                + B[1] * &k1
+                + B[2] * &k2
+                + B[3] * &k3
+                + B[4] * &k4
+                + B[5] * &k5
+                + B[6] * &k6);
 
         if last_iter {
             assert!((h - dt).abs() < f32::EPSILON);
@@ -209,24 +209,19 @@ pub fn rkdp5(
 
         let y1_hat = y0
             + h * (B_HAT[0] * &k0
-            + B_HAT[1] * &k1
-            + B_HAT[2] * &k2
-            + B_HAT[3] * &k3
-            + B_HAT[4] * &k4
-            + B_HAT[5] * &k5
-            + B_HAT[6] * &k6);
-
+                + B_HAT[1] * &k1
+                + B_HAT[2] * &k2
+                + B_HAT[3] * &k3
+                + B_HAT[4] * &k4
+                + B_HAT[5] * &k5
+                + B_HAT[6] * &k6);
 
         // Equations 4.10, 4.11, Hairer,Wanner&Norsett Solving ODEs Vol. 1
-        let sc = y0
-            .abs()
-            .max(&y1.abs())
-            .scalar_mul(rtol)
-            .scalar_add(atol);
+        let sc = y0.abs().max(&y1.abs()).scalar_mul(rtol).scalar_add(atol);
         let error = ((y1 - y1_hat).powi(2) / sc).average().sqrt();
         let mut h_new = h * min_f32(fac_max, FAC * (1.0 / error).powf(INV_QP1));
 
-        // see explanation for equation 4.13 in HNWvol1
+        // see explanation for equation 4.13 in HNW vol1
         if error <= 1.0 {
             fac_max = FAC_MAX;
             y0 = y1;

@@ -6,12 +6,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use crate::consts::NVERTS;
-use crate::quantity::{Diffusion, Force, Length, Quantity, Stress, Time, Tinv, Viscosity};
-use crate::random::RandomizationType;
+pub mod quantity;
+
+use crate::cell::calc_init_cell_area;
+use crate::parameters::quantity::{
+    Diffusion, Force, Length, Quantity, Stress, Time, Tinv, Viscosity,
+};
+use crate::NVERTS;
 use override_derive::Overrides;
 use std::f32::consts::PI;
-use crate::math::calc_init_cell_area;
 
 /// World-wide parameters.
 pub struct WorldParameters {
@@ -119,7 +122,6 @@ pub struct InputParameters {
     kdgtp_rac_on_rho: f32,
     /// CIL factor affecting RhoA activation rate.
     cil: f32,
-    rand_scheme: RandomizationType,
     /// Average period between randomization events.
     rand_avg_t: Time,
     /// Standard deviation of period between period of randomization events.
@@ -192,7 +194,6 @@ pub struct Parameters {
     pub kdgtp_rac_on_rho: f32,
     /// CIL factor affecting RhoA activation rate.
     pub cil: f32,
-    pub rand_scheme: RandomizationType,
     /// Average period of randomization events.
     pub rand_avg_t: f32,
     /// Standard deviation period of randomization events.
@@ -201,7 +202,7 @@ pub struct Parameters {
     pub rand: f32,
     /// Fraction of vertices to be selected for increased Rac1 activation due to random events.
     pub rand_vs: f32,
-    pub total_rgtp: f32
+    pub total_rgtp: f32,
 }
 
 impl Default for InputParameters {
@@ -238,7 +239,6 @@ impl Default for InputParameters {
             kdgtp_rho: 60.0,
             kdgtp_rac_on_rho: 400.0,
             cil: 60.0,
-            rand_scheme: RandomizationType::Off,
             rand_avg_t: Time(40.0 * 60.0),
             rand_std_t: Time(10.0 * 60.0),
             rand: 10.0,
@@ -251,20 +251,29 @@ impl InputParameters {
     pub fn gen_parameters(&self, cq: &WorldParameters) -> Parameters {
         let cell_r = self.cell_diam.mulf(0.5);
         let rel = self.cell_diam.mulf((PI / (NVERTS as f32)).sin());
-        let ra = Length(1.0).pow(2.0).mulf(calc_init_cell_area(cell_r.value(), NVERTS));
+        let ra = Length(1.0)
+            .pow(2.0)
+            .mulf(calc_init_cell_area(cell_r.value(), NVERTS));
         let close_criterion = self.close_criterion.pow(2.0);
         let const_protrusive =
             (self.lm_h.g() * self.lm_ss.g() * rel.g()).mulf(self.halfmax_rgtp_max_f_frac);
         let const_retractive = const_protrusive.mulf(self.rho_friction);
-        let halfmax_vertex_rgtp_act = (self.halfmax_rgtp_frac/cq.frac_rgtp) / NVERTS as f32;
+        let halfmax_vertex_rgtp_act = (self.halfmax_rgtp_frac / cq.frac_rgtp) / NVERTS as f32;
         let halfmax_vertex_rgtp_conc = rel.pow(-1.0).mulf(halfmax_vertex_rgtp_act);
         let stiffness_edge = self.stiffness_cortex.g() * cq.l3d.g();
         let stiffness_cyto = self.stiffness_ctyo.g().mulf(1.0 / NVERTS as f32);
-        let (init_frac_active, init_frac_inactive) = if 1.0 - self.init_frac_active - self.init_frac_inactive < 0.0 {
-            panic!("Cytosolic fraction is negative. init_frac_active: {}, init_frac_inactive: {}", self.init_frac_active, self.init_frac_inactive);
-        } else {
-            (self.init_frac_active / cq.frac_rgtp, self.init_frac_inactive / cq.frac_rgtp)
-        };
+        let (init_frac_active, init_frac_inactive) =
+            if 1.0 - self.init_frac_active - self.init_frac_inactive < 0.0 {
+                panic!(
+                    "Cytosolic fraction is negative. init_frac_active: {}, init_frac_inactive: {}",
+                    self.init_frac_active, self.init_frac_inactive
+                );
+            } else {
+                (
+                    self.init_frac_active / cq.frac_rgtp,
+                    self.init_frac_inactive / cq.frac_rgtp,
+                )
+            };
         Parameters {
             cell_r: cq.normalize(&cell_r),
             rest_edge_len: cq.normalize(&rel),
@@ -296,12 +305,11 @@ impl InputParameters {
             kdgtp_rho: cq.normalize(&cq.kdgtp.mulf(self.kdgtp_rho)),
             kdgtp_rac_on_rho: cq.normalize(&cq.kdgtp.mulf(self.kdgtp_rac_on_rho)),
             cil: self.cil,
-            rand_scheme: self.rand_scheme.clone(),
             rand_avg_t: cq.normalize(&self.rand_avg_t),
             rand_std_t: cq.normalize(&self.rand_std_t),
             rand: self.rand,
             rand_vs: self.rand_vs,
-            total_rgtp: 1.0/cq.frac_rgtp,
+            total_rgtp: 1.0 / cq.frac_rgtp,
         }
     }
 }

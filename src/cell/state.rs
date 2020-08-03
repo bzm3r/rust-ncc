@@ -1,30 +1,24 @@
-// Copyright © 2020 Brian Merchant.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-use crate::chemistry::{
-    calc_conc_rgtps, calc_kdgtps_rac, calc_kdgtps_rho,
-    calc_kgtps_rac, calc_kgtps_rho, calc_net_fluxes, gen_rgtp_distrib, RgtpLayout,
+use crate::cell::chemistry::{
+    calc_conc_rgtps, calc_kdgtps_rac, calc_kdgtps_rho, calc_kgtps_rac, calc_kgtps_rho,
+    calc_net_fluxes, RacRandomState,
 };
-use crate::consts::NVERTS;
-use crate::math::{hill_function3, max_f32, min_f32, P2D};
-use crate::mechanics::{calc_cyto_forces, calc_edge_forces, calc_edge_vecs, calc_rgtp_forces};
+use crate::cell::mechanics::{
+    calc_cyto_forces, calc_edge_forces, calc_edge_vecs, calc_rgtp_forces,
+};
+use crate::math::p2d::P2D;
+use crate::math::{hill_function3, max_f32, min_f32};
 use crate::parameters::Parameters;
-use crate::rkdp5::{rkdp5, AuxArgs};
 use crate::utils::circ_ix_minus;
-use crate::world::InteractionState;
+use crate::world::interactions::InteractionState;
+use crate::NVERTS;
 use avro_schema_derive::Schematize;
 use serde::{Deserialize, Serialize};
-use std::f32::consts::PI;
-use std::ops::{Add, Div, Mul, Sub};
-use std::fmt::Display;
 use std::fmt;
+use std::fmt::Display;
+use std::ops::{Add, Div, Mul, Sub};
 
 #[derive(Copy, Clone, Debug, Default, Deserialize, Serialize, Schematize)]
-pub struct CellState {
+pub struct State {
     pub vertex_coords: [P2D; NVERTS as usize],
     rac_acts: [f32; NVERTS as usize],
     rac_inacts: [f32; NVERTS as usize],
@@ -32,10 +26,10 @@ pub struct CellState {
     rho_inacts: [f32; NVERTS as usize],
 }
 
-impl Add for CellState {
-    type Output = CellState;
+impl Add for State {
+    type Output = State;
 
-    fn add(self, rhs: CellState) -> CellState {
+    fn add(self, rhs: State) -> State {
         let mut vertex_coords = [P2D::default(); NVERTS as usize];
         let mut rac_acts = [0.0_f32; NVERTS as usize];
         let mut rac_inacts = [0.0_f32; NVERTS as usize];
@@ -60,10 +54,10 @@ impl Add for CellState {
     }
 }
 
-impl Sub for CellState {
-    type Output = CellState;
+impl Sub for State {
+    type Output = State;
 
-    fn sub(self, rhs: CellState) -> CellState {
+    fn sub(self, rhs: State) -> State {
         let mut vertex_coords = [P2D::default(); NVERTS as usize];
         let mut rac_acts = [0.0_f32; NVERTS as usize];
         let mut rac_inacts = [0.0_f32; NVERTS as usize];
@@ -88,10 +82,10 @@ impl Sub for CellState {
     }
 }
 
-impl Add for &CellState {
-    type Output = CellState;
+impl Add for &State {
+    type Output = State;
 
-    fn add(self, rhs: &CellState) -> CellState {
+    fn add(self, rhs: &State) -> State {
         let mut vertex_coords = [P2D::default(); NVERTS as usize];
         let mut rac_acts = [0.0_f32; NVERTS as usize];
         let mut rac_inacts = [0.0_f32; NVERTS as usize];
@@ -116,10 +110,10 @@ impl Add for &CellState {
     }
 }
 
-impl Add<&CellState> for CellState {
-    type Output = CellState;
+impl Add<&State> for State {
+    type Output = State;
 
-    fn add(self, rhs: &CellState) -> CellState {
+    fn add(self, rhs: &State) -> State {
         let mut vertex_coords = [P2D::default(); NVERTS as usize];
         let mut rac_acts = [0.0_f32; NVERTS as usize];
         let mut rac_inacts = [0.0_f32; NVERTS as usize];
@@ -144,10 +138,10 @@ impl Add<&CellState> for CellState {
     }
 }
 
-impl Add<CellState> for &CellState {
-    type Output = CellState;
+impl Add<State> for &State {
+    type Output = State;
 
-    fn add(self, rhs: CellState) -> CellState {
+    fn add(self, rhs: State) -> State {
         let mut vertex_coords = [P2D::default(); NVERTS as usize];
         let mut rac_acts = [0.0_f32; NVERTS as usize];
         let mut rac_inacts = [0.0_f32; NVERTS as usize];
@@ -172,10 +166,10 @@ impl Add<CellState> for &CellState {
     }
 }
 
-impl Div for CellState {
-    type Output = CellState;
+impl Div for State {
+    type Output = State;
 
-    fn div(self, rhs: CellState) -> CellState {
+    fn div(self, rhs: State) -> State {
         let mut vertex_coords = [P2D::default(); NVERTS as usize];
         let mut rac_acts = [0.0_f32; NVERTS as usize];
         let mut rac_inacts = [0.0_f32; NVERTS as usize];
@@ -200,10 +194,10 @@ impl Div for CellState {
     }
 }
 
-impl Mul<CellState> for f32 {
-    type Output = CellState;
+impl Mul<State> for f32 {
+    type Output = State;
 
-    fn mul(self, rhs: CellState) -> CellState {
+    fn mul(self, rhs: State) -> State {
         let mut vertex_coords = [P2D::default(); NVERTS as usize];
         let mut rac_acts = [0.0_f32; NVERTS as usize];
         let mut rac_inacts = [0.0_f32; NVERTS as usize];
@@ -228,10 +222,10 @@ impl Mul<CellState> for f32 {
     }
 }
 
-impl Mul<&CellState> for f32 {
-    type Output = CellState;
+impl Mul<&State> for f32 {
+    type Output = State;
 
-    fn mul(self, rhs: &CellState) -> CellState {
+    fn mul(self, rhs: &State) -> State {
         let mut vertex_coords = [P2D::default(); NVERTS as usize];
         let mut rac_acts = [0.0_f32; NVERTS as usize];
         let mut rac_inacts = [0.0_f32; NVERTS as usize];
@@ -256,10 +250,10 @@ impl Mul<&CellState> for f32 {
     }
 }
 
-impl Mul<&CellState> for &f32 {
-    type Output = CellState;
+impl Mul<&State> for &f32 {
+    type Output = State;
 
-    fn mul(self, rhs: &CellState) -> CellState {
+    fn mul(self, rhs: &State) -> State {
         let mut vertex_coords = [P2D::default(); NVERTS as usize];
         let mut rac_acts = [0.0_f32; NVERTS as usize];
         let mut rac_inacts = [0.0_f32; NVERTS as usize];
@@ -281,22 +275,6 @@ impl Mul<&CellState> for &f32 {
             rho_acts,
             rho_inacts,
         }
-    }
-}
-
-#[derive(Copy, Clone, Debug, Default, Deserialize, Serialize, Schematize)]
-pub struct RacRandomState {
-    x_rands: [f32; NVERTS as usize],
-    next_updates: [u32; NVERTS as usize],
-}
-
-impl RacRandomState {
-    fn init() -> RacRandomState {
-        RacRandomState::default()
-    }
-
-    fn update(&self, _tstep: u32) -> RacRandomState {
-        RacRandomState::default()
     }
 }
 
@@ -322,7 +300,7 @@ pub struct ChemState {
     pub rho_cyto: f32,
     pub rho_act_net_fluxes: [f32; NVERTS as usize],
     pub rho_inact_net_fluxes: [f32; NVERTS as usize],
-    pub x_tens: f32
+    pub x_tens: f32,
 }
 
 #[derive(Copy, Clone, Debug, Default, Deserialize, Serialize, Schematize)]
@@ -339,12 +317,20 @@ pub struct CellDepVars {
     mech_state: MechState,
 }
 
-fn fmt_var_arr<T: fmt::Display>(f: &mut fmt::Formatter<'_>, description: &str, vars: &[T; NVERTS as usize]) -> fmt::Result {
-    let contents = vars.iter().map(|x| format!("{}", x)).collect::<Vec<String>>().join(", ");
-    write!(f, "{}: [{}]\n", description, contents)
+fn fmt_var_arr<T: fmt::Display>(
+    f: &mut fmt::Formatter<'_>,
+    description: &str,
+    vars: &[T; NVERTS as usize],
+) -> fmt::Result {
+    let contents = vars
+        .iter()
+        .map(|x| format!("{}", x))
+        .collect::<Vec<String>>()
+        .join(", ");
+    writeln!(f, "{}: [{}]", description, contents)
 }
 
-impl Display for CellState {
+impl Display for State {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         println!("----------");
         fmt_var_arr(f, "vertex_coords", &self.vertex_coords)?;
@@ -352,7 +338,6 @@ impl Display for CellState {
         fmt_var_arr(f, "rac_inacts", &self.rac_inacts)?;
         fmt_var_arr(f, "rho_acts", &self.rho_acts)?;
         fmt_var_arr(f, "rho_inacts", &self.rho_inacts)
-
     }
 }
 
@@ -368,17 +353,16 @@ impl Display for MechState {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt_var_arr(f, "rgtp_forces", &self.rgtp_forces)?;
         fmt_var_arr(f, "edge_strains", &self.edge_strains)?;
-        write!(f, "avg_tens_strain: {}\n", self.avg_tens_strain)?;
+        writeln!(f, "avg_tens_strain: {}", self.avg_tens_strain)?;
         fmt_var_arr(f, "edge_forces", &self.edge_forces)?;
         fmt_var_arr(f, "cyto_forces", &self.cyto_forces)?;
         fmt_var_arr(f, "tot_forces", &self.sum_fs)
     }
 }
 
-
 impl Display for ChemState {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "x_tens: {}\n", self.x_tens)?;
+        writeln!(f, "x_tens: {}", self.x_tens)?;
         fmt_var_arr(f, "kgtps_rac", &self.kgtps_rac)?;
         fmt_var_arr(f, "kdgtps_rac", &self.kdgtps_rac)?;
         fmt_var_arr(f, "kgtps_rho", &self.kgtps_rho)?;
@@ -388,18 +372,18 @@ impl Display for ChemState {
 
 impl Display for CellDepVars {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}\n", &self.geom_state)?;
-        write!(f, "{}\n", &self.mech_state)?;
-        write!(f, "{}\n", &self.chem_state)
+        writeln!(f, "{}", &self.geom_state)?;
+        writeln!(f, "{}", &self.mech_state)?;
+        writeln!(f, "{}", &self.chem_state)
     }
 }
 
-impl CellState {
+impl State {
     pub fn num_vars() -> usize {
         (NVERTS * 6) as usize
     }
 
-    pub(crate) fn calc_geom_state(state: &CellState) -> GeomState {
+    pub fn calc_geom_state(state: &State) -> GeomState {
         let evs = calc_edge_vecs(&state.vertex_coords);
         let mut edge_lens = [0.0_f32; NVERTS as usize];
         (0..NVERTS as usize).for_each(|i| edge_lens[i] = (&evs[i]).mag());
@@ -420,7 +404,7 @@ impl CellState {
     }
 
     pub fn calc_mech_state(
-        state: &CellState,
+        state: &State,
         geom_state: &GeomState,
         parameters: &Parameters,
     ) -> MechState {
@@ -447,11 +431,11 @@ impl CellState {
         (0..NVERTS as usize)
             .for_each(|i| edge_strains[i] = (edge_lens[i] / parameters.rest_edge_len) - 1.0);
         let edge_forces = calc_edge_forces(&edge_strains, uevs, parameters.stiffness_edge);
-        let avg_tens_strain = edge_strains.iter().map(|&es| if es < 0.0 {
-            0.0
-        } else {
-            es
-        }).sum::<f32>() / NVERTS as f32;
+        let avg_tens_strain = edge_strains
+            .iter()
+            .map(|&es| if es < 0.0 { 0.0 } else { es })
+            .sum::<f32>()
+            / NVERTS as f32;
         let mut sum_fs = [P2D::default(); NVERTS as usize];
         (0..NVERTS as usize).for_each(|i| {
             sum_fs[i] = rgtp_forces[i] + cyto_forces[i] + edge_forces[i]
@@ -468,7 +452,7 @@ impl CellState {
     }
 
     pub fn calc_chem_state(
-        state: &CellState,
+        state: &State,
         geom_state: &GeomState,
         mech_state: &MechState,
         rac_rand_state: &RacRandomState,
@@ -497,15 +481,15 @@ impl CellState {
             parameters.kgtp_rac_auto,
             parameters.halfmax_vertex_rgtp_conc,
         );
-        let MechState { avg_tens_strain, .. } = mech_state;
-        let x_tens = parameters.tension_inhib * hill_function3(
-            parameters.halfmax_tension_inhib,
-            *avg_tens_strain,
-        );
+        let MechState {
+            avg_tens_strain, ..
+        } = mech_state;
+        let x_tens = parameters.tension_inhib
+            * hill_function3(parameters.halfmax_tension_inhib, *avg_tens_strain);
         let kdgtps_rac = calc_kdgtps_rac(
             &state.rac_acts,
             &conc_rho_acts,
-            &inter_state.x_cils,
+            &inter_state.x_cil,
             x_tens,
             parameters.kdgtp_rac,
             parameters.kdgtp_rho_on_rac,
@@ -514,7 +498,7 @@ impl CellState {
         let kgtps_rho = calc_kgtps_rho(
             &state.rho_acts,
             &conc_rho_acts,
-            &inter_state.x_cils,
+            &inter_state.x_cil,
             parameters.kgtp_rho,
             parameters.halfmax_vertex_rgtp_conc,
             parameters.kgtp_rho_auto,
@@ -526,31 +510,21 @@ impl CellState {
             parameters.kdgtp_rac_on_rho,
             parameters.halfmax_vertex_rgtp_conc,
         );
-        let rac_act_net_fluxes = calc_net_fluxes(
-            &edge_lens,
-            parameters.diffusion_rgtp,
-            &conc_rac_acts,
-        );
-        let rho_act_net_fluxes = calc_net_fluxes(
-            &edge_lens,
-            parameters.diffusion_rgtp,
-            &conc_rho_acts,
-        );
-        let rac_inact_net_fluxes = calc_net_fluxes(
-            &edge_lens,
-            parameters.diffusion_rgtp,
-            &conc_rac_inacts,
-        );
-        let rho_inact_net_fluxes = calc_net_fluxes(
-            &edge_lens,
-            parameters.diffusion_rgtp,
-            &conc_rho_inacts,
-        );
+        let rac_act_net_fluxes =
+            calc_net_fluxes(&edge_lens, parameters.diffusion_rgtp, &conc_rac_acts);
+        let rho_act_net_fluxes =
+            calc_net_fluxes(&edge_lens, parameters.diffusion_rgtp, &conc_rho_acts);
+        let rac_inact_net_fluxes =
+            calc_net_fluxes(&edge_lens, parameters.diffusion_rgtp, &conc_rac_inacts);
+        let rho_inact_net_fluxes =
+            calc_net_fluxes(&edge_lens, parameters.diffusion_rgtp, &conc_rho_inacts);
 
-        let rac_cyto =
-            parameters.total_rgtp - state.rac_acts.iter().sum::<f32>() - state.rac_inacts.iter().sum::<f32>();
-        let rho_cyto =
-            parameters.total_rgtp - state.rho_acts.iter().sum::<f32>() - state.rho_inacts.iter().sum::<f32>();
+        let rac_cyto = parameters.total_rgtp
+            - state.rac_acts.iter().sum::<f32>()
+            - state.rac_inacts.iter().sum::<f32>();
+        let rho_cyto = parameters.total_rgtp
+            - state.rho_acts.iter().sum::<f32>()
+            - state.rho_inacts.iter().sum::<f32>();
         ChemState {
             x_tens,
             kdgtps_rac,
@@ -566,8 +540,8 @@ impl CellState {
         }
     }
 
-    fn calc_dep_vars(
-        state: &CellState,
+    pub(crate) fn calc_dep_vars(
+        state: &State,
         rac_rand_state: &RacRandomState,
         inter_state: &InteractionState,
         parameters: &Parameters,
@@ -591,17 +565,17 @@ impl CellState {
     }
 
     pub fn dynamics_f(
-        state: &CellState,
+        state: &State,
         rac_rand_state: &RacRandomState,
         inter_state: &InteractionState,
         parameters: &Parameters,
-    ) -> CellState {
+    ) -> State {
         let CellDepVars {
             chem_state,
             mech_state,
             ..
-        } = CellState::calc_dep_vars(state, rac_rand_state, inter_state, parameters);
-        let mut delta = CellState::default();
+        } = State::calc_dep_vars(state, rac_rand_state, inter_state, parameters);
+        let mut delta = State::default();
         for i in 0..NVERTS as usize {
             let inactivated_rac = chem_state.kdgtps_rac[i] * state.rac_acts[i];
             let activated_rac = chem_state.kgtps_rac[i] * state.rac_inacts[i];
@@ -633,72 +607,15 @@ impl CellState {
         delta
     }
 
-    // pub fn decompress_force_data(
-    //     &self,
-    //     rgtp_forces: bool,
-    //     edge_forces: bool,
-    //     cyto_forces: bool,
-    //     parameters: &Parameters,
-    // ) -> ForceData {
-    //     let (rgtp_fs, edge_fs, cyto_fs) = if rgtp_forces || edge_forces {
-    //         let pg = self.calc_geom_vars();
-    //         let rfs = if rgtp_forces {
-    //             Some(calc_rgtp_forces(
-    //                 &self.rac_acts,
-    //                 &self.rho_acts,
-    //                 &pg.unit_inward_vecs,
-    //                 parameters.halfmax_vertex_rgtp_act,
-    //                 parameters.const_protrusive,
-    //                 parameters.const_retractive,
-    //             ))
-    //         } else {
-    //             None
-    //         };
-    //
-    //         let efs = if edge_forces {
-    //             let edge_strains =
-    //                 calc_edge_strains(&pg.edge_lens, parameters.rest_edge_len);
-    //             Some(calc_edge_forces(
-    //                 &edge_strains,
-    //                 &pg.unit_edge_vecs,
-    //                 parameters.stiffness_edge,
-    //             ))
-    //         } else {
-    //             None
-    //         };
-    //
-    //         let cfs = if cyto_forces {
-    //             Some(calc_cyto_forces(
-    //                 &self.vertex_coords,
-    //                 &pg.unit_inward_vecs,
-    //                 parameters.rest_area,
-    //                 parameters.stiffness_ctyo,
-    //             ))
-    //         } else {
-    //             None
-    //         };
-    //
-    //         (rfs, efs, cfs)
-    //     } else {
-    //         (None, None, None)
-    //     };
-    //
-    //     ForceData {
-    //         rgtp_fs,
-    //         edge_fs,
-    //         cyto_fs,
-    //     }
-    // }
-
     pub fn new(
         vertex_coords: [P2D; NVERTS as usize],
         rac_acts: [f32; NVERTS as usize],
         rac_inacts: [f32; NVERTS as usize],
         rho_acts: [f32; NVERTS as usize],
         rho_inacts: [f32; NVERTS as usize],
-    ) -> CellState {
+    ) -> State {
         // x_cils: [f32; NVERTS], x_coas: [f32; NVERTS], x_chemoas: [f32; NVERTS], x_rands: [f32; NVERTS], x_bdrys: [f32; NVERTS as usize];
-        CellState {
+        State {
             vertex_coords,
             rac_acts,
             rac_inacts,
@@ -707,7 +624,7 @@ impl CellState {
         }
     }
 
-    pub fn scalar_mul(&self, s: f32) -> CellState {
+    pub fn scalar_mul(&self, s: f32) -> State {
         let mut vertex_coords = [P2D::default(); NVERTS as usize];
         let mut rac_acts = [0.0_f32; NVERTS as usize];
         let mut rac_inacts = [0.0_f32; NVERTS as usize];
@@ -722,7 +639,7 @@ impl CellState {
             rho_inacts[i] = self.rho_inacts[i] * s;
         }
 
-        CellState {
+        State {
             vertex_coords,
             rac_acts,
             rac_inacts,
@@ -731,7 +648,7 @@ impl CellState {
         }
     }
 
-    pub fn scalar_add(&self, s: f32) -> CellState {
+    pub fn scalar_add(&self, s: f32) -> State {
         let mut vertex_coords = [P2D::default(); NVERTS as usize];
         let mut rac_acts = [0.0_f32; NVERTS as usize];
         let mut rac_inacts = [0.0_f32; NVERTS as usize];
@@ -746,7 +663,7 @@ impl CellState {
             rho_inacts[i] = self.rho_inacts[i] + s;
         }
 
-        CellState {
+        State {
             vertex_coords,
             rac_acts,
             rac_inacts,
@@ -755,7 +672,7 @@ impl CellState {
         }
     }
 
-    pub fn abs(&self) -> CellState {
+    pub fn abs(&self) -> State {
         let mut vertex_coords = [P2D::default(); NVERTS as usize];
         let mut rac_acts = [0.0_f32; NVERTS as usize];
         let mut rac_inacts = [0.0_f32; NVERTS as usize];
@@ -770,7 +687,7 @@ impl CellState {
             rho_inacts[i] = self.rho_inacts[i].abs();
         }
 
-        CellState {
+        State {
             vertex_coords,
             rac_acts,
             rac_inacts,
@@ -779,7 +696,7 @@ impl CellState {
         }
     }
 
-    pub fn powi(&self, x: i32) -> CellState {
+    pub fn powi(&self, x: i32) -> State {
         let mut vertex_coords = [P2D::default(); NVERTS as usize];
         let mut rac_acts = [0.0_f32; NVERTS as usize];
         let mut rac_inacts = [0.0_f32; NVERTS as usize];
@@ -794,7 +711,7 @@ impl CellState {
             rho_inacts[i] = self.rho_inacts[i].powi(x);
         }
 
-        CellState {
+        State {
             vertex_coords,
             rac_acts,
             rac_inacts,
@@ -803,7 +720,7 @@ impl CellState {
         }
     }
 
-    pub fn max(&self, other: &CellState) -> CellState {
+    pub fn max(&self, other: &State) -> State {
         let mut vertex_coords = [P2D::default(); NVERTS as usize];
         let mut rac_acts = [0.0_f32; NVERTS as usize];
         let mut rac_inacts = [0.0_f32; NVERTS as usize];
@@ -818,7 +735,7 @@ impl CellState {
             rho_inacts[i] = max_f32(self.rho_inacts[i], other.rho_inacts[i]);
         }
 
-        CellState {
+        State {
             vertex_coords,
             rac_acts,
             rac_inacts,
@@ -827,7 +744,7 @@ impl CellState {
         }
     }
 
-    pub fn min(&self, other: &CellState) -> CellState {
+    pub fn min(&self, other: &State) -> State {
         let mut vertex_coords = [P2D::default(); NVERTS as usize];
         let mut rac_acts = [0.0_f32; NVERTS as usize];
         let mut rac_inacts = [0.0_f32; NVERTS as usize];
@@ -842,7 +759,7 @@ impl CellState {
             rho_inacts[i] = min_f32(self.rho_inacts[i], other.rho_inacts[i]);
         }
 
-        CellState {
+        State {
             vertex_coords,
             rac_acts,
             rac_inacts,
@@ -891,151 +808,5 @@ impl CellState {
             panic!("{}: problem in sum of rho_mem: {}", loc_str, sum_rho_mem);
         }
         println!("{}: successfully validated", loc_str)
-    }
-}
-
-/// Model cell.
-#[derive(Clone, Deserialize, Serialize, Schematize)]
-pub struct Cell {
-    /// Cell index.
-    pub ix: u32,
-    /// Index of cell type.
-    pub group_ix: u32,
-    // /// If `true`, `evolve` does not change current cell state.
-    // skip_dynamics: bool,
-    pub state: CellState,
-    pub rac_randomization: RacRandomState,
-}
-
-fn gen_vertex_coords(centroid: P2D, radius: f32) -> [P2D; NVERTS as usize] {
-    let mut r = [P2D::default(); NVERTS as usize];
-    (0..NVERTS as usize).for_each(|vix| {
-        let vf = (vix as f32) / (NVERTS as f32);
-        let theta = 2.0 * PI * vf;
-        r[vix] = P2D {
-            x: centroid.x + theta.cos() * radius,
-            y: centroid.y + theta.sin() * radius,
-        };
-    });
-    r
-}
-
-#[allow(unused)]
-pub enum VertexGenInfo {
-    Centroid(P2D),
-    Coordinates([P2D; NVERTS as usize]),
-}
-
-impl Cell {
-    pub fn new(
-        ix: u32,
-        group_ix: u32,
-        vertex_gen_info: VertexGenInfo,
-        parameters: &Parameters,
-    ) -> Cell {
-        let vertex_coords = match vertex_gen_info {
-            VertexGenInfo::Centroid(centroid) => gen_vertex_coords(centroid, parameters.cell_r),
-            VertexGenInfo::Coordinates(vcs) => vcs,
-        };
-        let (rac_acts, rac_inacts) = gen_rgtp_distrib(
-            parameters.init_frac_active,
-            parameters.init_frac_inactive,
-            //&RgtpLayout::Random,
-            &RgtpLayout::BiasedVertices(vec![0, 1, 2, 3]),
-        );
-        let (rho_acts, rho_inacts) = gen_rgtp_distrib(
-            parameters.init_frac_active,
-            parameters.init_frac_inactive,
-            //&RgtpLayout::Random,
-            &RgtpLayout::BiasedVertices(vec![8, 9, 10, 11]),
-        );
-        let state = CellState::new(vertex_coords, rac_acts, rac_inacts, rho_acts, rho_inacts);
-        let rac_rand_state = RacRandomState::init();
-        Cell {
-            ix,
-            group_ix,
-            state,
-            rac_randomization: rac_rand_state,
-        }
-    }
-
-    #[allow(unused)]
-    pub fn simulate_euler(
-        &self,
-        tstep: u32,
-        inter_state: &InteractionState,
-        parameters: &Parameters,
-    ) -> Cell {
-        let mut state = self.state.clone();
-        let nsteps: u32 = 10;
-        let dt = 1.0 / (nsteps as f32);
-        for i in 0..nsteps {
-            println!("++++++++++++");
-            println!("{}", state);
-            let dep_vars = CellState::calc_dep_vars(&state, &self.rac_randomization, inter_state, parameters);
-            println!("{}", dep_vars);
-            println!("++++++++++++");
-            let delta = CellState::dynamics_f(
-                &state,
-                &self.rac_randomization,
-                &inter_state,
-                parameters,
-            );
-            state = state + dt * delta;
-        }
-        // println!("++++++++++++");
-        #[cfg(debug_assertions)]
-        state.validate("euler", &parameters);
-        // println!("{}", state);
-        // let dep_vars = CellState::calc_dep_vars(&state, &self.rac_randomization, inter_state, parameters);
-        // println!("{}", dep_vars);
-        // println!("++++++++++++");
-        Cell {
-            ix: self.ix,
-            group_ix: self.group_ix,
-            state,
-            rac_randomization: self.rac_randomization.update(tstep),
-        }
-    }
-
-    pub fn simulate_rkdp5(
-        &self,
-        tstep: u32,
-        inter_state: &InteractionState,
-        parameters: &Parameters,
-    ) -> Cell {
-        println!("using rkdp5...");
-        let aux_args = AuxArgs {
-            max_iters: 100,
-            atol: 1e-8,
-            rtol: 1e-3,
-            init_h_factor: Some(0.1),
-        };
-        let result = rkdp5(
-            1.0,
-            CellState::dynamics_f,
-            &self.state,
-            &self.rac_randomization,
-            inter_state,
-            parameters,
-            aux_args,
-        );
-
-        println!(
-            "num_iters: {}, num_rejections: {}",
-            result.num_iters, result.num_rejections
-        );
-        let state = result.y.expect("too many iterations!");
-        #[cfg(debug_assertions)]
-        state.validate("rkdp5", parameters);
-        println!("{}", state);
-        let dep_vars = CellState::calc_dep_vars(&state, &self.rac_randomization, inter_state, parameters);
-        println!("{}", dep_vars);
-        Cell {
-            ix: self.ix,
-            group_ix: self.group_ix,
-            state,
-            rac_randomization: self.rac_randomization.update(tstep),
-        }
     }
 }
