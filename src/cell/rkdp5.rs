@@ -1,12 +1,12 @@
 #![allow(unused)]
-use crate::cell::{chemistry::RacRandomState, state::State};
+use crate::cell::{chemistry::RacRandState, state::State};
 use crate::math::{max_f32, min_f32};
 use crate::parameters::Parameters;
 use crate::world::interactions::InteractionState;
 
 type CellDynamicsFn = fn(
     state: &State,
-    rac_random_state: &RacRandomState,
+    rac_random_state: &RacRandState,
     interaction_state: &InteractionState,
     parameters: &Parameters,
 ) -> State;
@@ -92,48 +92,43 @@ impl Ks {
     fn calc(
         f: CellDynamicsFn,
         h: f32,
-        init_state: &State,
-        rand_state: &RacRandomState,
+        init_state: State,
+        rand_state: &RacRandState,
         inter_state: &InteractionState,
         parameters: &Parameters,
     ) -> Ks {
         // since C[0] = 0.0, the function evaluated at that point will return 0
-        let k0 = f(init_state, rand_state, inter_state, parameters);
+        let k0 = f(&init_state, rand_state, inter_state, parameters);
 
         let k1 = {
-            let kp = init_state + h * A1 * &k0;
+            let kp = init_state + h * A1 * k0;
             f(&kp, rand_state, inter_state, parameters)
         };
 
         let k2 = {
-            let kp = init_state + h * (A2[0] * &k0 + A2[1] * &k1);
+            let kp = init_state + h * (A2[0] * k0 + A2[1] * k1);
             f(&kp, rand_state, inter_state, parameters)
         };
 
         let k3 = {
-            let kp = init_state + h * (A3[0] * &k0 + A3[1] * &k1 + A3[2] * &k2);
+            let kp = init_state + h * (A3[0] * k0 + A3[1] * k1 + A3[2] * k2);
             f(&kp, rand_state, inter_state, parameters)
         };
 
         let k4 = {
-            let kp = init_state + h * (A4[0] * &k0 + A4[1] * &k1 + A4[2] * &k2 + A4[3] * &k3);
+            let kp = init_state + h * (A4[0] * k0 + A4[1] * k1 + A4[2] * k2 + A4[3] * k3);
             f(&kp, rand_state, inter_state, parameters)
         };
 
         let k5 = {
-            let kp = init_state
-                + h * (A5[0] * &k0 + A5[1] * &k1 + A5[2] * &k2 + A5[3] * &k3 + A5[4] * &k4);
+            let kp =
+                init_state + h * (A5[0] * k0 + A5[1] * k1 + A5[2] * k2 + A5[3] * k3 + A5[4] * k4);
             f(&kp, rand_state, inter_state, parameters)
         };
 
         let k6 = {
             let kp = init_state
-                + h * (A6[0] * &k0
-                    + A6[1] * &k1
-                    + A6[2] * &k2
-                    + A6[3] * &k3
-                    + A6[4] * &k4
-                    + A6[5] * &k5);
+                + h * (A6[0] * k0 + A6[1] * k1 + A6[2] * k2 + A6[3] * k3 + A6[4] * k4 + A6[5] * k5);
             f(&kp, rand_state, inter_state, parameters)
         };
 
@@ -153,12 +148,12 @@ pub fn integrator(
     mut dt: f32,
     f: CellDynamicsFn,
     init_state: &State,
-    rand_state: &RacRandomState,
+    rand_state: &RacRandState,
     inter_state: &InteractionState,
     parameters: &Parameters,
     mut aux_args: AuxArgs,
 ) -> Solution {
-    let mut y0 = init_state.clone();
+    let mut y0 = *init_state;
 
     let AuxArgs {
         max_iters,
@@ -187,16 +182,16 @@ pub fn integrator(
             k4,
             k5,
             k6,
-        } = Ks::calc(f, h, &y0, rand_state, inter_state, parameters);
+        } = Ks::calc(f, h, y0, rand_state, inter_state, parameters);
 
         let y1 = y0
-            + h * (B[0] * &k0
-                + B[1] * &k1
-                + B[2] * &k2
-                + B[3] * &k3
-                + B[4] * &k4
-                + B[5] * &k5
-                + B[6] * &k6);
+            + h * (B[0] * k0
+                + B[1] * k1
+                + B[2] * k2
+                + B[3] * k3
+                + B[4] * k4
+                + B[5] * k5
+                + B[6] * k6);
 
         if last_iter {
             assert!((h - dt).abs() < f32::EPSILON);
@@ -208,13 +203,13 @@ pub fn integrator(
         }
 
         let y1_hat = y0
-            + h * (B_HAT[0] * &k0
-                + B_HAT[1] * &k1
-                + B_HAT[2] * &k2
-                + B_HAT[3] * &k3
-                + B_HAT[4] * &k4
-                + B_HAT[5] * &k5
-                + B_HAT[6] * &k6);
+            + h * (B_HAT[0] * k0
+                + B_HAT[1] * k1
+                + B_HAT[2] * k2
+                + B_HAT[3] * k3
+                + B_HAT[4] * k4
+                + B_HAT[5] * k5
+                + B_HAT[6] * k6);
 
         // Equations 4.10, 4.11, Hairer,Wanner&Norsett Solving ODEs Vol. 1
         let sc = y0.abs().max(&y1.abs()).scalar_mul(rtol).scalar_add(atol);
@@ -229,7 +224,7 @@ pub fn integrator(
                 h_new = dt - h;
                 last_iter = true;
             };
-            dt = dt - h;
+            dt -= h;
             h = h_new;
         } else {
             fac_max = 1.0;
@@ -243,6 +238,6 @@ pub fn integrator(
     Solution {
         num_rejections,
         num_iters,
-        y: Err(format!("Too many iterations!")),
+        y: Err("Too many iterations!".to_string()),
     }
 }

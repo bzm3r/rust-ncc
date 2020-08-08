@@ -6,18 +6,25 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use crate::cell::state::fmt_var_arr;
 use crate::math::hill_function3;
+use crate::parameters::Parameters;
 use crate::utils::{circ_ix_minus, circ_ix_plus};
+use crate::world::RandomEventGenerator;
 use crate::NVERTS;
 use avro_schema_derive::Schematize;
-use rand::distributions::Uniform;
+use rand::rngs::SmallRng;
+use rand::seq::SliceRandom;
 use rand::{thread_rng, Rng};
+use rand_distr::{Distribution, Uniform};
 use serde::{Deserialize, Serialize};
+use std::fmt;
+use std::fmt::Display;
 
+#[allow(unused)]
 pub enum RgtpLayout {
     Random,
     BiasedVertices(Vec<usize>),
-    //Biased(BiasDefn),
 }
 
 impl RgtpLayout {
@@ -33,7 +40,7 @@ impl RgtpLayout {
             }
             RgtpLayout::BiasedVertices(verts) => {
                 (0..NVERTS as usize).for_each(|ix| {
-                    if let Some(_) = verts.iter().find(|&&v| ix == v) {
+                    if verts.iter().any(|&v| ix == v) {
                         rgtp_distrib[ix] = 1.0;
                     }
                 });
@@ -110,9 +117,15 @@ pub fn calc_kgtps_rac(
 
     for i in 0..nvs {
         let base = (x_rands[i] + x_coas[i] + 1.0) * kgtp_rac_base;
-        let auto = hill_function3(halfmax_rac_conc, conc_rac_acts[i])
-            * (1.0 + x_chemoas[i])
-            * kgtp_rac_auto;
+        let auto_factor = {
+            let af = hill_function3(halfmax_rac_conc, conc_rac_acts[i]) * (1.0 + x_chemoas[i]);
+            if af > 1.25 {
+                1.25
+            } else {
+                af
+            }
+        };
+        let auto = auto_factor * kgtp_rac_auto;
         kgtps_rac[i] = base + auto;
     }
 
@@ -178,19 +191,66 @@ pub fn calc_kdgtps_rho(
     kdgtps_rho
 }
 
-#[derive(Clone, Deserialize, Serialize, Schematize)]
-pub struct RacRandomState {
+#[derive(Copy, Clone, Default, Deserialize, Serialize, Schematize)]
+pub struct RacRandState {
+    pub next_update: u32,
     pub x_rands: [f32; NVERTS as usize],
 }
 
-impl RacRandomState {
-    pub fn init() -> RacRandomState {
-        RacRandomState {
-            x_rands: [0.0; NVERTS as usize],
+impl RacRandState {
+    pub fn gen_rand_factors(
+        rng: &mut SmallRng,
+        num_rand_verts: usize,
+        rand_mag: f32,
+    ) -> [f32; NVERTS as usize] {
+        let vs = (0..NVERTS as usize).collect::<Vec<usize>>();
+        let mut r = [0.0; NVERTS as usize];
+        vs.choose_multiple(rng, num_rand_verts)
+            .for_each(|&v| r[v] = rand_mag);
+        r
+    }
+
+    pub fn init(rng: Option<&mut SmallRng>, parameters: &Parameters) -> RacRandState {
+        match rng {
+            Some(r) => {
+                let ut = Uniform::from(0.0..parameters.rand_avg_t);
+                RacRandState {
+                    next_update: ut.sample(r).floor() as u32,
+                    x_rands: Self::gen_rand_factors(
+                        r,
+                        parameters.num_rand_vs as usize,
+                        parameters.rand_mag,
+                    ),
+                }
+            }
+            None => RacRandState {
+                next_update: 0,
+                x_rands: [0.0; NVERTS as usize],
+            },
         }
     }
 
-    pub fn update(&self, _tstep: u32) -> RacRandomState {
-        Self::init()
+    pub fn update(
+        &self,
+        cr: &mut RandomEventGenerator,
+        tstep: u32,
+        parameters: &Parameters,
+    ) -> RacRandState {
+        let next_update = tstep + cr.sample().floor() as u32;
+        println!("random update from {} to {}", tstep, next_update);
+        let x_rands =
+            Self::gen_rand_factors(&mut cr.rng, parameters.num_rand_vs, parameters.rand_mag);
+        println!("{:?}", x_rands);
+        RacRandState {
+            next_update,
+            x_rands,
+        }
+    }
+}
+
+impl Display for RacRandState {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt_var_arr(f, "rfs", &self.x_rands)?;
+        writeln!(f, "next_update: {}", self.next_update)
     }
 }

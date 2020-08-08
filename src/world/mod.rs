@@ -9,6 +9,7 @@
 pub mod hardio;
 pub mod interactions;
 
+use crate::cell::chemistry::RacRandState;
 use crate::cell::state::{ChemState, GeomState, MechState, State};
 use crate::cell::{Cell, VertexGenInfo};
 use crate::experiment::{Experiment, GroupLayout};
@@ -20,6 +21,10 @@ use crate::world::interactions::InteractionState;
 use crate::NVERTS;
 use avro_rs::Writer;
 use avro_schema_derive::Schematize;
+use once_cell::unsync::Lazy;
+use rand::rngs::SmallRng;
+use rand::{thread_rng, SeedableRng};
+use rand_distr::{Distribution, Normal};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
@@ -37,6 +42,12 @@ struct WorldMechState {
 }
 
 #[derive(Clone, Deserialize, Serialize, Schematize)]
+struct WorldRacRandState {
+    tstep: u32,
+    state: Vec<RacRandState>,
+}
+
+#[derive(Clone, Deserialize, Serialize, Schematize)]
 struct WorldGeomState {
     tstep: u32,
     state: Vec<GeomState>,
@@ -45,16 +56,21 @@ struct WorldGeomState {
 #[derive(Clone, Deserialize, Serialize, Schematize)]
 struct WorldChemState {
     tstep: u32,
-    chem_state: Vec<ChemState>,
+    state: Vec<ChemState>,
 }
 
 impl WorldState {
-    fn simulate(&self, group_parameters: &[Parameters]) -> WorldState {
+    fn simulate(
+        &self,
+        cell_rngs: &mut [Option<RandomEventGenerator>],
+        group_parameters: &[Parameters],
+    ) -> WorldState {
         let mut cells = Vec::with_capacity(self.cells.len());
         for c in self.cells.iter() {
             cells.push(c.simulate_euler(
                 self.tstep,
                 &self.interactions[c.ix as usize],
+                cell_rngs[c.ix as usize].as_mut(),
                 &group_parameters[c.group_ix as usize],
             ));
         }
@@ -109,7 +125,7 @@ impl WorldState {
     pub fn extract_chem_state(&self, group_parameters: &[Parameters]) -> WorldChemState {
         WorldChemState {
             tstep: self.tstep,
-            chem_state: self
+            state: self
                 .cells
                 .iter()
                 .map(|c| {
@@ -123,7 +139,7 @@ impl WorldState {
                         &c.state,
                         &gs,
                         &ms,
-                        &c.rac_randomization,
+                        &c.rac_rand_state,
                         &self.interactions[c.ix as usize],
                         &group_parameters[c.group_ix as usize],
                     )
@@ -131,12 +147,36 @@ impl WorldState {
                 .collect::<Vec<ChemState>>(),
         }
     }
+
+    #[allow(unused)]
+    pub fn extract_rac_rand_state(&self) -> WorldRacRandState {
+        WorldRacRandState {
+            tstep: self.tstep,
+            state: self
+                .cells
+                .iter()
+                .map(|c| c.rac_rand_state)
+                .collect::<Vec<RacRandState>>(),
+        }
+    }
+}
+
+pub struct RandomEventGenerator {
+    pub(crate) rng: SmallRng,
+    distrib: Normal<f32>,
+}
+
+impl RandomEventGenerator {
+    pub fn sample(&mut self) -> f32 {
+        self.distrib.sample(&mut self.rng)
+    }
 }
 
 pub struct World {
     world_parameters: WorldParameters,
     group_parameters: Vec<Parameters>,
     history: Vec<WorldState>,
+    cell_regs: Vec<Option<RandomEventGenerator>>,
     state: WorldState,
 }
 
@@ -146,6 +186,8 @@ impl World {
         let mut cells = vec![];
         let world_parameters = WorldParameters::default();
         let mut group_parameters = vec![];
+        let mut primary = thread_rng();
+        let mut cell_regs = vec![];
         for (gix, cg) in experiment.cell_groups.iter().enumerate() {
             let user_parameters =
                 InputParameters::default().apply_overrides(&cg.parameter_overrides);
@@ -158,12 +200,25 @@ impl World {
             )
             .unwrap();
             for cc in cell_centroids.into_iter() {
+                let normal = Lazy::new(|| {
+                    Normal::new(parameters.rand_avg_t, parameters.rand_std_t).unwrap()
+                });
+                let mut creg = if parameters.randomization {
+                    Some(RandomEventGenerator {
+                        rng: SmallRng::from_rng(&mut primary).unwrap(),
+                        distrib: *normal,
+                    })
+                } else {
+                    None
+                };
                 cells.push(Cell::new(
                     num_cells,
                     gix as u32,
                     VertexGenInfo::Centroid(cc),
                     &parameters,
+                    creg.as_mut(),
                 ));
+                cell_regs.push(creg);
                 num_cells += 1;
             }
             group_parameters.push(parameters);
@@ -174,12 +229,11 @@ impl World {
             cells,
             interactions,
         };
-
         let history = vec![state.clone()];
-
         World {
             world_parameters,
             group_parameters,
+            cell_regs,
             history,
             state,
         }
@@ -189,12 +243,14 @@ impl World {
         let num_tsteps = (final_tpoint / self.world_parameters.time()).ceil() as u32;
 
         while self.state.tstep < num_tsteps {
-            println!("========================================");
-            println!("tstep: {}/{}", self.state.tstep, num_tsteps);
-            let new_state = self.state.simulate(&self.group_parameters);
+            // println!("========================================");
+            // println!("tstep: {}/{}", self.state.tstep, num_tsteps);
+            let new_state = self
+                .state
+                .simulate(self.cell_regs.as_mut_slice(), &self.group_parameters);
             self.history.push(new_state.clone());
             self.state = new_state;
-            println!("========================================")
+            //println!("========================================")
         }
     }
 
@@ -246,6 +302,21 @@ impl World {
         let mut writer = Writer::new(&schema, Vec::new()); //Writer::with_codec(&self.state_schema, Vec::new(), avro_rs::Codec::Deflate);
         for ws in self.history.iter() {
             writer.append_ser(ws.extract_geom_state()).unwrap();
+        }
+        let encoded = writer.into_inner().unwrap();
+        save_data(name, &encoded, output_dir);
+    }
+
+    #[allow(unused)]
+    pub fn save_rand_history(&self, output_dir: &PathBuf) {
+        let name = "rand_hist";
+        let schema = WorldRacRandState::schematize(None);
+        save_schema(name, &schema, output_dir);
+        let mut writer = Writer::new(&schema, Vec::new()); //Writer::with_codec(&self.state_schema, Vec::new(), avro_rs::Codec::Deflate);
+        for ws in self.history.iter() {
+            writer
+                .append_ser(ws.extract_chem_state(&self.group_parameters))
+                .unwrap();
         }
         let encoded = writer.into_inner().unwrap();
         save_data(name, &encoded, output_dir);

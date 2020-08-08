@@ -10,11 +10,13 @@ pub mod geometry;
 pub mod p2d;
 pub mod radians;
 
+#[inline]
 /// Calculate `x` modulo `y`.
 pub fn modulo_f32(x: f32, y: f32) -> f32 {
     (x % y) + y
 }
 
+#[allow(unused)]
 /// Returns the minimum of a slice of floats.
 pub fn min_f32s(xs: &[f32]) -> f32 {
     let mut x = std::f32::MAX;
@@ -26,6 +28,7 @@ pub fn min_f32s(xs: &[f32]) -> f32 {
     x
 }
 
+#[allow(unused)]
 /// Returns the maximum of a slice of floats.
 pub fn max_f32s(xs: &[f32]) -> f32 {
     let mut x = std::f32::MIN;
@@ -37,6 +40,7 @@ pub fn max_f32s(xs: &[f32]) -> f32 {
     x
 }
 
+#[inline]
 /// Returns the minimum of two floats.
 pub fn min_f32(x: f32, y: f32) -> f32 {
     if x < y {
@@ -46,6 +50,7 @@ pub fn min_f32(x: f32, y: f32) -> f32 {
     }
 }
 
+#[inline]
 /// Returns maximum of two floats.
 pub fn max_f32(x: f32, y: f32) -> f32 {
     if x > y {
@@ -55,12 +60,14 @@ pub fn max_f32(x: f32, y: f32) -> f32 {
     }
 }
 
+#[inline]
 /// Hill function with exponent 3.
 pub fn hill_function3(thresh: f32, x: f32) -> f32 {
     let x_cubed = x.powi(3);
     x_cubed / (thresh.powi(3) + x_cubed)
 }
 
+#[inline]
 /// If `x > max_x`, returns 1.0, else `x/max_x`.
 pub fn capped_linear_function(x: f32, max_x: f32) -> f32 {
     if x > max_x {

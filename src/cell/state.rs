@@ -1,6 +1,6 @@
 use crate::cell::chemistry::{
     calc_conc_rgtps, calc_kdgtps_rac, calc_kdgtps_rho, calc_kgtps_rac, calc_kgtps_rho,
-    calc_net_fluxes, RacRandomState,
+    calc_net_fluxes, RacRandState,
 };
 use crate::cell::mechanics::{
     calc_cyto_forces, calc_edge_forces, calc_edge_vecs, calc_rgtp_forces,
@@ -37,11 +37,11 @@ impl Add for State {
         let mut rho_inacts = [0.0_f32; NVERTS as usize];
 
         for i in 0..(NVERTS as usize) {
-            vertex_coords[i] = &self.vertex_coords[i] + &rhs.vertex_coords[i];
-            rac_acts[i] = &self.rac_acts[i] + &rhs.rac_acts[i];
-            rac_inacts[i] = &self.rac_inacts[i] + &rhs.rac_inacts[i];
-            rho_acts[i] = &self.rho_acts[i] + &rhs.rho_acts[i];
-            rho_inacts[i] = &self.rho_inacts[i] + &rhs.rho_inacts[i]
+            vertex_coords[i] = self.vertex_coords[i] + rhs.vertex_coords[i];
+            rac_acts[i] = self.rac_acts[i] + rhs.rac_acts[i];
+            rac_inacts[i] = self.rac_inacts[i] + rhs.rac_inacts[i];
+            rho_acts[i] = self.rho_acts[i] + rhs.rho_acts[i];
+            rho_inacts[i] = self.rho_inacts[i] + rhs.rho_inacts[i]
         }
 
         Self::Output {
@@ -65,95 +65,11 @@ impl Sub for State {
         let mut rho_inacts = [0.0_f32; NVERTS as usize];
 
         for i in 0..(NVERTS as usize) {
-            vertex_coords[i] = &self.vertex_coords[i] - &rhs.vertex_coords[i];
-            rac_acts[i] = &self.rac_acts[i] - &rhs.rac_acts[i];
-            rac_inacts[i] = &self.rac_inacts[i] - &rhs.rac_inacts[i];
-            rho_acts[i] = &self.rho_acts[i] - &rhs.rho_acts[i];
-            rho_inacts[i] = &self.rho_inacts[i] - &rhs.rho_inacts[i]
-        }
-
-        Self::Output {
-            vertex_coords,
-            rac_acts,
-            rac_inacts,
-            rho_acts,
-            rho_inacts,
-        }
-    }
-}
-
-impl Add for &State {
-    type Output = State;
-
-    fn add(self, rhs: &State) -> State {
-        let mut vertex_coords = [P2D::default(); NVERTS as usize];
-        let mut rac_acts = [0.0_f32; NVERTS as usize];
-        let mut rac_inacts = [0.0_f32; NVERTS as usize];
-        let mut rho_acts = [0.0_f32; NVERTS as usize];
-        let mut rho_inacts = [0.0_f32; NVERTS as usize];
-
-        for i in 0..(NVERTS as usize) {
-            vertex_coords[i] = &self.vertex_coords[i] + &rhs.vertex_coords[i];
-            rac_acts[i] = &self.rac_acts[i] + &rhs.rac_acts[i];
-            rac_inacts[i] = &self.rac_inacts[i] + &rhs.rac_inacts[i];
-            rho_acts[i] = &self.rho_acts[i] + &rhs.rho_acts[i];
-            rho_inacts[i] = &self.rho_inacts[i] + &rhs.rho_inacts[i]
-        }
-
-        Self::Output {
-            vertex_coords,
-            rac_acts,
-            rac_inacts,
-            rho_acts,
-            rho_inacts,
-        }
-    }
-}
-
-impl Add<&State> for State {
-    type Output = State;
-
-    fn add(self, rhs: &State) -> State {
-        let mut vertex_coords = [P2D::default(); NVERTS as usize];
-        let mut rac_acts = [0.0_f32; NVERTS as usize];
-        let mut rac_inacts = [0.0_f32; NVERTS as usize];
-        let mut rho_acts = [0.0_f32; NVERTS as usize];
-        let mut rho_inacts = [0.0_f32; NVERTS as usize];
-
-        for i in 0..(NVERTS as usize) {
-            vertex_coords[i] = &self.vertex_coords[i] + &rhs.vertex_coords[i];
-            rac_acts[i] = &self.rac_acts[i] + &rhs.rac_acts[i];
-            rac_inacts[i] = &self.rac_inacts[i] + &rhs.rac_inacts[i];
-            rho_acts[i] = &self.rho_acts[i] + &rhs.rho_acts[i];
-            rho_inacts[i] = &self.rho_inacts[i] + &rhs.rho_inacts[i]
-        }
-
-        Self::Output {
-            vertex_coords,
-            rac_acts,
-            rac_inacts,
-            rho_acts,
-            rho_inacts,
-        }
-    }
-}
-
-impl Add<State> for &State {
-    type Output = State;
-
-    fn add(self, rhs: State) -> State {
-        let mut vertex_coords = [P2D::default(); NVERTS as usize];
-        let mut rac_acts = [0.0_f32; NVERTS as usize];
-        let mut rac_inacts = [0.0_f32; NVERTS as usize];
-        let mut rho_acts = [0.0_f32; NVERTS as usize];
-        let mut rho_inacts = [0.0_f32; NVERTS as usize];
-
-        for i in 0..(NVERTS as usize) {
-            vertex_coords[i] = &self.vertex_coords[i] + &rhs.vertex_coords[i];
-            rac_acts[i] = &self.rac_acts[i] + &rhs.rac_acts[i];
-            rac_inacts[i] = &self.rac_inacts[i] + &rhs.rac_inacts[i];
-            rho_acts[i] = &self.rho_acts[i] + &rhs.rho_acts[i];
-            rho_inacts[i] = &self.rho_inacts[i] + &rhs.rho_inacts[i]
+            vertex_coords[i] = self.vertex_coords[i] - rhs.vertex_coords[i];
+            rac_acts[i] = self.rac_acts[i] - rhs.rac_acts[i];
+            rac_inacts[i] = self.rac_inacts[i] - rhs.rac_inacts[i];
+            rho_acts[i] = self.rho_acts[i] - rhs.rho_acts[i];
+            rho_inacts[i] = self.rho_inacts[i] - rhs.rho_inacts[i]
         }
 
         Self::Output {
@@ -178,10 +94,10 @@ impl Div for State {
 
         for i in 0..(NVERTS as usize) {
             vertex_coords[i] = self.vertex_coords[i] / rhs.vertex_coords[i];
-            rac_acts[i] = &self.rac_acts[i] / &rhs.rac_acts[i];
-            rac_inacts[i] = &self.rac_inacts[i] / &rhs.rac_inacts[i];
-            rho_acts[i] = &self.rho_acts[i] / &rhs.rho_acts[i];
-            rho_inacts[i] = &self.rho_inacts[i] / &rhs.rho_inacts[i]
+            rac_acts[i] = self.rac_acts[i] / rhs.rac_acts[i];
+            rac_inacts[i] = self.rac_inacts[i] / rhs.rac_inacts[i];
+            rho_acts[i] = self.rho_acts[i] / rhs.rho_acts[i];
+            rho_inacts[i] = self.rho_inacts[i] / rhs.rho_inacts[i]
         }
 
         Self::Output {
@@ -206,66 +122,10 @@ impl Mul<State> for f32 {
 
         for i in 0..(NVERTS as usize) {
             vertex_coords[i] = self * rhs.vertex_coords[i];
-            rac_acts[i] = self * &rhs.rac_acts[i];
-            rac_inacts[i] = self * &rhs.rac_inacts[i];
-            rho_acts[i] = self * &rhs.rho_acts[i];
-            rho_inacts[i] = self * &rhs.rho_inacts[i]
-        }
-
-        Self::Output {
-            vertex_coords,
-            rac_acts,
-            rac_inacts,
-            rho_acts,
-            rho_inacts,
-        }
-    }
-}
-
-impl Mul<&State> for f32 {
-    type Output = State;
-
-    fn mul(self, rhs: &State) -> State {
-        let mut vertex_coords = [P2D::default(); NVERTS as usize];
-        let mut rac_acts = [0.0_f32; NVERTS as usize];
-        let mut rac_inacts = [0.0_f32; NVERTS as usize];
-        let mut rho_acts = [0.0_f32; NVERTS as usize];
-        let mut rho_inacts = [0.0_f32; NVERTS as usize];
-
-        for i in 0..(NVERTS as usize) {
-            vertex_coords[i] = self * rhs.vertex_coords[i];
-            rac_acts[i] = self * &rhs.rac_acts[i];
-            rac_inacts[i] = self * &rhs.rac_inacts[i];
-            rho_acts[i] = self * &rhs.rho_acts[i];
-            rho_inacts[i] = self * &rhs.rho_inacts[i]
-        }
-
-        Self::Output {
-            vertex_coords,
-            rac_acts,
-            rac_inacts,
-            rho_acts,
-            rho_inacts,
-        }
-    }
-}
-
-impl Mul<&State> for &f32 {
-    type Output = State;
-
-    fn mul(self, rhs: &State) -> State {
-        let mut vertex_coords = [P2D::default(); NVERTS as usize];
-        let mut rac_acts = [0.0_f32; NVERTS as usize];
-        let mut rac_inacts = [0.0_f32; NVERTS as usize];
-        let mut rho_acts = [0.0_f32; NVERTS as usize];
-        let mut rho_inacts = [0.0_f32; NVERTS as usize];
-
-        for i in 0..(NVERTS as usize) {
-            vertex_coords[i] = self * rhs.vertex_coords[i];
-            rac_acts[i] = self * &rhs.rac_acts[i];
-            rac_inacts[i] = self * &rhs.rac_inacts[i];
-            rho_acts[i] = self * &rhs.rho_acts[i];
-            rho_inacts[i] = self * &rhs.rho_inacts[i]
+            rac_acts[i] = self * rhs.rac_acts[i];
+            rac_inacts[i] = self * rhs.rac_inacts[i];
+            rho_acts[i] = self * rhs.rho_acts[i];
+            rho_inacts[i] = self * rhs.rho_inacts[i]
         }
 
         Self::Output {
@@ -317,7 +177,7 @@ pub struct CellDepVars {
     mech_state: MechState,
 }
 
-fn fmt_var_arr<T: fmt::Display>(
+pub fn fmt_var_arr<T: fmt::Display>(
     f: &mut fmt::Formatter<'_>,
     description: &str,
     vars: &[T; NVERTS as usize],
@@ -332,7 +192,7 @@ fn fmt_var_arr<T: fmt::Display>(
 
 impl Display for State {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        println!("----------");
+        // println!("----------");
         fmt_var_arr(f, "vertex_coords", &self.vertex_coords)?;
         fmt_var_arr(f, "rac_acts", &self.rac_acts)?;
         fmt_var_arr(f, "rac_inacts", &self.rac_inacts)?;
@@ -455,7 +315,7 @@ impl State {
         state: &State,
         geom_state: &GeomState,
         mech_state: &MechState,
-        rac_rand_state: &RacRandomState,
+        rac_rand_state: &RacRandState,
         inter_state: &InteractionState,
         parameters: &Parameters,
     ) -> ChemState {
@@ -542,7 +402,7 @@ impl State {
 
     pub(crate) fn calc_dep_vars(
         state: &State,
-        rac_rand_state: &RacRandomState,
+        rac_rand_state: &RacRandState,
         inter_state: &InteractionState,
         parameters: &Parameters,
     ) -> CellDepVars {
@@ -566,7 +426,7 @@ impl State {
 
     pub fn dynamics_f(
         state: &State,
-        rac_rand_state: &RacRandomState,
+        rac_rand_state: &RacRandState,
         inter_state: &InteractionState,
         parameters: &Parameters,
     ) -> State {
@@ -807,6 +667,6 @@ impl State {
         if sum_rho_mem > parameters.total_rgtp || sum_rho_mem < 0.0 {
             panic!("{}: problem in sum of rho_mem: {}", loc_str, sum_rho_mem);
         }
-        println!("{}: successfully validated", loc_str)
+        // println!("{}: successfully validated", loc_str)
     }
 }

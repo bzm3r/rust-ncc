@@ -133,8 +133,8 @@ def paint(delta):
     global num_tsteps
     ax.cla()
     ax.set_aspect('equal')
-    ax.set_xlim([20.0 - 150.0, 20.0 + 150.0])
-    ax.set_ylim([20.0 - 150.0, 20.0 + 150.0])
+    ax.set_xlim([20.0 - 600.0, 20.0 + 600.0])
+    ax.set_ylim([20.0 - 600.0, 20.0 + 600.0])
     for vix in range(16):
         print(edge_strains_per_tstep[tstep])
         if False:#edge_strains_per_tstep[tstep][vix] > 0.0:

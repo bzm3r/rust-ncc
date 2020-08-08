@@ -122,14 +122,15 @@ pub struct InputParameters {
     kdgtp_rac_on_rho: f32,
     /// CIL factor affecting RhoA activation rate.
     cil: f32,
+    /// Enable randomization?
+    randomization: bool,
     /// Average period between randomization events.
     rand_avg_t: Time,
-    /// Standard deviation of period between period of randomization events.
-    rand_std_t: Time,
-    /// Randomization factors affecting Rac1 activation rate.
-    rand: f32,
+    /// Magnitude of randomly applied factor affecting Rac1 activation rate.
+    rand_mag: f32,
     /// Fraction of vertices to be selected for increased Rac1 activation due to random events.
     rand_vs: f32,
+    pub rand_std_t: Time,
 }
 
 #[derive(Clone)]
@@ -194,14 +195,16 @@ pub struct Parameters {
     pub kdgtp_rac_on_rho: f32,
     /// CIL factor affecting RhoA activation rate.
     pub cil: f32,
-    /// Average period of randomization events.
+    /// Enable randomization?
+    pub randomization: bool,
+    /// Average time between random events, in timesteps.
     pub rand_avg_t: f32,
-    /// Standard deviation period of randomization events.
+    /// Standard deviation of time between random events, in timesteps.
     pub rand_std_t: f32,
-    /// Randomization factors affecting Rac1 activation rate.
-    pub rand: f32,
-    /// Fraction of vertices to be selected for increased Rac1 activation due to random events.
-    pub rand_vs: f32,
+    /// Magnitude of factor randomly applied to Rac1 activation rate.
+    pub rand_mag: f32,
+    /// Number of vertices to be selected for random Rac1 activity boost.
+    pub num_rand_vs: usize,
     pub total_rgtp: f32,
 }
 
@@ -239,9 +242,10 @@ impl Default for InputParameters {
             kdgtp_rho: 60.0,
             kdgtp_rac_on_rho: 400.0,
             cil: 60.0,
+            randomization: true,
             rand_avg_t: Time(40.0 * 60.0),
-            rand_std_t: Time(10.0 * 60.0),
-            rand: 10.0,
+            rand_std_t: Time(0.2 * 40.0 * 60.0),
+            rand_mag: 10.0,
             rand_vs: 0.25,
         }
     }
@@ -305,10 +309,11 @@ impl InputParameters {
             kdgtp_rho: cq.normalize(&cq.kdgtp.mulf(self.kdgtp_rho)),
             kdgtp_rac_on_rho: cq.normalize(&cq.kdgtp.mulf(self.kdgtp_rac_on_rho)),
             cil: self.cil,
-            rand_avg_t: cq.normalize(&self.rand_avg_t),
-            rand_std_t: cq.normalize(&self.rand_std_t),
-            rand: self.rand,
-            rand_vs: self.rand_vs,
+            randomization: self.randomization,
+            rand_avg_t: cq.normalize(&self.rand_avg_t).ceil(),
+            rand_std_t: cq.normalize(&self.rand_std_t).ceil(),
+            rand_mag: self.rand_mag,
+            num_rand_vs: (self.rand_vs * NVERTS as f32) as usize,
             total_rgtp: 1.0 / cq.frac_rgtp,
         }
     }
