@@ -7,9 +7,10 @@
 // except according to those terms.
 
 use crate::math::p2d::P2D;
+use crate::math::{max_f32s, min_f32s};
 use crate::utils::{circ_ix_minus, circ_ix_plus};
 
-/// Calculate the area of a polygon with vertices positioned at `xys`. [ref](http://geomalgorithms.com/a01-_area.html)
+/// Calculate the area of a polgon with vertices positioned at `xys`. [ref](http://geomalgorithms.com/a01-_area.html)
 pub fn calc_poly_area(xys: &[P2D]) -> f32 {
     let nvs = xys.len();
 
@@ -23,61 +24,66 @@ pub fn calc_poly_area(xys: &[P2D]) -> f32 {
     area * 0.5
 }
 
-// /// Given three points `p0`, `p1`, `p2`, check if `p2` is left of the line through `p0` and `p1`.
-// /// Greater than 0 if `p2` is left of, `0` if `p2` is on, and less than 0 if `p2` is right of.
-// pub fn is_point_left_of_line(p0: &P2D, p1: &P2D, p2: &P2D) -> f32 {
-//     (p1.x - p0.x) * (p2.y - p0.y) - (p2.x - p0.x) * (p1.y - p0.y)
-// }
+pub struct Bbox {
+    pub(crate) xmin: f32,
+    pub(crate) ymin: f32,
+    pub(crate) xmax: f32,
+    pub(crate) ymax: f32,
+}
 
-//
-// pub fn max_f32s(xs: &[f32]) -> f32 {
-//     let mut r = std::f32::MIN;
-//     for &x in xs {
-//         r = max_f32(r, x);
-//     }
-//     r
-// }
+impl Bbox {
+    pub fn calc(xys: &[P2D]) -> Bbox {
+        let xs: Vec<f32> = xys.iter().map(|v| v.x).collect();
+        let ys: Vec<f32> = xys.iter().map(|v| v.y).collect();
+        Bbox {
+            xmin: min_f32s(&xs),
+            ymin: min_f32s(&ys),
+            xmax: max_f32s(&xs),
+            ymax: max_f32s(&xs),
+        }
+    }
 
-// pub fn poly_bbox(xys: &[P2D]) -> Bbox {
-//     let xs: Vec<f32> = xys.iter().map(|v| v.x).collect();
-//     let ys: Vec<f32> = xys.iter().map(|v| v.y).collect();
-//     Bbox {
-//         xmin: min_f32s(&xs),
-//         ymin: min_f32s(&ys),
-//         xmax: max_f32s(&xs),
-//         ymax: max_f32s(&xs),
-//     }
-// }
+    pub fn expand_by(&self, l: f32) -> Bbox {
+        Bbox {
+            xmin: self.xmin - l,
+            ymin: self.ymin - l,
+            xmax: self.xmax + l,
+            ymax: self.ymax + l,
+        }
+    }
 
-// pub fn point_in_poly(xys: &[P2D], p: &P2D) -> bool {
-//     if poly_bbox(xys).point_in(p) {
-//         let nvs = xys.len();
-//         let mut wn: i32 = 0;
-//
-//         (0..nvs).for_each(|i| {
-//             let p_start = xys[i];
-//             let p_end = xys[circ_ix_plus(i, nvs)];
-//             let is_left = is_point_left_of_line(&p_start, &p_end, p);
-//
-//             if p_start.y <= p.y && p.y < p_end.y {
-//                 // upward crossing
-//                 if is_left > 0.0 {
-//                     wn += 1;
-//                 }
-//             } else if p_end.y < p.y && p.y <= p_start.y {
-//                 // downward crossing
-//                 if is_point_left_of_line(&p_start, &p_end, p) < 0.0 {
-//                     wn -= 1;
-//                 }
-//             }
-//         });
-//
-//         if wn == 0 {
-//             false
-//         } else {
-//             true
-//         }
-//     } else {
-//         false
-//     }
-// }
+    pub fn intersects(&self, other: &Bbox) -> bool {
+        !((self.xmin > other.xmax || self.xmax < other.xmin)
+            || (self.ymin > other.ymax || self.ymax < other.ymin))
+    }
+}
+
+pub fn calc_line_and_seg_intersect(p0: &P2D, p1: &P2D, l0: &P2D, l: &P2D) -> f32 {
+    let s = p1 - p0;
+    //let t = ((l.y / l.x) * (p0.x - l0.x) + l0.y - p0.y) / (s.y - (s.x * l.y / l.x));
+    (l.x * (l0.y - p0.y) - l.y * (l0.x - p0.x)) / (l.x * s.y - l.y * s.x)
+}
+
+pub fn move_inner_point_to_bdry(point: &P2D, move_vec: &P2D, pol: &[P2D]) -> P2D {
+    let mut num_intersects: usize = 0;
+    let mut intersects = [P2D::default(); 2];
+    for ix in 0..pol.len() {
+        let p0 = &pol[ix];
+        let p1 = &pol[circ_ix_plus(ix, pol.len())];
+        let t = calc_line_and_seg_intersect(p0, p1, point, move_vec);
+        if (0.0 < t && t < 1.0) || (t < std::f32::EPSILON) || ((t - 1.0).abs() < std::f32::EPSILON)
+        {
+            intersects[num_intersects] = t * (p1 - p0) + p0;
+            num_intersects += 1;
+            if num_intersects == 2 {
+                break;
+            }
+        }
+    }
+
+    if num_intersects == 0 || num_intersects == 2 {
+        *point
+    } else {
+        intersects[0]
+    }
+}

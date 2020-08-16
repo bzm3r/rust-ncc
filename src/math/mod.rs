@@ -29,6 +29,20 @@ pub fn min_f32s(xs: &[f32]) -> f32 {
 }
 
 #[allow(unused)]
+/// Returns the minimum of a slice of floats, and its index in the slice.
+pub fn min_f32s_ix(xs: &[f32]) -> (usize, f32) {
+    let mut x = std::f32::MAX;
+    let mut xix = 0_usize;
+    for (yix, &y) in xs.iter().enumerate() {
+        if y < x {
+            x = y;
+            xix = yix;
+        }
+    }
+    (xix, x)
+}
+
+#[allow(unused)]
 /// Returns the maximum of a slice of floats.
 pub fn max_f32s(xs: &[f32]) -> f32 {
     let mut x = std::f32::MIN;

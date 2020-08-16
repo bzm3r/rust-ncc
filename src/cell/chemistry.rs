@@ -6,7 +6,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use crate::cell::state::fmt_var_arr;
+use crate::cell::core_state::fmt_var_arr;
 use crate::math::hill_function3;
 use crate::parameters::Parameters;
 use crate::utils::{circ_ix_minus, circ_ix_plus};
@@ -28,8 +28,8 @@ pub enum RgtpLayout {
 }
 
 impl RgtpLayout {
-    pub fn gen_distrib(&self, frac_to_distrib: f32) -> [f32; NVERTS as usize] {
-        let mut rgtp_distrib: [f32; NVERTS as usize] = [0.0_f32; NVERTS as usize];
+    pub fn gen_distrib(&self, frac_to_distrib: f32) -> [f32; NVERTS] {
+        let mut rgtp_distrib: [f32; NVERTS] = [0.0_f32; NVERTS];
         match self {
             RgtpLayout::Random => {
                 let distrib: Uniform<f32> = Uniform::new_inclusive(0.0, 1.0);
@@ -39,7 +39,7 @@ impl RgtpLayout {
                 });
             }
             RgtpLayout::BiasedVertices(verts) => {
-                (0..NVERTS as usize).for_each(|ix| {
+                (0..NVERTS).for_each(|ix| {
                     if verts.iter().any(|&v| ix == v) {
                         rgtp_distrib[ix] = 1.0;
                     }
@@ -58,7 +58,7 @@ pub fn gen_rgtp_distrib(
     active_frac: f32,
     inactive_frac: f32,
     rgtp_layout: &RgtpLayout,
-) -> ([f32; NVERTS as usize], [f32; NVERTS as usize]) {
+) -> ([f32; NVERTS], [f32; NVERTS]) {
     (
         rgtp_layout.gen_distrib(active_frac),
         rgtp_layout.gen_distrib(inactive_frac),
@@ -66,54 +66,51 @@ pub fn gen_rgtp_distrib(
 }
 
 fn calc_directed_fluxes(
-    edge_lens: &[f32; NVERTS as usize],
+    edge_lens: &[f32; NVERTS],
     rgtp_d: f32,
-    conc_rgtps: &[f32; NVERTS as usize],
-) -> [f32; NVERTS as usize] {
-    let mut r = [0.0_f32; NVERTS as usize];
-    for i in 0..NVERTS as usize {
-        let plus_i = circ_ix_plus(i, NVERTS as usize);
+    conc_rgtps: &[f32; NVERTS],
+) -> [f32; NVERTS] {
+    let mut r = [0.0_f32; NVERTS];
+    for i in 0..NVERTS {
+        let plus_i = circ_ix_plus(i, NVERTS);
         r[i] = -1.0 * rgtp_d * (conc_rgtps[plus_i] - conc_rgtps[i]) / edge_lens[i];
     }
     r
 }
 
 pub fn calc_net_fluxes(
-    edge_lens: &[f32; NVERTS as usize],
+    edge_lens: &[f32; NVERTS],
     rgtp_d: f32,
-    conc_rgtps: &[f32; NVERTS as usize],
-) -> [f32; NVERTS as usize] {
+    conc_rgtps: &[f32; NVERTS],
+) -> [f32; NVERTS] {
     let directed_fluxes = calc_directed_fluxes(edge_lens, rgtp_d, conc_rgtps);
-    let mut r = [0.0_f32; NVERTS as usize];
-    (0..NVERTS as usize).for_each(|i| {
-        let min_i = circ_ix_minus(i, NVERTS as usize);
+    let mut r = [0.0_f32; NVERTS];
+    (0..NVERTS).for_each(|i| {
+        let min_i = circ_ix_minus(i, NVERTS);
         r[i] = directed_fluxes[min_i] - directed_fluxes[i];
     });
     r
 }
 
-pub fn calc_conc_rgtps(
-    avg_edge_lens: &[f32; NVERTS as usize],
-    rgtps: &[f32; NVERTS as usize],
-) -> [f32; NVERTS as usize] {
-    let mut r = [0.0_f32; NVERTS as usize];
-    (0..NVERTS as usize).for_each(|i| r[i] = rgtps[i] / avg_edge_lens[i]);
+pub fn calc_conc_rgtps(avg_edge_lens: &[f32; NVERTS], rgtps: &[f32; NVERTS]) -> [f32; NVERTS] {
+    let mut r = [0.0_f32; NVERTS];
+    (0..NVERTS).for_each(|i| r[i] = rgtps[i] / avg_edge_lens[i]);
     r
 }
 
 #[allow(clippy::too_many_arguments)]
 pub fn calc_kgtps_rac(
-    rac_acts: &[f32; NVERTS as usize],
-    conc_rac_acts: &[f32; NVERTS as usize],
-    x_rands: &[f32; NVERTS as usize],
-    x_coas: &[f32; NVERTS as usize],
-    x_chemoas: &[f32; NVERTS as usize],
+    rac_acts: &[f32; NVERTS],
+    conc_rac_acts: &[f32; NVERTS],
+    x_rands: &[f32; NVERTS],
+    x_coas: &[f32; NVERTS],
+    x_chemoas: &[f32; NVERTS],
     kgtp_rac_base: f32,
     kgtp_rac_auto: f32,
     halfmax_rac_conc: f32,
-) -> [f32; NVERTS as usize] {
+) -> [f32; NVERTS] {
     let nvs = rac_acts.len();
-    let mut kgtps_rac = [0.0_f32; NVERTS as usize];
+    let mut kgtps_rac = [0.0_f32; NVERTS];
 
     for i in 0..nvs {
         let base = (x_rands[i] + x_coas[i] + 1.0) * kgtp_rac_base;
@@ -133,16 +130,16 @@ pub fn calc_kgtps_rac(
 }
 
 pub fn calc_kdgtps_rac(
-    rac_acts: &[f32; NVERTS as usize],
-    conc_rho_acts: &[f32; NVERTS as usize],
-    x_cils: &[f32; NVERTS as usize],
+    rac_acts: &[f32; NVERTS],
+    conc_rho_acts: &[f32; NVERTS],
+    x_cils: &[f32; NVERTS],
     x_tens: f32,
     kdgtp_rac_base: f32,
     kdgtp_rho_on_rac: f32,
     halfmax_conc_rho: f32,
-) -> [f32; NVERTS as usize] {
+) -> [f32; NVERTS] {
     let nvs = rac_acts.len();
-    let mut kdgtps_rac = [0.0_f32; NVERTS as usize];
+    let mut kdgtps_rac = [0.0_f32; NVERTS];
 
     for i in 0..nvs {
         let base = (1.0 + x_tens + x_cils[i]) * kdgtp_rac_base;
@@ -154,15 +151,15 @@ pub fn calc_kdgtps_rac(
 }
 
 pub fn calc_kgtps_rho(
-    rho_acts: &[f32; NVERTS as usize],
-    conc_rho_acts: &[f32; NVERTS as usize],
-    x_cils: &[f32; NVERTS as usize],
+    rho_acts: &[f32; NVERTS],
+    conc_rho_acts: &[f32; NVERTS],
+    x_cils: &[f32; NVERTS],
     kgtp_rho_base: f32,
     halfmax_rho_thresh: f32,
     kgtp_rho_auto: f32,
-) -> [f32; NVERTS as usize] {
+) -> [f32; NVERTS] {
     let nvs = rho_acts.len();
-    let mut kgtps_rho = [0.0_f32; NVERTS as usize];
+    let mut kgtps_rho = [0.0_f32; NVERTS];
 
     for i in 0..nvs {
         let base = (1.0 + x_cils[i]) * kgtp_rho_base;
@@ -174,14 +171,14 @@ pub fn calc_kgtps_rho(
 }
 
 pub fn calc_kdgtps_rho(
-    rho_acts: &[f32; NVERTS as usize],
-    conc_rac_acts: &[f32; NVERTS as usize],
+    rho_acts: &[f32; NVERTS],
+    conc_rac_acts: &[f32; NVERTS],
     kdgtp_rho_base: f32,
     kdgtp_rac_on_rho: f32,
     halfmax_conc_rac: f32,
-) -> [f32; NVERTS as usize] {
+) -> [f32; NVERTS] {
     let nvs = rho_acts.len();
-    let mut kdgtps_rho = [0.0_f32; NVERTS as usize];
+    let mut kdgtps_rho = [0.0_f32; NVERTS];
 
     for i in 0..nvs {
         let mutual = hill_function3(halfmax_conc_rac, conc_rac_acts[i]) * kdgtp_rac_on_rho;
@@ -194,7 +191,7 @@ pub fn calc_kdgtps_rho(
 #[derive(Copy, Clone, Default, Deserialize, Serialize, Schematize)]
 pub struct RacRandState {
     pub next_update: u32,
-    pub x_rands: [f32; NVERTS as usize],
+    pub x_rands: [f32; NVERTS],
 }
 
 impl RacRandState {
@@ -202,9 +199,9 @@ impl RacRandState {
         rng: &mut SmallRng,
         num_rand_verts: usize,
         rand_mag: f32,
-    ) -> [f32; NVERTS as usize] {
-        let vs = (0..NVERTS as usize).collect::<Vec<usize>>();
-        let mut r = [0.0; NVERTS as usize];
+    ) -> [f32; NVERTS] {
+        let vs = (0..NVERTS).collect::<Vec<usize>>();
+        let mut r = [0.0; NVERTS];
         vs.choose_multiple(rng, num_rand_verts)
             .for_each(|&v| r[v] = rand_mag);
         r
@@ -225,7 +222,7 @@ impl RacRandState {
             }
             None => RacRandState {
                 next_update: 0,
-                x_rands: [0.0; NVERTS as usize],
+                x_rands: [0.0; NVERTS],
             },
         }
     }

@@ -18,25 +18,25 @@ use std::fmt::Display;
 use std::ops::{Add, Div, Mul, Sub};
 
 #[derive(Copy, Clone, Debug, Default, Deserialize, Serialize, Schematize)]
-pub struct State {
-    pub vertex_coords: [P2D; NVERTS as usize],
-    rac_acts: [f32; NVERTS as usize],
-    rac_inacts: [f32; NVERTS as usize],
-    rho_acts: [f32; NVERTS as usize],
-    rho_inacts: [f32; NVERTS as usize],
+pub struct CoreState {
+    pub vertex_coords: [P2D; NVERTS],
+    rac_acts: [f32; NVERTS],
+    rac_inacts: [f32; NVERTS],
+    rho_acts: [f32; NVERTS],
+    rho_inacts: [f32; NVERTS],
 }
 
-impl Add for State {
-    type Output = State;
+impl Add for CoreState {
+    type Output = CoreState;
 
-    fn add(self, rhs: State) -> State {
-        let mut vertex_coords = [P2D::default(); NVERTS as usize];
-        let mut rac_acts = [0.0_f32; NVERTS as usize];
-        let mut rac_inacts = [0.0_f32; NVERTS as usize];
-        let mut rho_acts = [0.0_f32; NVERTS as usize];
-        let mut rho_inacts = [0.0_f32; NVERTS as usize];
+    fn add(self, rhs: CoreState) -> CoreState {
+        let mut vertex_coords = [P2D::default(); NVERTS];
+        let mut rac_acts = [0.0_f32; NVERTS];
+        let mut rac_inacts = [0.0_f32; NVERTS];
+        let mut rho_acts = [0.0_f32; NVERTS];
+        let mut rho_inacts = [0.0_f32; NVERTS];
 
-        for i in 0..(NVERTS as usize) {
+        for i in 0..(NVERTS) {
             vertex_coords[i] = self.vertex_coords[i] + rhs.vertex_coords[i];
             rac_acts[i] = self.rac_acts[i] + rhs.rac_acts[i];
             rac_inacts[i] = self.rac_inacts[i] + rhs.rac_inacts[i];
@@ -54,17 +54,17 @@ impl Add for State {
     }
 }
 
-impl Sub for State {
-    type Output = State;
+impl Sub for CoreState {
+    type Output = CoreState;
 
-    fn sub(self, rhs: State) -> State {
-        let mut vertex_coords = [P2D::default(); NVERTS as usize];
-        let mut rac_acts = [0.0_f32; NVERTS as usize];
-        let mut rac_inacts = [0.0_f32; NVERTS as usize];
-        let mut rho_acts = [0.0_f32; NVERTS as usize];
-        let mut rho_inacts = [0.0_f32; NVERTS as usize];
+    fn sub(self, rhs: CoreState) -> CoreState {
+        let mut vertex_coords = [P2D::default(); NVERTS];
+        let mut rac_acts = [0.0_f32; NVERTS];
+        let mut rac_inacts = [0.0_f32; NVERTS];
+        let mut rho_acts = [0.0_f32; NVERTS];
+        let mut rho_inacts = [0.0_f32; NVERTS];
 
-        for i in 0..(NVERTS as usize) {
+        for i in 0..(NVERTS) {
             vertex_coords[i] = self.vertex_coords[i] - rhs.vertex_coords[i];
             rac_acts[i] = self.rac_acts[i] - rhs.rac_acts[i];
             rac_inacts[i] = self.rac_inacts[i] - rhs.rac_inacts[i];
@@ -82,17 +82,17 @@ impl Sub for State {
     }
 }
 
-impl Div for State {
-    type Output = State;
+impl Div for CoreState {
+    type Output = CoreState;
 
-    fn div(self, rhs: State) -> State {
-        let mut vertex_coords = [P2D::default(); NVERTS as usize];
-        let mut rac_acts = [0.0_f32; NVERTS as usize];
-        let mut rac_inacts = [0.0_f32; NVERTS as usize];
-        let mut rho_acts = [0.0_f32; NVERTS as usize];
-        let mut rho_inacts = [0.0_f32; NVERTS as usize];
+    fn div(self, rhs: CoreState) -> CoreState {
+        let mut vertex_coords = [P2D::default(); NVERTS];
+        let mut rac_acts = [0.0_f32; NVERTS];
+        let mut rac_inacts = [0.0_f32; NVERTS];
+        let mut rho_acts = [0.0_f32; NVERTS];
+        let mut rho_inacts = [0.0_f32; NVERTS];
 
-        for i in 0..(NVERTS as usize) {
+        for i in 0..(NVERTS) {
             vertex_coords[i] = self.vertex_coords[i] / rhs.vertex_coords[i];
             rac_acts[i] = self.rac_acts[i] / rhs.rac_acts[i];
             rac_inacts[i] = self.rac_inacts[i] / rhs.rac_inacts[i];
@@ -110,17 +110,17 @@ impl Div for State {
     }
 }
 
-impl Mul<State> for f32 {
-    type Output = State;
+impl Mul<CoreState> for f32 {
+    type Output = CoreState;
 
-    fn mul(self, rhs: State) -> State {
-        let mut vertex_coords = [P2D::default(); NVERTS as usize];
-        let mut rac_acts = [0.0_f32; NVERTS as usize];
-        let mut rac_inacts = [0.0_f32; NVERTS as usize];
-        let mut rho_acts = [0.0_f32; NVERTS as usize];
-        let mut rho_inacts = [0.0_f32; NVERTS as usize];
+    fn mul(self, rhs: CoreState) -> CoreState {
+        let mut vertex_coords = [P2D::default(); NVERTS];
+        let mut rac_acts = [0.0_f32; NVERTS];
+        let mut rac_inacts = [0.0_f32; NVERTS];
+        let mut rho_acts = [0.0_f32; NVERTS];
+        let mut rho_inacts = [0.0_f32; NVERTS];
 
-        for i in 0..(NVERTS as usize) {
+        for i in 0..(NVERTS) {
             vertex_coords[i] = self * rhs.vertex_coords[i];
             rac_acts[i] = self * rhs.rac_acts[i];
             rac_inacts[i] = self * rhs.rac_inacts[i];
@@ -140,38 +140,38 @@ impl Mul<State> for f32 {
 
 #[derive(Copy, Clone, Debug, Default, Deserialize, Serialize, Schematize)]
 pub struct MechState {
-    pub edge_strains: [f32; NVERTS as usize],
-    pub rgtp_forces: [P2D; NVERTS as usize],
-    pub cyto_forces: [P2D; NVERTS as usize],
-    pub edge_forces: [P2D; NVERTS as usize],
+    pub edge_strains: [f32; NVERTS],
+    pub rgtp_forces: [P2D; NVERTS],
+    pub cyto_forces: [P2D; NVERTS],
+    pub edge_forces: [P2D; NVERTS],
     pub avg_tens_strain: f32,
-    pub sum_fs: [P2D; NVERTS as usize],
+    pub sum_fs: [P2D; NVERTS],
 }
 
 #[derive(Copy, Clone, Debug, Default, Deserialize, Serialize, Schematize)]
 pub struct ChemState {
-    pub kdgtps_rac: [f32; NVERTS as usize],
-    pub kgtps_rac: [f32; NVERTS as usize],
-    pub rac_act_net_fluxes: [f32; NVERTS as usize],
-    pub rac_inact_net_fluxes: [f32; NVERTS as usize],
-    pub kdgtps_rho: [f32; NVERTS as usize],
-    pub kgtps_rho: [f32; NVERTS as usize],
+    pub kdgtps_rac: [f32; NVERTS],
+    pub kgtps_rac: [f32; NVERTS],
+    pub rac_act_net_fluxes: [f32; NVERTS],
+    pub rac_inact_net_fluxes: [f32; NVERTS],
+    pub kdgtps_rho: [f32; NVERTS],
+    pub kgtps_rho: [f32; NVERTS],
     pub rac_cyto: f32,
     pub rho_cyto: f32,
-    pub rho_act_net_fluxes: [f32; NVERTS as usize],
-    pub rho_inact_net_fluxes: [f32; NVERTS as usize],
+    pub rho_act_net_fluxes: [f32; NVERTS],
+    pub rho_inact_net_fluxes: [f32; NVERTS],
     pub x_tens: f32,
 }
 
 #[derive(Copy, Clone, Debug, Default, Deserialize, Serialize, Schematize)]
 pub struct GeomState {
-    pub unit_edge_vecs: [P2D; NVERTS as usize],
-    pub edge_lens: [f32; NVERTS as usize],
-    pub unit_inward_vecs: [P2D; NVERTS as usize],
+    pub unit_edge_vecs: [P2D; NVERTS],
+    pub edge_lens: [f32; NVERTS],
+    pub unit_inward_vecs: [P2D; NVERTS],
 }
 
 #[derive(Copy, Clone, Debug, Default, Deserialize, Serialize, Schematize)]
-pub struct CellDepVars {
+pub struct DepStates {
     geom_state: GeomState,
     chem_state: ChemState,
     mech_state: MechState,
@@ -180,7 +180,7 @@ pub struct CellDepVars {
 pub fn fmt_var_arr<T: fmt::Display>(
     f: &mut fmt::Formatter<'_>,
     description: &str,
-    vars: &[T; NVERTS as usize],
+    vars: &[T; NVERTS],
 ) -> fmt::Result {
     let contents = vars
         .iter()
@@ -190,7 +190,7 @@ pub fn fmt_var_arr<T: fmt::Display>(
     writeln!(f, "{}: [{}]", description, contents)
 }
 
-impl Display for State {
+impl Display for CoreState {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // println!("----------");
         fmt_var_arr(f, "vertex_coords", &self.vertex_coords)?;
@@ -230,7 +230,7 @@ impl Display for ChemState {
     }
 }
 
-impl Display for CellDepVars {
+impl Display for DepStates {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(f, "{}", &self.geom_state)?;
         writeln!(f, "{}", &self.mech_state)?;
@@ -238,20 +238,20 @@ impl Display for CellDepVars {
     }
 }
 
-impl State {
+impl CoreState {
     pub fn num_vars() -> usize {
         (NVERTS * 6) as usize
     }
 
-    pub fn calc_geom_state(state: &State) -> GeomState {
+    pub fn calc_geom_state(state: &CoreState) -> GeomState {
         let evs = calc_edge_vecs(&state.vertex_coords);
-        let mut edge_lens = [0.0_f32; NVERTS as usize];
-        (0..NVERTS as usize).for_each(|i| edge_lens[i] = (&evs[i]).mag());
-        let mut uevs = [P2D::default(); NVERTS as usize];
-        (0..NVERTS as usize).for_each(|i| uevs[i] = (&evs[i]).unitize());
-        let mut uivs = [P2D::default(); NVERTS as usize];
-        (0..NVERTS as usize).for_each(|i| {
-            let im1 = circ_ix_minus(i as usize, NVERTS as usize);
+        let mut edge_lens = [0.0_f32; NVERTS];
+        (0..NVERTS).for_each(|i| edge_lens[i] = (&evs[i]).mag());
+        let mut uevs = [P2D::default(); NVERTS];
+        (0..NVERTS).for_each(|i| uevs[i] = (&evs[i]).unitize());
+        let mut uivs = [P2D::default(); NVERTS];
+        (0..NVERTS).for_each(|i| {
+            let im1 = circ_ix_minus(i as usize, NVERTS);
             let tangent = (uevs[i] + uevs[im1]).unitize();
             uivs[i] = tangent.normal();
         });
@@ -264,7 +264,7 @@ impl State {
     }
 
     pub fn calc_mech_state(
-        state: &State,
+        state: &CoreState,
         geom_state: &GeomState,
         parameters: &Parameters,
     ) -> MechState {
@@ -287,19 +287,18 @@ impl State {
             parameters.rest_area,
             parameters.stiffness_ctyo,
         );
-        let mut edge_strains = [0.0_f32; NVERTS as usize];
-        (0..NVERTS as usize)
-            .for_each(|i| edge_strains[i] = (edge_lens[i] / parameters.rest_edge_len) - 1.0);
+        let mut edge_strains = [0.0_f32; NVERTS];
+        (0..NVERTS).for_each(|i| edge_strains[i] = (edge_lens[i] / parameters.rest_edge_len) - 1.0);
         let edge_forces = calc_edge_forces(&edge_strains, uevs, parameters.stiffness_edge);
         let avg_tens_strain = edge_strains
             .iter()
             .map(|&es| if es < 0.0 { 0.0 } else { es })
             .sum::<f32>()
             / NVERTS as f32;
-        let mut sum_fs = [P2D::default(); NVERTS as usize];
-        (0..NVERTS as usize).for_each(|i| {
+        let mut sum_fs = [P2D::default(); NVERTS];
+        (0..NVERTS).for_each(|i| {
             sum_fs[i] = rgtp_forces[i] + cyto_forces[i] + edge_forces[i]
-                - edge_forces[circ_ix_minus(i as usize, NVERTS as usize)];
+                - edge_forces[circ_ix_minus(i as usize, NVERTS)];
         });
         MechState {
             edge_strains,
@@ -312,7 +311,7 @@ impl State {
     }
 
     pub fn calc_chem_state(
-        state: &State,
+        state: &CoreState,
         geom_state: &GeomState,
         mech_state: &MechState,
         rac_rand_state: &RacRandState,
@@ -320,9 +319,9 @@ impl State {
         parameters: &Parameters,
     ) -> ChemState {
         let GeomState { edge_lens, .. } = geom_state;
-        let mut avg_edge_lens: [f32; NVERTS as usize] = [0.0_f32; NVERTS as usize];
-        (0..NVERTS as usize).for_each(|i| {
-            let im1 = circ_ix_minus(i as usize, NVERTS as usize);
+        let mut avg_edge_lens: [f32; NVERTS] = [0.0_f32; NVERTS];
+        (0..NVERTS).for_each(|i| {
+            let im1 = circ_ix_minus(i as usize, NVERTS);
             avg_edge_lens[i] = (edge_lens[i] + edge_lens[im1]) / 2.0;
         });
 
@@ -400,12 +399,12 @@ impl State {
         }
     }
 
-    pub(crate) fn calc_dep_vars(
-        state: &State,
+    pub(crate) fn calc_dep_states(
+        state: &CoreState,
         rac_rand_state: &RacRandState,
         inter_state: &InteractionState,
         parameters: &Parameters,
-    ) -> CellDepVars {
+    ) -> DepStates {
         let geom_state = Self::calc_geom_state(state);
         let mech_state = Self::calc_mech_state(state, &geom_state, parameters);
         let chem_state = Self::calc_chem_state(
@@ -417,7 +416,7 @@ impl State {
             parameters,
         );
 
-        CellDepVars {
+        DepStates {
             geom_state,
             chem_state,
             mech_state,
@@ -425,18 +424,18 @@ impl State {
     }
 
     pub fn dynamics_f(
-        state: &State,
+        state: &CoreState,
         rac_rand_state: &RacRandState,
         inter_state: &InteractionState,
         parameters: &Parameters,
-    ) -> State {
-        let CellDepVars {
+    ) -> CoreState {
+        let DepStates {
             chem_state,
             mech_state,
             ..
-        } = State::calc_dep_vars(state, rac_rand_state, inter_state, parameters);
-        let mut delta = State::default();
-        for i in 0..NVERTS as usize {
+        } = CoreState::calc_dep_states(state, rac_rand_state, inter_state, parameters);
+        let mut delta = CoreState::default();
+        for i in 0..NVERTS {
             let inactivated_rac = chem_state.kdgtps_rac[i] * state.rac_acts[i];
             let activated_rac = chem_state.kgtps_rac[i] * state.rac_inacts[i];
             let delta_rac_activated = activated_rac - inactivated_rac;
@@ -468,14 +467,14 @@ impl State {
     }
 
     pub fn new(
-        vertex_coords: [P2D; NVERTS as usize],
-        rac_acts: [f32; NVERTS as usize],
-        rac_inacts: [f32; NVERTS as usize],
-        rho_acts: [f32; NVERTS as usize],
-        rho_inacts: [f32; NVERTS as usize],
-    ) -> State {
-        // x_cils: [f32; NVERTS], x_coas: [f32; NVERTS], x_chemoas: [f32; NVERTS], x_rands: [f32; NVERTS], x_bdrys: [f32; NVERTS as usize];
-        State {
+        vertex_coords: [P2D; NVERTS],
+        rac_acts: [f32; NVERTS],
+        rac_inacts: [f32; NVERTS],
+        rho_acts: [f32; NVERTS],
+        rho_inacts: [f32; NVERTS],
+    ) -> CoreState {
+        // x_cils: [f32; NVERTS], x_coas: [f32; NVERTS], x_chemoas: [f32; NVERTS], x_rands: [f32; NVERTS], x_bdrys: [f32; NVERTS];
+        CoreState {
             vertex_coords,
             rac_acts,
             rac_inacts,
@@ -484,14 +483,14 @@ impl State {
         }
     }
 
-    pub fn scalar_mul(&self, s: f32) -> State {
-        let mut vertex_coords = [P2D::default(); NVERTS as usize];
-        let mut rac_acts = [0.0_f32; NVERTS as usize];
-        let mut rac_inacts = [0.0_f32; NVERTS as usize];
-        let mut rho_acts = [0.0_f32; NVERTS as usize];
-        let mut rho_inacts = [0.0_f32; NVERTS as usize];
+    pub fn scalar_mul(&self, s: f32) -> CoreState {
+        let mut vertex_coords = [P2D::default(); NVERTS];
+        let mut rac_acts = [0.0_f32; NVERTS];
+        let mut rac_inacts = [0.0_f32; NVERTS];
+        let mut rho_acts = [0.0_f32; NVERTS];
+        let mut rho_inacts = [0.0_f32; NVERTS];
 
-        for i in 0..(NVERTS as usize) {
+        for i in 0..(NVERTS) {
             vertex_coords[i] = s * self.vertex_coords[i];
             rac_acts[i] = self.rac_acts[i] * s;
             rac_inacts[i] = self.rac_inacts[i] * s;
@@ -499,7 +498,7 @@ impl State {
             rho_inacts[i] = self.rho_inacts[i] * s;
         }
 
-        State {
+        CoreState {
             vertex_coords,
             rac_acts,
             rac_inacts,
@@ -508,14 +507,14 @@ impl State {
         }
     }
 
-    pub fn scalar_add(&self, s: f32) -> State {
-        let mut vertex_coords = [P2D::default(); NVERTS as usize];
-        let mut rac_acts = [0.0_f32; NVERTS as usize];
-        let mut rac_inacts = [0.0_f32; NVERTS as usize];
-        let mut rho_acts = [0.0_f32; NVERTS as usize];
-        let mut rho_inacts = [0.0_f32; NVERTS as usize];
+    pub fn scalar_add(&self, s: f32) -> CoreState {
+        let mut vertex_coords = [P2D::default(); NVERTS];
+        let mut rac_acts = [0.0_f32; NVERTS];
+        let mut rac_inacts = [0.0_f32; NVERTS];
+        let mut rho_acts = [0.0_f32; NVERTS];
+        let mut rho_inacts = [0.0_f32; NVERTS];
 
-        for i in 0..(NVERTS as usize) {
+        for i in 0..(NVERTS) {
             vertex_coords[i] = s + self.vertex_coords[i];
             rac_acts[i] = self.rac_acts[i] + s;
             rac_inacts[i] = self.rac_inacts[i] + s;
@@ -523,7 +522,7 @@ impl State {
             rho_inacts[i] = self.rho_inacts[i] + s;
         }
 
-        State {
+        CoreState {
             vertex_coords,
             rac_acts,
             rac_inacts,
@@ -532,14 +531,14 @@ impl State {
         }
     }
 
-    pub fn abs(&self) -> State {
-        let mut vertex_coords = [P2D::default(); NVERTS as usize];
-        let mut rac_acts = [0.0_f32; NVERTS as usize];
-        let mut rac_inacts = [0.0_f32; NVERTS as usize];
-        let mut rho_acts = [0.0_f32; NVERTS as usize];
-        let mut rho_inacts = [0.0_f32; NVERTS as usize];
+    pub fn abs(&self) -> CoreState {
+        let mut vertex_coords = [P2D::default(); NVERTS];
+        let mut rac_acts = [0.0_f32; NVERTS];
+        let mut rac_inacts = [0.0_f32; NVERTS];
+        let mut rho_acts = [0.0_f32; NVERTS];
+        let mut rho_inacts = [0.0_f32; NVERTS];
 
-        for i in 0..(NVERTS as usize) {
+        for i in 0..(NVERTS) {
             vertex_coords[i] = vertex_coords[i].abs();
             rac_acts[i] = self.rac_acts[i].abs();
             rac_inacts[i] = self.rac_inacts[i].abs();
@@ -547,7 +546,7 @@ impl State {
             rho_inacts[i] = self.rho_inacts[i].abs();
         }
 
-        State {
+        CoreState {
             vertex_coords,
             rac_acts,
             rac_inacts,
@@ -556,14 +555,14 @@ impl State {
         }
     }
 
-    pub fn powi(&self, x: i32) -> State {
-        let mut vertex_coords = [P2D::default(); NVERTS as usize];
-        let mut rac_acts = [0.0_f32; NVERTS as usize];
-        let mut rac_inacts = [0.0_f32; NVERTS as usize];
-        let mut rho_acts = [0.0_f32; NVERTS as usize];
-        let mut rho_inacts = [0.0_f32; NVERTS as usize];
+    pub fn powi(&self, x: i32) -> CoreState {
+        let mut vertex_coords = [P2D::default(); NVERTS];
+        let mut rac_acts = [0.0_f32; NVERTS];
+        let mut rac_inacts = [0.0_f32; NVERTS];
+        let mut rho_acts = [0.0_f32; NVERTS];
+        let mut rho_inacts = [0.0_f32; NVERTS];
 
-        for i in 0..(NVERTS as usize) {
+        for i in 0..(NVERTS) {
             vertex_coords[i] = vertex_coords[i].powi(x);
             rac_acts[i] = self.rac_acts[i].powi(x);
             rac_inacts[i] = self.rac_inacts[i].powi(x);
@@ -571,7 +570,7 @@ impl State {
             rho_inacts[i] = self.rho_inacts[i].powi(x);
         }
 
-        State {
+        CoreState {
             vertex_coords,
             rac_acts,
             rac_inacts,
@@ -580,14 +579,14 @@ impl State {
         }
     }
 
-    pub fn max(&self, other: &State) -> State {
-        let mut vertex_coords = [P2D::default(); NVERTS as usize];
-        let mut rac_acts = [0.0_f32; NVERTS as usize];
-        let mut rac_inacts = [0.0_f32; NVERTS as usize];
-        let mut rho_acts = [0.0_f32; NVERTS as usize];
-        let mut rho_inacts = [0.0_f32; NVERTS as usize];
+    pub fn max(&self, other: &CoreState) -> CoreState {
+        let mut vertex_coords = [P2D::default(); NVERTS];
+        let mut rac_acts = [0.0_f32; NVERTS];
+        let mut rac_inacts = [0.0_f32; NVERTS];
+        let mut rho_acts = [0.0_f32; NVERTS];
+        let mut rho_inacts = [0.0_f32; NVERTS];
 
-        for i in 0..(NVERTS as usize) {
+        for i in 0..(NVERTS) {
             vertex_coords[i] = vertex_coords[i].max(&other.vertex_coords[i]);
             rac_acts[i] = max_f32(self.rac_acts[i], other.rac_acts[i]);
             rac_inacts[i] = max_f32(self.rac_inacts[i], other.rac_inacts[i]);
@@ -595,7 +594,7 @@ impl State {
             rho_inacts[i] = max_f32(self.rho_inacts[i], other.rho_inacts[i]);
         }
 
-        State {
+        CoreState {
             vertex_coords,
             rac_acts,
             rac_inacts,
@@ -604,14 +603,14 @@ impl State {
         }
     }
 
-    pub fn min(&self, other: &State) -> State {
-        let mut vertex_coords = [P2D::default(); NVERTS as usize];
-        let mut rac_acts = [0.0_f32; NVERTS as usize];
-        let mut rac_inacts = [0.0_f32; NVERTS as usize];
-        let mut rho_acts = [0.0_f32; NVERTS as usize];
-        let mut rho_inacts = [0.0_f32; NVERTS as usize];
+    pub fn min(&self, other: &CoreState) -> CoreState {
+        let mut vertex_coords = [P2D::default(); NVERTS];
+        let mut rac_acts = [0.0_f32; NVERTS];
+        let mut rac_inacts = [0.0_f32; NVERTS];
+        let mut rho_acts = [0.0_f32; NVERTS];
+        let mut rho_inacts = [0.0_f32; NVERTS];
 
-        for i in 0..(NVERTS as usize) {
+        for i in 0..(NVERTS) {
             vertex_coords[i] = vertex_coords[i].min(&other.vertex_coords[i]);
             rac_acts[i] = min_f32(self.rac_acts[i], other.rac_acts[i]);
             rac_inacts[i] = min_f32(self.rac_inacts[i], other.rac_inacts[i]);
@@ -619,7 +618,7 @@ impl State {
             rho_inacts[i] = min_f32(self.rho_inacts[i], other.rho_inacts[i]);
         }
 
-        State {
+        CoreState {
             vertex_coords,
             rac_acts,
             rac_inacts,
@@ -631,7 +630,7 @@ impl State {
     pub fn sum(&self) -> f32 {
         let mut r: f32 = 0.0;
 
-        for i in 0..(NVERTS as usize) {
+        for i in 0..(NVERTS) {
             r += self.vertex_coords[i].x + self.vertex_coords[i].y;
             r += self.rac_acts[i];
             r += self.rac_inacts[i];

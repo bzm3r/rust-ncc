@@ -1,15 +1,16 @@
 #![allow(unused)]
-use crate::cell::{chemistry::RacRandState, state::State};
+use crate::cell::{chemistry::RacRandState, core_state::CoreState};
 use crate::math::{max_f32, min_f32};
 use crate::parameters::Parameters;
-use crate::world::interactions::InteractionState;
+use crate::world::Interactions;
 
 type CellDynamicsFn = fn(
-    state: &State,
+    state: &CoreState,
     rac_random_state: &RacRandState,
-    interaction_state: &InteractionState,
+    interactions: &Interactions,
     parameters: &Parameters,
-) -> State;
+) -> CoreState;
+
 const C: [f32; 7] = [0.0, 1.0 / 5.0, 3.0 / 10.0, 4.0 / 5.0, 8.0 / 9.0, 1.0, 1.0];
 // A0s are all zeros
 const A1: f32 = 1.0 / 5.0;
@@ -66,33 +67,33 @@ pub struct AuxArgs {
 }
 
 pub struct SolverArgs {
-    f: fn(dt: f32, state: &State, parameters: &Parameters) -> State,
-    init_state: State,
+    f: fn(dt: f32, state: &CoreState, parameters: &Parameters) -> CoreState,
+    init_state: CoreState,
     t0: f32,
     t1: f32,
 }
 
 pub struct Solution {
-    pub y: Result<State, String>,
+    pub y: Result<CoreState, String>,
     pub num_rejections: u32,
     pub num_iters: u32,
 }
 
 pub struct Ks {
-    k0: State,
-    k1: State,
-    k2: State,
-    k3: State,
-    k4: State,
-    k5: State,
-    k6: State,
+    k0: CoreState,
+    k1: CoreState,
+    k2: CoreState,
+    k3: CoreState,
+    k4: CoreState,
+    k5: CoreState,
+    k6: CoreState,
 }
 
 impl Ks {
     fn calc(
         f: CellDynamicsFn,
         h: f32,
-        init_state: State,
+        init_state: CoreState,
         rand_state: &RacRandState,
         inter_state: &InteractionState,
         parameters: &Parameters,
@@ -147,7 +148,7 @@ impl Ks {
 pub fn integrator(
     mut dt: f32,
     f: CellDynamicsFn,
-    init_state: &State,
+    init_state: &CoreState,
     rand_state: &RacRandState,
     inter_state: &InteractionState,
     parameters: &Parameters,

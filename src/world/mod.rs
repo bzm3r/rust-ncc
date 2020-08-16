@@ -10,14 +10,13 @@ pub mod hardio;
 pub mod interactions;
 
 use crate::cell::chemistry::RacRandState;
-use crate::cell::state::{ChemState, GeomState, MechState, State};
-use crate::cell::{Cell, VertexGenInfo};
+use crate::cell::core_state::{ChemState, CoreState, GeomState, MechState};
+use crate::cell::{ModelCell, VertexGenInfo};
 use crate::experiment::{Experiment, GroupLayout};
 use crate::math::p2d::P2D;
 use crate::parameters::quantity::Length;
 use crate::parameters::{InputParameters, Parameters, WorldParameters};
 use crate::world::hardio::{save_data, save_schema};
-use crate::world::interactions::InteractionState;
 use crate::NVERTS;
 use avro_rs::Writer;
 use avro_schema_derive::Schematize;
@@ -31,32 +30,8 @@ use std::path::PathBuf;
 #[derive(Clone, Deserialize, Serialize, Schematize)]
 struct WorldState {
     tstep: u32,
-    cells: Vec<Cell>,
-    interactions: Vec<InteractionState>,
-}
-
-#[derive(Clone, Deserialize, Serialize, Schematize)]
-struct WorldMechState {
-    tstep: u32,
-    state: Vec<MechState>,
-}
-
-#[derive(Clone, Deserialize, Serialize, Schematize)]
-struct WorldRacRandState {
-    tstep: u32,
-    state: Vec<RacRandState>,
-}
-
-#[derive(Clone, Deserialize, Serialize, Schematize)]
-struct WorldGeomState {
-    tstep: u32,
-    state: Vec<GeomState>,
-}
-
-#[derive(Clone, Deserialize, Serialize, Schematize)]
-struct WorldChemState {
-    tstep: u32,
-    state: Vec<ChemState>,
+    cells: Vec<ModelCell>,
+    interactions: Vec<Interactions>,
 }
 
 impl WorldState {
@@ -81,84 +56,6 @@ impl WorldState {
             interactions,
         }
     }
-
-    fn calc_interactions(cells: &[Cell]) -> Vec<InteractionState> {
-        //let contact_mat = ContactMatrix::calc(&cells);
-        let mut r = vec![];
-        for _ in cells.iter() {
-            let x_cil = [0.0; NVERTS as usize];
-            r.push(InteractionState {
-                x_cil,
-                x_chemoas: [0.0; NVERTS as usize],
-                x_coas: [0.0; NVERTS as usize],
-                x_bdrys: [0.0; NVERTS as usize],
-            })
-        }
-        r
-    }
-
-    pub fn extract_geom_state(&self) -> WorldGeomState {
-        WorldGeomState {
-            tstep: self.tstep,
-            state: self
-                .cells
-                .iter()
-                .map(|c| State::calc_geom_state(&c.state))
-                .collect::<Vec<GeomState>>(),
-        }
-    }
-
-    pub fn extract_mech_state(&self, group_parameters: &[Parameters]) -> WorldMechState {
-        WorldMechState {
-            tstep: self.tstep,
-            state: self
-                .cells
-                .iter()
-                .map(|c| {
-                    let gs = State::calc_geom_state(&c.state);
-                    State::calc_mech_state(&c.state, &gs, &group_parameters[c.group_ix as usize])
-                })
-                .collect::<Vec<MechState>>(),
-        }
-    }
-
-    pub fn extract_chem_state(&self, group_parameters: &[Parameters]) -> WorldChemState {
-        WorldChemState {
-            tstep: self.tstep,
-            state: self
-                .cells
-                .iter()
-                .map(|c| {
-                    let gs = State::calc_geom_state(&c.state);
-                    let ms = State::calc_mech_state(
-                        &c.state,
-                        &gs,
-                        &group_parameters[c.group_ix as usize],
-                    );
-                    State::calc_chem_state(
-                        &c.state,
-                        &gs,
-                        &ms,
-                        &c.rac_rand_state,
-                        &self.interactions[c.ix as usize],
-                        &group_parameters[c.group_ix as usize],
-                    )
-                })
-                .collect::<Vec<ChemState>>(),
-        }
-    }
-
-    #[allow(unused)]
-    pub fn extract_rac_rand_state(&self) -> WorldRacRandState {
-        WorldRacRandState {
-            tstep: self.tstep,
-            state: self
-                .cells
-                .iter()
-                .map(|c| c.rac_rand_state)
-                .collect::<Vec<RacRandState>>(),
-        }
-    }
 }
 
 pub struct RandomEventGenerator {
@@ -170,6 +67,15 @@ impl RandomEventGenerator {
     pub fn sample(&mut self) -> f32 {
         self.distrib.sample(&mut self.rng)
     }
+}
+
+#[derive(Copy, Clone, Debug, Default, Deserialize, Schematize, Serialize)]
+pub struct Interactions {
+    pub x_cils: [f32; NVERTS],
+    pub x_adhs: [P2D; NVERTS],
+    pub x_chemoas: [f32; NVERTS],
+    pub x_coas: [f32; NVERTS],
+    pub x_bdrys: [f32; NVERTS],
 }
 
 pub struct World {
@@ -211,7 +117,7 @@ impl World {
                 } else {
                     None
                 };
-                cells.push(Cell::new(
+                cells.push(ModelCell::new(
                     num_cells,
                     gix as u32,
                     VertexGenInfo::Centroid(cc),
@@ -261,62 +167,6 @@ impl World {
         let mut writer = Writer::new(&schema, Vec::new()); //Writer::with_codec(&self.state_schema, Vec::new(), avro_rs::Codec::Deflate);
         for ws in self.history.iter() {
             writer.append_ser(ws).unwrap();
-        }
-        let encoded = writer.into_inner().unwrap();
-        save_data(name, &encoded, output_dir);
-    }
-
-    pub fn save_mech_history(&self, output_dir: &PathBuf) {
-        let name = "mech_hist";
-        let schema = WorldMechState::schematize(None);
-        save_schema(name, &schema, output_dir);
-        let mut writer = Writer::new(&schema, Vec::new()); //Writer::with_codec(&self.state_schema, Vec::new(), avro_rs::Codec::Deflate);
-        for ws in self.history.iter() {
-            writer
-                .append_ser(ws.extract_mech_state(&self.group_parameters))
-                .unwrap();
-        }
-        let encoded = writer.into_inner().unwrap();
-        save_data(name, &encoded, output_dir);
-    }
-
-    #[allow(unused)]
-    pub fn save_chem_history(&self, output_dir: &PathBuf) {
-        let name = "chem_hist";
-        let schema = WorldChemState::schematize(None);
-        save_schema(name, &schema, output_dir);
-        let mut writer = Writer::new(&schema, Vec::new()); //Writer::with_codec(&self.state_schema, Vec::new(), avro_rs::Codec::Deflate);
-        for ws in self.history.iter() {
-            writer
-                .append_ser(ws.extract_chem_state(&self.group_parameters))
-                .unwrap();
-        }
-        let encoded = writer.into_inner().unwrap();
-        save_data(name, &encoded, output_dir);
-    }
-
-    pub fn save_geom_history(&self, output_dir: &PathBuf) {
-        let name = "geom_hist";
-        let schema = WorldGeomState::schematize(None);
-        save_schema(name, &schema, output_dir);
-        let mut writer = Writer::new(&schema, Vec::new()); //Writer::with_codec(&self.state_schema, Vec::new(), avro_rs::Codec::Deflate);
-        for ws in self.history.iter() {
-            writer.append_ser(ws.extract_geom_state()).unwrap();
-        }
-        let encoded = writer.into_inner().unwrap();
-        save_data(name, &encoded, output_dir);
-    }
-
-    #[allow(unused)]
-    pub fn save_rand_history(&self, output_dir: &PathBuf) {
-        let name = "rand_hist";
-        let schema = WorldRacRandState::schematize(None);
-        save_schema(name, &schema, output_dir);
-        let mut writer = Writer::new(&schema, Vec::new()); //Writer::with_codec(&self.state_schema, Vec::new(), avro_rs::Codec::Deflate);
-        for ws in self.history.iter() {
-            writer
-                .append_ser(ws.extract_chem_state(&self.group_parameters))
-                .unwrap();
         }
         let encoded = writer.into_inner().unwrap();
         save_data(name, &encoded, output_dir);

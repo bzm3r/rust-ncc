@@ -8,7 +8,7 @@ mod world;
 use crate::experiment::load_experiment;
 use std::path::PathBuf;
 
-pub const NVERTS: u32 = 16;
+pub const NVERTS: usize = 16;
 
 fn main() {
     let exp = load_experiment("2020-JUL-11-test");
