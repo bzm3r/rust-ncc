@@ -5,11 +5,11 @@ use crate::cell::chemistry::{
 use crate::cell::mechanics::{
     calc_cyto_forces, calc_edge_forces, calc_edge_vecs, calc_rgtp_forces,
 };
+use crate::interactions::InteractionState;
 use crate::math::p2d::P2D;
 use crate::math::{hill_function3, max_f32, min_f32};
-use crate::parameters::Parameters;
+use crate::parameters::{Parameters, WorldParameters};
 use crate::utils::circ_ix_minus;
-use crate::world::interactions::InteractionState;
 use crate::NVERTS;
 use avro_schema_derive::Schematize;
 use serde::{Deserialize, Serialize};
@@ -172,9 +172,9 @@ pub struct GeomState {
 
 #[derive(Copy, Clone, Debug, Default, Deserialize, Serialize, Schematize)]
 pub struct DepStates {
-    geom_state: GeomState,
-    chem_state: ChemState,
-    mech_state: MechState,
+    pub geom_state: GeomState,
+    pub chem_state: ChemState,
+    pub mech_state: MechState,
 }
 
 pub fn fmt_var_arr<T: fmt::Display>(
@@ -348,7 +348,7 @@ impl CoreState {
         let kdgtps_rac = calc_kdgtps_rac(
             &state.rac_acts,
             &conc_rho_acts,
-            &inter_state.x_cil,
+            &inter_state.x_cils,
             x_tens,
             parameters.kdgtp_rac,
             parameters.kdgtp_rho_on_rac,
@@ -357,7 +357,7 @@ impl CoreState {
         let kgtps_rho = calc_kgtps_rho(
             &state.rho_acts,
             &conc_rho_acts,
-            &inter_state.x_cil,
+            &inter_state.x_cils,
             parameters.kgtp_rho,
             parameters.halfmax_vertex_rgtp_conc,
             parameters.kgtp_rho_auto,
@@ -427,6 +427,7 @@ impl CoreState {
         state: &CoreState,
         rac_rand_state: &RacRandState,
         inter_state: &InteractionState,
+        world_parameters: &WorldParameters,
         parameters: &Parameters,
     ) -> CoreState {
         let DepStates {
@@ -461,7 +462,7 @@ impl CoreState {
             let vertex_rho_inact_flux = chem_state.rho_inact_net_fluxes[i];
             delta.rho_acts[i] = delta_rho_activated + vertex_rho_act_flux;
             delta.rho_inacts[i] = rho_cyto_exchange + vertex_rho_inact_flux - delta_rho_activated;
-            delta.vertex_coords[i] = (1.0 / parameters.vertex_eta) * mech_state.sum_fs[i];
+            delta.vertex_coords[i] = (1.0 / world_parameters.vertex_eta) * mech_state.sum_fs[i];
         }
         delta
     }

@@ -10,7 +10,7 @@ use crate::math::p2d::P2D;
 use crate::math::{max_f32s, min_f32s};
 use crate::utils::{circ_ix_minus, circ_ix_plus};
 
-/// Calculate the area of a polgon with vertices positioned at `xys`. [ref](http://geomalgorithms.com/a01-_area.html)
+/// Calculate the area of a polygon with vertices positioned at `xys`. [ref](http://geomalgorithms.com/a01-_area.html)
 pub fn calc_poly_area(xys: &[P2D]) -> f32 {
     let nvs = xys.len();
 
@@ -56,6 +56,10 @@ impl Bbox {
         !((self.xmin > other.xmax || self.xmax < other.xmin)
             || (self.ymin > other.ymax || self.ymax < other.ymin))
     }
+
+    pub fn contains(&self, point: &P2D) -> bool {
+        !(point.x < self.xmin || point.x > self.xmax || point.y < self.ymin || point.y > self.ymax)
+    }
 }
 
 pub fn calc_line_and_seg_intersect(p0: &P2D, p1: &P2D, l0: &P2D, l: &P2D) -> f32 {
@@ -64,26 +68,51 @@ pub fn calc_line_and_seg_intersect(p0: &P2D, p1: &P2D, l0: &P2D, l: &P2D) -> f32
     (l.x * (l0.y - p0.y) - l.y * (l0.x - p0.x)) / (l.x * s.y - l.y * s.x)
 }
 
-pub fn move_inner_point_to_bdry(point: &P2D, move_vec: &P2D, pol: &[P2D]) -> P2D {
-    let mut num_intersects: usize = 0;
-    let mut intersects = [P2D::default(); 2];
-    for ix in 0..pol.len() {
-        let p0 = &pol[ix];
-        let p1 = &pol[circ_ix_plus(ix, pol.len())];
-        let t = calc_line_and_seg_intersect(p0, p1, point, move_vec);
-        if (0.0 < t && t < 1.0) || (t < std::f32::EPSILON) || ((t - 1.0).abs() < std::f32::EPSILON)
-        {
-            intersects[num_intersects] = t * (p1 - p0) + p0;
-            num_intersects += 1;
-            if num_intersects == 2 {
-                break;
+pub fn move_inner_point_to_bdry(
+    point: &P2D,
+    move_vec: &P2D,
+    poly_bbox: &Bbox,
+    poly: &[P2D],
+) -> P2D {
+    if poly_bbox.contains(point) {
+        let mut num_intersects: usize = 0;
+        let mut intersects = [P2D::default(); 2];
+        for ix in 0..poly.len() {
+            let p0 = &poly[ix];
+            let p1 = &poly[circ_ix_plus(ix, poly.len())];
+            let t = calc_line_and_seg_intersect(p0, p1, point, move_vec);
+            if (0.0 < t && t < 1.0)
+                || (t < std::f32::EPSILON)
+                || ((t - 1.0).abs() < std::f32::EPSILON)
+            {
+                intersects[num_intersects] = t * (p1 - p0) + *p0;
+                num_intersects += 1;
+                if num_intersects == 2 {
+                    break;
+                }
             }
         }
-    }
 
-    if num_intersects == 0 || num_intersects == 2 {
-        *point
+        if num_intersects == 0 || num_intersects == 2 {
+            *point
+        } else {
+            intersects[0]
+        }
     } else {
-        intersects[0]
+        *point
+    }
+}
+
+pub fn calc_dist_point_to_seg(point: &P2D, s0: &P2D, s1: &P2D) -> f32 {
+    let seg = s1 - s0;
+    let rel_pt = point - s0;
+    let t = (seg.x * rel_pt.x + seg.y * rel_pt.y) / (seg.x * seg.x + seg.y * seg.y);
+
+    if (0.0 < t && t < 1.0) || (t - 1.0).abs() < f32::EPSILON || t.abs() < f32::EPSILON {
+        let w = t * seg;
+        let x = rel_pt - w;
+        x.mag()
+    } else {
+        f32::INFINITY
     }
 }

@@ -2,10 +2,13 @@ title = "test experiment"
 date = "2020-JUN-11"
 description = "An experiment to test rust-ncc."
 
+[[world_parameter_overrides]]
+cil_mat = [[60.0]]
+
 [[cell_groups]]
-    num_cells = 1
+    num_cells = 2
     [cell_groups.layout]
-        width = 1
+        width = 2
         height = 1
         centroid = [0.0, 0.0]
     [cell_groups.parameter_overrides]

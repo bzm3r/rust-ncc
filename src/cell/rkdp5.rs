@@ -1,13 +1,14 @@
 #![allow(unused)]
 use crate::cell::{chemistry::RacRandState, core_state::CoreState};
+use crate::interactions::InteractionState;
 use crate::math::{max_f32, min_f32};
-use crate::parameters::Parameters;
-use crate::world::Interactions;
+use crate::parameters::{Parameters, WorldParameters};
 
 type CellDynamicsFn = fn(
     state: &CoreState,
     rac_random_state: &RacRandState,
-    interactions: &Interactions,
+    interactions: &InteractionState,
+    world_parameters: &WorldParameters,
     parameters: &Parameters,
 ) -> CoreState;
 
@@ -96,41 +97,48 @@ impl Ks {
         init_state: CoreState,
         rand_state: &RacRandState,
         inter_state: &InteractionState,
+        world_parameters: &WorldParameters,
         parameters: &Parameters,
     ) -> Ks {
         // since C[0] = 0.0, the function evaluated at that point will return 0
-        let k0 = f(&init_state, rand_state, inter_state, parameters);
+        let k0 = f(
+            &init_state,
+            rand_state,
+            inter_state,
+            world_parameters,
+            parameters,
+        );
 
         let k1 = {
             let kp = init_state + h * A1 * k0;
-            f(&kp, rand_state, inter_state, parameters)
+            f(&kp, rand_state, inter_state, world_parameters, parameters)
         };
 
         let k2 = {
             let kp = init_state + h * (A2[0] * k0 + A2[1] * k1);
-            f(&kp, rand_state, inter_state, parameters)
+            f(&kp, rand_state, inter_state, world_parameters, parameters)
         };
 
         let k3 = {
             let kp = init_state + h * (A3[0] * k0 + A3[1] * k1 + A3[2] * k2);
-            f(&kp, rand_state, inter_state, parameters)
+            f(&kp, rand_state, inter_state, world_parameters, parameters)
         };
 
         let k4 = {
             let kp = init_state + h * (A4[0] * k0 + A4[1] * k1 + A4[2] * k2 + A4[3] * k3);
-            f(&kp, rand_state, inter_state, parameters)
+            f(&kp, rand_state, inter_state, world_parameters, parameters)
         };
 
         let k5 = {
             let kp =
                 init_state + h * (A5[0] * k0 + A5[1] * k1 + A5[2] * k2 + A5[3] * k3 + A5[4] * k4);
-            f(&kp, rand_state, inter_state, parameters)
+            f(&kp, rand_state, inter_state, world_parameters, parameters)
         };
 
         let k6 = {
             let kp = init_state
                 + h * (A6[0] * k0 + A6[1] * k1 + A6[2] * k2 + A6[3] * k3 + A6[4] * k4 + A6[5] * k5);
-            f(&kp, rand_state, inter_state, parameters)
+            f(&kp, rand_state, inter_state, world_parameters, parameters)
         };
 
         Ks {
@@ -151,6 +159,7 @@ pub fn integrator(
     init_state: &CoreState,
     rand_state: &RacRandState,
     inter_state: &InteractionState,
+    world_parameters: &WorldParameters,
     parameters: &Parameters,
     mut aux_args: AuxArgs,
 ) -> Solution {
@@ -183,7 +192,15 @@ pub fn integrator(
             k4,
             k5,
             k6,
-        } = Ks::calc(f, h, y0, rand_state, inter_state, parameters);
+        } = Ks::calc(
+            f,
+            h,
+            y0,
+            rand_state,
+            inter_state,
+            world_parameters,
+            parameters,
+        );
 
         let y1 = y0
             + h * (B[0] * k0

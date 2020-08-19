@@ -6,11 +6,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use crate::utils::circ_ix_plus;
-use crate::math::p2d::P2D;
-use crate::NVERTS;
-use crate::math::geometry::calc_poly_area;
 use crate::math::capped_linear_function;
+use crate::math::geometry::calc_poly_area;
+use crate::math::p2d::P2D;
+use crate::utils::circ_ix_plus;
+use crate::NVERTS;
 
 pub fn calc_edge_vecs(vertex_coords: &[P2D; NVERTS]) -> [P2D; NVERTS] {
     let mut r = [P2D::default(); NVERTS];
@@ -39,8 +39,8 @@ pub fn calc_cyto_forces(
 ) -> [P2D; NVERTS] {
     let area = calc_poly_area(vertex_coords);
     let areal_strain = (area / rest_area) - 1.0;
-    let mag = stiffness_cyto * areal_strain;
     let mut r = [P2D::default(); NVERTS];
+    let mag = stiffness_cyto * areal_strain;
     (0..NVERTS).for_each(|i| r[i] = mag * unit_inward_vecs[i]);
     r
 }

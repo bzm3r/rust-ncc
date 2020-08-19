@@ -7,6 +7,7 @@
 // except according to those terms.
 
 pub mod geometry;
+pub mod matrices;
 pub mod p2d;
 pub mod radians;
 
@@ -26,20 +27,6 @@ pub fn min_f32s(xs: &[f32]) -> f32 {
         }
     }
     x
-}
-
-#[allow(unused)]
-/// Returns the minimum of a slice of floats, and its index in the slice.
-pub fn min_f32s_ix(xs: &[f32]) -> (usize, f32) {
-    let mut x = std::f32::MAX;
-    let mut xix = 0_usize;
-    for (yix, &y) in xs.iter().enumerate() {
-        if y < x {
-            x = y;
-            xix = yix;
-        }
-    }
-    (xix, x)
 }
 
 #[allow(unused)]

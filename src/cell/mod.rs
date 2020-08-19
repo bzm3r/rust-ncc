@@ -13,10 +13,10 @@ pub mod rkdp5;
 use crate::cell::chemistry::{gen_rgtp_distrib, RacRandState, RgtpLayout};
 use crate::cell::core_state::{ChemState, CoreState, DepStates, GeomState, MechState};
 use crate::cell::rkdp5::AuxArgs;
-use crate::math::geometry::{calc_poly_area, move_inner_point_to_bdry};
+use crate::interactions::{CloseCellInfo, InteractionState};
+use crate::math::geometry::{calc_poly_area, move_inner_point_to_bdry, Bbox};
 use crate::math::p2d::P2D;
-use crate::parameters::Parameters;
-use crate::world::Interactions;
+use crate::parameters::{Parameters, WorldParameters};
 use crate::world::RandomEventGenerator;
 use crate::NVERTS;
 use avro_schema_derive::Schematize;
@@ -37,38 +37,19 @@ pub struct ModelCell {
     pub chem_state: ChemState,
 }
 
-fn gen_vertex_coords(centroid: P2D, radius: f32) -> [P2D; NVERTS] {
-    let mut r = [P2D::default(); NVERTS];
-    (0..NVERTS).for_each(|vix| {
-        let vf = (vix as f32) / (NVERTS as f32);
-        let theta = 2.0 * PI * vf;
-        r[vix] = P2D {
-            x: centroid.x + theta.cos() * radius,
-            y: centroid.y + theta.sin() * radius,
-        };
-    });
-    r
-}
-
-#[allow(unused)]
-pub enum VertexGenInfo {
-    Centroid(P2D),
-    Coordinates([P2D; NVERTS]),
-}
-
 fn enforce_volume_exclusion(
     vcs: &[P2D; NVERTS],
     geom_state: &GeomState,
-    closest_cells: &[Option<usize>; NVERTS],
+    close_cells: &CloseCellInfo,
+    cell_bboxes: &[Bbox],
     cell_vcs: &[&[P2D; NVERTS]],
 ) -> [P2D; NVERTS] {
-    let mut r = [P2D::default(); NVERTS];
-    for ix in 0..NVERTS {
-        if let Some(cci) = closest_cells[ix] {
-            r[ix] =
-                move_inner_point_to_bdry(&vcs[ix], &geom_state.unit_inward_vecs[ix], cell_vcs[cci]);
-        } else {
-            r[ix] = vcs[ix];
+    let mut r = *vcs;
+    for cix in 0..close_cells.num {
+        let ovcs = cell_vcs[cix];
+        let obbox = &cell_bboxes[cix];
+        for (vix, vc) in vcs.iter().enumerate() {
+            r[vix] = move_inner_point_to_bdry(vc, &geom_state.unit_inward_vecs[vix], obbox, ovcs);
         }
     }
     r
@@ -78,15 +59,11 @@ impl ModelCell {
     pub fn new(
         ix: u32,
         group_ix: u32,
-        vertex_gen_info: VertexGenInfo,
-        interactions: &Interactions,
+        vertex_coords: [P2D; NVERTS],
+        interactions: &InteractionState,
         parameters: &Parameters,
         reg: Option<&mut RandomEventGenerator>,
     ) -> ModelCell {
-        let vertex_coords = match vertex_gen_info {
-            VertexGenInfo::Centroid(centroid) => gen_vertex_coords(centroid, parameters.cell_r),
-            VertexGenInfo::Coordinates(vcs) => vcs,
-        };
         let (rac_acts, rac_inacts) = gen_rgtp_distrib(
             parameters.init_frac_active,
             parameters.init_frac_inactive,
@@ -127,24 +104,31 @@ impl ModelCell {
     pub fn simulate_euler(
         &self,
         tstep: u32,
-        interactions: &Interactions,
-        closest_cells: &[bool],
+        interactions: &InteractionState,
+        close_cells: &CloseCellInfo,
+        cell_bboxes: &[Bbox],
         cell_vcs: &[&[P2D; NVERTS]],
         rng: Option<&mut RandomEventGenerator>,
+        world_parameters: &WorldParameters,
         parameters: &Parameters,
     ) -> ModelCell {
         let mut state = self.state;
         let nsteps: u32 = 10;
         let dt = 1.0 / (nsteps as f32);
         for i in 0..nsteps {
-            println!("++++++++++++");
-            println!("{}", state);
+            //println!("++++++++++++");
+            //println!("{}", state);
             let dep_vars =
                 CoreState::calc_dep_states(&state, &self.rac_rand_state, interactions, parameters);
-            println!("{}", dep_vars);
-            println!("++++++++++++");
-            let delta =
-                CoreState::dynamics_f(&state, &self.rac_rand_state, &interactions, parameters);
+            //println!("{}", dep_vars);
+            //println!("++++++++++++");
+            let delta = CoreState::dynamics_f(
+                &state,
+                &self.rac_rand_state,
+                &interactions,
+                world_parameters,
+                parameters,
+            );
             state = state + dt * delta;
         }
         let DepStates {
@@ -152,8 +136,13 @@ impl ModelCell {
             chem_state,
             mech_state,
         } = CoreState::calc_dep_states(&state, &self.rac_rand_state, interactions, parameters);
-        state.vertex_coords =
-            enforce_volume_exclusion(&state.vertex_coords, &geom_state, closest_cells, cell_vcs);
+        state.vertex_coords = enforce_volume_exclusion(
+            &state.vertex_coords,
+            &geom_state,
+            close_cells,
+            cell_bboxes,
+            cell_vcs,
+        );
         // println!("++++++++++++");
         #[cfg(debug_assertions)]
         state.validate("euler", &parameters);
@@ -165,8 +154,8 @@ impl ModelCell {
             (true, Some(cr)) => self.rac_rand_state.update(cr, tstep, parameters),
             _ => self.rac_rand_state,
         };
-        println!("{}", rac_rand_state);
-        println!("++++++++++++");
+        //println!("{}", rac_rand_state);
+        //println!("++++++++++++");
         ModelCell {
             ix: self.ix,
             group_ix: self.group_ix,
@@ -182,10 +171,12 @@ impl ModelCell {
     pub fn simulate_rkdp5(
         &self,
         tstep: u32,
-        interactions: &Interactions,
-        closest_cells: &[Option<usize>; NVERTS],
+        interactions: &InteractionState,
+        close_cells: &CloseCellInfo,
+        cell_bboxes: &[Bbox],
         cell_vcs: &[&[P2D; NVERTS]],
         rng: Option<&mut RandomEventGenerator>,
+        world_parameters: &WorldParameters,
         parameters: &Parameters,
     ) -> ModelCell {
         // println!("using rkdp5...");
@@ -201,6 +192,7 @@ impl ModelCell {
             &self.state,
             &self.rac_rand_state,
             interactions,
+            world_parameters,
             parameters,
             aux_args,
         );
@@ -215,8 +207,13 @@ impl ModelCell {
             chem_state,
             mech_state,
         } = CoreState::calc_dep_states(&state, &self.rac_rand_state, interactions, parameters);
-        state.vertex_coords =
-            enforce_volume_exclusion(&state.vertex_coords, &geom_state, closest_cells, cell_vcs);
+        state.vertex_coords = enforce_volume_exclusion(
+            &state.vertex_coords,
+            &geom_state,
+            close_cells,
+            cell_bboxes,
+            cell_vcs,
+        );
         #[cfg(debug_assertions)]
         state.validate("rkdp5", parameters);
         //println!("{}", state);
@@ -239,7 +236,7 @@ impl ModelCell {
 }
 
 /// Calculate the area of an "ideal" initial cell of radius R, if it has n vertices.
-pub fn calc_init_cell_area(r: f32, n: u32) -> f32 {
+pub fn calc_init_cell_area(r: f32, n: usize) -> f32 {
     let poly_coords = (0..n)
         .map(|vix| {
             let theta = (vix as f32) / (n as f32) * 2.0 * PI;

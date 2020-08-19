@@ -234,10 +234,10 @@ impl RacRandState {
         parameters: &Parameters,
     ) -> RacRandState {
         let next_update = tstep + cr.sample().floor() as u32;
-        println!("random update from {} to {}", tstep, next_update);
+        //println!("random update from {} to {}", tstep, next_update);
         let x_rands =
             Self::gen_rand_factors(&mut cr.rng, parameters.num_rand_vs, parameters.rand_mag);
-        println!("{:?}", x_rands);
+        //println!("{:?}", x_rands);
         RacRandState {
             next_update,
             x_rands,

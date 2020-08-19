@@ -16,7 +16,7 @@ pub fn map_id(fstr: &str, id: &syn::Ident) -> proc_macro2::TokenStream {
     match id_string.as_str() {
         "bool" => quote!(avro_rs::schema::Schema::Boolean),
         "i32" | "u32" => quote!(avro_rs::schema::Schema::Int),
-        "i64" | "u64" => quote!(avro_rs::schema::Schema::Long),
+        "i64" | "u64" | "usize" | "isize" => quote!(avro_rs::schema::Schema::Long),
         "f32" => quote!(avro_rs::schema::Schema::Float),
         "f64" => quote!(avro_rs::schema::Schema::Double),
         "String" => quote!(avro_rs::schema::Schema::String),
