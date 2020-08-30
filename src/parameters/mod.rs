@@ -9,6 +9,7 @@
 pub mod quantity;
 
 use crate::cell::calc_init_cell_area;
+use crate::cell::chemistry::RgtpDistribution;
 use crate::interactions::CilMat;
 use crate::parameters::quantity::{
     Diffusion, Force, Length, Quantity, Stress, Time, Tinv, Viscosity,
@@ -84,10 +85,10 @@ pub struct RawParameters {
     pub stiffness_ctyo: Force,
     /// Diffusion rate of Rho GTPase on membrane as a multiple of characteristic.
     pub diffusion_rgtp: Diffusion,
-    /// Initial fraction of Rho GTPase in cytosol (inactive).
-    pub init_frac_inactive: f32,
-    /// Initial fraction of Rho GTPase active.
-    pub init_frac_active: f32,
+    /// Initial distribution of Rac1.
+    pub init_rac: RgtpDistribution,
+    /// Initial distribution of RhoA.
+    pub init_rho: RgtpDistribution,
     /// Total amount of Rac1 in cell.
     pub tot_rac: f32,
     /// Total amount of RhoA in cell.
@@ -149,10 +150,10 @@ pub struct Parameters {
     pub k_mem_off: f32,
     /// Diffusion rate of Rho GTPase on membrane.
     pub diffusion_rgtp: f32,
-    /// Initial fraction of Rho GTPase inactive.
-    pub init_frac_inactive: f32,
-    /// Initial fraction of Rho GTPase active.
-    pub init_frac_active: f32,
+    /// Initial distribution of Rac1.
+    pub init_rac: RgtpDistribution,
+    /// Initial distribution of RhoA.
+    pub init_rho: RgtpDistribution,
     /// Halfmax Rho GTPase activity per vertex.
     pub halfmax_vertex_rgtp_act: f32,
     /// Halfmax Rho GTPase activity per vertex as concentration.
@@ -210,18 +211,7 @@ impl RawParameters {
         let halfmax_vertex_rgtp_conc = rel.pow(-1.0).mulf(halfmax_vertex_rgtp_act);
         let stiffness_edge = self.stiffness_cortex.g() * bq.l3d.g();
         let stiffness_cyto = self.stiffness_ctyo.g().mulf(1.0 / NVERTS as f32);
-        let (init_frac_active, init_frac_inactive) =
-            if 1.0 - self.init_frac_active - self.init_frac_inactive < 0.0 {
-                panic!(
-                    "Cytosolic fraction is negative. init_frac_active: {}, init_frac_inactive: {}",
-                    self.init_frac_active, self.init_frac_inactive
-                );
-            } else {
-                (
-                    self.init_frac_active / bq.frac_rgtp,
-                    self.init_frac_inactive / bq.frac_rgtp,
-                )
-            };
+
         Parameters {
             cell_r: bq.normalize(&cell_r),
             rest_edge_len: bq.normalize(&rel),
@@ -233,8 +223,8 @@ impl RawParameters {
             k_mem_on_vertex: bq.normalize(&bq.k_mem_on) / NVERTS as f32,
             k_mem_off: bq.normalize(&bq.k_mem_off),
             diffusion_rgtp: bq.normalize(&self.diffusion_rgtp),
-            init_frac_inactive,
-            init_frac_active,
+            init_rac: self.init_rac,
+            init_rho: self.init_rho,
             halfmax_vertex_rgtp_act,
             halfmax_vertex_rgtp_conc: bq.normalize(&halfmax_vertex_rgtp_conc),
             tot_rac: self.tot_rac,

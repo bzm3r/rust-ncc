@@ -21,48 +21,72 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::fmt::Display;
 
-#[allow(unused)]
-pub enum RgtpLayout {
+pub enum DistributionType {
     Random,
-    BiasedVertices(Vec<usize>),
+    Specific([bool; NVERTS as usize]),
 }
 
-impl RgtpLayout {
-    pub fn gen_distrib(&self, frac_to_distrib: f32) -> [f32; NVERTS] {
-        let mut rgtp_distrib: [f32; NVERTS] = [0.0_f32; NVERTS];
-        match self {
-            RgtpLayout::Random => {
-                let distrib: Uniform<f32> = Uniform::new_inclusive(0.0, 1.0);
-                let mut rng = thread_rng();
-                rgtp_distrib.iter_mut().for_each(|e| {
-                    *e = rng.sample(distrib);
-                });
+pub struct DistributionScheme {
+    pub frac: f32,
+    pub ty: DistributionType,
+}
+
+impl DistributionScheme {
+    fn scaled_unitize(frac: f32, mut distrib: [f32; NVERTS as usize]) -> [f32; NVERTS as usize] {
+        let sum: f32 = distrib.iter().sum();
+        distrib.iter_mut().for_each(|e| *e = *e * frac / sum);
+        distrib
+    }
+
+    fn gen_random(frac: f32) -> [f32; NVERTS as usize] {
+        let mut r = [0.0; NVERTS as usize];
+        let distrib: Uniform<f32> = Uniform::new_inclusive(0.0, 1.0);
+        let mut rng = thread_rng();
+        r.iter_mut().for_each(|e| {
+            *e = rng.sample(distrib);
+        });
+        Self::scaled_unitize(frac, r)
+    }
+
+    fn gen_specific(frac: f32, verts: &[bool; NVERTS as usize]) -> [f32; NVERTS as usize] {
+        let mut r = [0.0; NVERTS as usize];
+        verts.iter().zip(r.iter_mut()).for_each(|(&marked, e)| {
+            if marked {
+                *e = 1.0;
             }
-            RgtpLayout::BiasedVertices(verts) => {
-                (0..NVERTS).for_each(|ix| {
-                    if verts.iter().any(|&v| ix == v) {
-                        rgtp_distrib[ix] = 1.0;
-                    }
-                });
-            }
+        });
+        Self::scaled_unitize(frac, r)
+    }
+
+    pub fn generate(&self) -> [f32; NVERTS] {
+        match &self.ty {
+            DistributionType::Random => Self::gen_random(self.frac),
+            DistributionType::Specific(marks) => Self::gen_specific(self.frac, marks),
         }
-        let sum: f32 = rgtp_distrib.iter().sum();
-        rgtp_distrib
-            .iter_mut()
-            .for_each(|e| *e = *e * frac_to_distrib / sum);
-        rgtp_distrib
     }
 }
 
-pub fn gen_rgtp_distrib(
-    active_frac: f32,
-    inactive_frac: f32,
-    rgtp_layout: &RgtpLayout,
-) -> ([f32; NVERTS], [f32; NVERTS]) {
-    (
-        rgtp_layout.gen_distrib(active_frac),
-        rgtp_layout.gen_distrib(inactive_frac),
-    )
+#[allow(unused)]
+#[derive(Clone, Copy)]
+pub struct RgtpDistribution {
+    pub active: [f32; NVERTS as usize],
+    pub inactive: [f32; NVERTS as usize],
+}
+
+impl RgtpDistribution {
+    pub fn generate(
+        act_distrib: DistributionScheme,
+        inact_distrib: DistributionScheme,
+    ) -> Result<RgtpDistribution, String> {
+        if act_distrib.frac + inact_distrib.frac > 1.0 {
+            Err("active + inactive > 1.0".to_string())
+        } else {
+            Ok(RgtpDistribution {
+                active: act_distrib.generate(),
+                inactive: inact_distrib.generate(),
+            })
+        }
+    }
 }
 
 fn calc_directed_fluxes(

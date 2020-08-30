@@ -52,7 +52,7 @@ impl WorldState {
             .map(|&vcs| Bbox::calc(vcs))
             .collect::<Vec<Bbox>>();
         let mut cells = Vec::with_capacity(self.cells.len());
-        for (ix, c) in self.cells.iter().enumerate() {
+        for c in self.cells.iter() {
             //println!("cell: {}", ix);
             cells.push(c.simulate_euler(
                 self.tstep,

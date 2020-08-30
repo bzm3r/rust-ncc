@@ -1,6 +1,6 @@
 use crate::cell::chemistry::{
     calc_conc_rgtps, calc_kdgtps_rac, calc_kdgtps_rho, calc_kgtps_rac, calc_kgtps_rho,
-    calc_net_fluxes, RacRandState,
+    calc_net_fluxes, RacRandState, RgtpDistribution,
 };
 use crate::cell::mechanics::{
     calc_cyto_forces, calc_edge_forces, calc_edge_vecs, calc_rgtp_forces,
@@ -469,18 +469,16 @@ impl CoreState {
 
     pub fn new(
         vertex_coords: [P2D; NVERTS],
-        rac_acts: [f32; NVERTS],
-        rac_inacts: [f32; NVERTS],
-        rho_acts: [f32; NVERTS],
-        rho_inacts: [f32; NVERTS],
+        init_rac: RgtpDistribution,
+        init_rho: RgtpDistribution,
     ) -> CoreState {
         // x_cils: [f32; NVERTS], x_coas: [f32; NVERTS], x_chemoas: [f32; NVERTS], x_rands: [f32; NVERTS], x_bdrys: [f32; NVERTS];
         CoreState {
             vertex_coords,
-            rac_acts,
-            rac_inacts,
-            rho_acts,
-            rho_inacts,
+            rac_acts: init_rac.active,
+            rac_inacts: init_rac.inactive,
+            rho_acts: init_rho.active,
+            rho_inacts: init_rho.inactive,
         }
     }
 

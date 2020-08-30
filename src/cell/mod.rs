@@ -10,7 +10,7 @@ pub mod core_state;
 pub mod mechanics;
 pub mod rkdp5;
 
-use crate::cell::chemistry::{gen_rgtp_distrib, RacRandState, RgtpLayout};
+use crate::cell::chemistry::RacRandState;
 use crate::cell::core_state::{ChemState, CoreState, DepStates, GeomState, MechState};
 use crate::cell::rkdp5::AuxArgs;
 use crate::interactions::{CloseCellInfo, InteractionState};
@@ -64,19 +64,7 @@ impl ModelCell {
         parameters: &Parameters,
         reg: Option<&mut RandomEventGenerator>,
     ) -> ModelCell {
-        let (rac_acts, rac_inacts) = gen_rgtp_distrib(
-            parameters.init_frac_active,
-            parameters.init_frac_inactive,
-            &RgtpLayout::Random,
-            //&RgtpLayout::BiasedVertices(vec![0, 1, 2, 3]),
-        );
-        let (rho_acts, rho_inacts) = gen_rgtp_distrib(
-            parameters.init_frac_active,
-            parameters.init_frac_inactive,
-            &RgtpLayout::Random,
-            //&RgtpLayout::BiasedVertices(vec![8, 9, 10, 11]),
-        );
-        let state = CoreState::new(vertex_coords, rac_acts, rac_inacts, rho_acts, rho_inacts);
+        let state = CoreState::new(vertex_coords, parameters.init_rac, parameters.init_rho);
         let rac_rand_state = RacRandState::init(
             match reg {
                 Some(cr) => Some(&mut cr.rng),

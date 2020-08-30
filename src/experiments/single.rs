@@ -1,4 +1,5 @@
 #![allow(unused)]
+use crate::cell::chemistry::{DistributionScheme, DistributionType, RgtpDistribution};
 use crate::experiments::{CellGroup, Experiment, GroupLayout};
 use crate::interactions::CilMat;
 use crate::math::p2d::P2D;
@@ -64,7 +65,17 @@ fn raw_parameters() -> RawParameters {
     let rgtp_d = (Length(0.1_f32.sqrt()).micro().pow(2.0).g() / Time(1.0).g())
         .to_diffusion()
         .unwrap();
-
+    let init_rac = RgtpDistribution::generate(
+        DistributionScheme {
+            frac: 0.1,
+            ty: DistributionType::Random,
+        },
+        DistributionScheme {
+            frac: 0.1,
+            ty: DistributionType::Random,
+        },
+    )
+    .unwrap();
     RawParameters {
         cell_diam: Length(40.0).micro(),
         stiffness_cortex: Stress(8.0).kilo(),
@@ -75,8 +86,6 @@ fn raw_parameters() -> RawParameters {
         rho_friction: 0.2,
         stiffness_ctyo: Force(1e-7),
         diffusion_rgtp: rgtp_d,
-        init_frac_inactive: 0.1,
-        init_frac_active: 0.1,
         tot_rac: 2.5e6,
         tot_rho: 1e6,
         kgtp_rac: 24.0,
@@ -96,6 +105,8 @@ fn raw_parameters() -> RawParameters {
         rand_std_t: Time(0.2 * 40.0 * 60.0),
         rand_mag: 10.0,
         rand_vs: 0.25,
+        init_rac,
+        init_rho: init_rac,
     }
 }
 
