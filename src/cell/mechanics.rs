@@ -37,9 +37,9 @@ pub fn calc_cyto_forces(
     rest_area: f32,
     stiffness_cyto: f32,
 ) -> [P2D; NVERTS] {
+    let mut r = [P2D::default(); NVERTS];
     let area = calc_poly_area(vertex_coords);
     let areal_strain = (area / rest_area) - 1.0;
-    let mut r = [P2D::default(); NVERTS];
     let mag = stiffness_cyto * areal_strain;
     (0..NVERTS).for_each(|i| r[i] = mag * unit_inward_vecs[i]);
     r

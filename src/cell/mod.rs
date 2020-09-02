@@ -11,10 +11,10 @@ pub mod mechanics;
 pub mod rkdp5;
 
 use crate::cell::chemistry::RacRandState;
-use crate::cell::core_state::{ChemState, CoreState, DepStates, GeomState, MechState};
+use crate::cell::core_state::{ChemState, CoreState, GeomState, MechState};
 use crate::cell::rkdp5::AuxArgs;
-use crate::interactions::{CloseCellInfo, InteractionState};
-use crate::math::geometry::{calc_poly_area, move_inner_point_to_bdry, Bbox};
+use crate::interactions::InteractionState;
+use crate::math::geometry::{calc_poly_area, is_point_in_poly, BBox};
 use crate::math::p2d::P2D;
 use crate::parameters::{Parameters, WorldParameters};
 use crate::world::RandomEventGenerator;
@@ -37,22 +37,41 @@ pub struct ModelCell {
     pub chem_state: ChemState,
 }
 
+fn move_point_out(
+    mut out_p: P2D,
+    mut in_p: P2D,
+    poly_bbox: &BBox,
+    poly: &[P2D],
+    num_iters: usize,
+) -> P2D {
+    let mut n = 0;
+    while n < num_iters {
+        let new_p = 0.5 * (out_p + in_p);
+        if is_point_in_poly(&new_p, poly_bbox, poly) {
+            in_p = new_p;
+        } else {
+            out_p = new_p;
+        }
+        n += 1;
+    }
+    out_p
+}
+
 fn enforce_volume_exclusion(
-    vcs: &[P2D; NVERTS],
-    geom_state: &GeomState,
-    close_cells: &CloseCellInfo,
-    cell_bboxes: &[Bbox],
-    cell_vcs: &[&[P2D; NVERTS]],
+    old_vcs: &[P2D; NVERTS],
+    mut new_vcs: [P2D; NVERTS],
+    contact_polys: Vec<&(BBox, [P2D; NVERTS])>,
 ) -> [P2D; NVERTS] {
-    let mut r = *vcs;
-    for cix in 0..close_cells.num {
-        let ovcs = cell_vcs[cix];
-        let obbox = &cell_bboxes[cix];
-        for (vix, vc) in vcs.iter().enumerate() {
-            r[vix] = move_inner_point_to_bdry(vc, &geom_state.unit_inward_vecs[vix], obbox, ovcs);
+    for (old_vc, new_vc) in old_vcs.iter().zip(new_vcs.iter_mut()) {
+        for (obb, ovcs) in contact_polys.clone().into_iter() {
+            if is_point_in_poly(new_vc, obb, ovcs) {
+                let out_p = *old_vc;
+                let in_p = *new_vc;
+                *new_vc = move_point_out(out_p, in_p, obb, ovcs, 3);
+            }
         }
     }
-    r
+    new_vcs
 }
 
 impl ModelCell {
@@ -72,11 +91,15 @@ impl ModelCell {
             },
             parameters,
         );
-        let DepStates {
-            geom_state,
-            chem_state,
-            mech_state,
-        } = CoreState::calc_dep_states(&state, &rac_rand_state, interactions, parameters);
+        let geom_state = state.calc_geom_state();
+        let mech_state = state.calc_mech_state(&geom_state, parameters);
+        let chem_state = state.calc_chem_state(
+            &geom_state,
+            &mech_state,
+            &rac_rand_state,
+            &interactions,
+            parameters,
+        );
         ModelCell {
             ix,
             group_ix,
@@ -93,9 +116,7 @@ impl ModelCell {
         &self,
         tstep: u32,
         interactions: &InteractionState,
-        close_cells: &CloseCellInfo,
-        cell_bboxes: &[Bbox],
-        cell_vcs: &[&[P2D; NVERTS]],
+        contact_polys: Vec<&(BBox, [P2D; NVERTS])>,
         rng: Option<&mut RandomEventGenerator>,
         world_parameters: &WorldParameters,
         parameters: &Parameters,
@@ -106,8 +127,8 @@ impl ModelCell {
         for i in 0..nsteps {
             //println!("++++++++++++");
             //println!("{}", state);
-            let dep_vars =
-                CoreState::calc_dep_states(&state, &self.rac_rand_state, interactions, parameters);
+            //let dep_vars =
+            //    CoreState::calc_dep_states(&state, &self.rac_rand_state, interactions, parameters);
             //println!("{}", dep_vars);
             //println!("++++++++++++");
             let delta = CoreState::dynamics_f(
@@ -119,18 +140,21 @@ impl ModelCell {
             );
             state = state + dt * delta;
         }
-        let DepStates {
-            geom_state,
-            chem_state,
-            mech_state,
-        } = CoreState::calc_dep_states(&state, &self.rac_rand_state, interactions, parameters);
-        state.vertex_coords = enforce_volume_exclusion(
-            &state.vertex_coords,
+        let geom_state = state.calc_geom_state();
+        let mech_state = state.calc_mech_state(&geom_state, parameters);
+        let chem_state = state.calc_chem_state(
             &geom_state,
-            close_cells,
-            cell_bboxes,
-            cell_vcs,
+            &mech_state,
+            &self.rac_rand_state,
+            &interactions,
+            parameters,
         );
+        state.vertex_coords = enforce_volume_exclusion(
+            &self.state.vertex_coords,
+            state.vertex_coords,
+            contact_polys,
+        );
+        let geom_state = state.calc_geom_state();
         // println!("++++++++++++");
         #[cfg(debug_assertions)]
         state.validate("euler", &parameters);
@@ -160,9 +184,7 @@ impl ModelCell {
         &self,
         tstep: u32,
         interactions: &InteractionState,
-        close_cells: &CloseCellInfo,
-        cell_bboxes: &[Bbox],
-        cell_vcs: &[&[P2D; NVERTS]],
+        contact_polys: Vec<&(BBox, [P2D; NVERTS])>,
         rng: Option<&mut RandomEventGenerator>,
         world_parameters: &WorldParameters,
         parameters: &Parameters,
@@ -190,18 +212,26 @@ impl ModelCell {
         //     result.num_iters, result.num_rejections
         // );
         let mut state = result.y.expect("too many iterations!");
-        let DepStates {
-            geom_state,
-            chem_state,
-            mech_state,
-        } = CoreState::calc_dep_states(&state, &self.rac_rand_state, interactions, parameters);
-        state.vertex_coords = enforce_volume_exclusion(
-            &state.vertex_coords,
+        let geom_state = state.calc_geom_state();
+        let mech_state = state.calc_mech_state(&geom_state, parameters);
+        let chem_state = state.calc_chem_state(
             &geom_state,
-            close_cells,
-            cell_bboxes,
-            cell_vcs,
+            &mech_state,
+            &self.rac_rand_state,
+            &interactions,
+            parameters,
         );
+        let mv_dirs = mech_state
+            .sum_fs
+            .iter()
+            .map(|sf| -1.0 * sf.unitize())
+            .collect::<Vec<P2D>>();
+        state.vertex_coords = enforce_volume_exclusion(
+            &self.state.vertex_coords,
+            state.vertex_coords,
+            contact_polys,
+        );
+        let geom_state = state.calc_geom_state();
         #[cfg(debug_assertions)]
         state.validate("rkdp5", parameters);
         //println!("{}", state);

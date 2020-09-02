@@ -9,10 +9,8 @@
 pub mod hardio;
 use crate::cell::ModelCell;
 use crate::experiments::{CellGroup, Experiment};
-use crate::interactions::{
-    calc_contact_dist_mat, calc_contact_mat, CloseCellInfo, InteractionState,
-};
-use crate::math::geometry::Bbox;
+use crate::interactions::{find_contacts, Contacts, InteractionState};
+use crate::math::geometry::BBox;
 use crate::math::p2d::P2D;
 use crate::parameters::{Parameters, WorldParameters};
 use crate::world::hardio::{save_data, save_schema};
@@ -32,35 +30,44 @@ struct WorldState {
     tstep: u32,
     cells: Vec<ModelCell>,
     interactions: Vec<InteractionState>,
-    close_cells: Vec<CloseCellInfo>,
+    #[serde(skip)]
+    contacts: Contacts,
 }
 
 impl WorldState {
     fn simulate(
         &self,
-        cell_rngs: &mut [Option<RandomEventGenerator>],
+        cell_regs: &mut [Option<RandomEventGenerator>],
         world_parameters: &WorldParameters,
         group_parameters: &[Parameters],
     ) -> WorldState {
         let cell_vcs = self
             .cells
             .iter()
-            .map(|c| &c.state.vertex_coords)
-            .collect::<Vec<&[P2D; NVERTS]>>();
-        let cell_bboxes = cell_vcs
+            .map(|c| c.state.vertex_coords)
+            .collect::<Vec<[P2D; NVERTS]>>();
+        let cell_bbs = cell_vcs
             .iter()
-            .map(|&vcs| Bbox::calc(vcs))
-            .collect::<Vec<Bbox>>();
+            .map(|vcs| BBox::calc(vcs))
+            .collect::<Vec<BBox>>();
+        let cell_polys = cell_bbs
+            .into_iter()
+            .zip(cell_vcs.into_iter())
+            .collect::<Vec<(BBox, [P2D; NVERTS])>>();
         let mut cells = Vec::with_capacity(self.cells.len());
-        for c in self.cells.iter() {
+        for (ci, c) in self.cells.iter().enumerate() {
             //println!("cell: {}", ix);
+            let contact_polys = self
+                .contacts
+                .get_contacts(ci)
+                .into_iter()
+                .map(|ci| &cell_polys[ci])
+                .collect::<Vec<&(BBox, [P2D; NVERTS])>>();
             cells.push(c.simulate_euler(
                 self.tstep,
-                &self.interactions[c.ix as usize],
-                &self.close_cells[c.ix as usize],
-                &cell_bboxes,
-                &cell_vcs,
-                cell_rngs[c.ix as usize].as_mut(),
+                &self.interactions[ci],
+                contact_polys,
+                cell_regs[ci].as_mut(),
                 world_parameters,
                 &group_parameters[c.group_ix as usize],
             ));
@@ -71,17 +78,15 @@ impl WorldState {
             .collect::<Vec<[P2D; NVERTS]>>();
         let cell_bboxes = cell_vcs
             .iter()
-            .map(|vcs| Bbox::calc(vcs))
-            .collect::<Vec<Bbox>>();
-        let contact_mat = calc_contact_mat(&cell_bboxes, world_parameters.close_criterion);
-        let contact_dist_mat = calc_contact_dist_mat(cell_vcs.as_slice(), &contact_mat);
-        let (interactions, close_cells) =
-            InteractionState::from_contacts(&contact_dist_mat, &world_parameters.cil);
+            .map(|vcs| BBox::calc(vcs))
+            .collect::<Vec<BBox>>();
+        let contacts = find_contacts(&cell_bboxes, world_parameters.close_criterion);
+        let contact_dists = contacts.calc_dists(cell_vcs.as_slice());
         WorldState {
             tstep: self.tstep + 1,
             cells,
-            interactions,
-            close_cells,
+            interactions: contact_dists.interactions(&world_parameters.cil),
+            contacts,
         }
     }
 }
@@ -145,13 +150,11 @@ impl World {
             .collect::<Vec<[P2D; NVERTS]>>();
         let cell_bboxes = cell_vcs
             .iter()
-            .map(|vcs| Bbox::calc(vcs))
-            .collect::<Vec<Bbox>>();
-        let contact_mat = calc_contact_mat(&cell_bboxes, world_parameters.close_criterion);
-        let contact_dist_mat = calc_contact_dist_mat(&cell_vcs, &contact_mat);
-        let (interactions, close_cells) =
-            InteractionState::from_contacts(&contact_dist_mat, &world_parameters.cil);
-
+            .map(|vcs| BBox::calc(vcs))
+            .collect::<Vec<BBox>>();
+        let contacts = find_contacts(&cell_bboxes, world_parameters.close_criterion);
+        let contact_dists = contacts.calc_dists(&cell_vcs);
+        let interactions = contact_dists.interactions(&world_parameters.cil);
         let mut cells = vec![];
         let mut primary = thread_rng();
         let mut cell_regs = vec![];
@@ -181,7 +184,7 @@ impl World {
             tstep: 0,
             cells,
             interactions,
-            close_cells,
+            contacts,
         };
         let history = vec![state.clone()];
         World {
@@ -196,7 +199,6 @@ impl World {
 
     pub fn simulate(&mut self, final_tpoint: f32) {
         let num_tsteps = (final_tpoint / self.tstep_length).ceil() as u32;
-
         while self.state.tstep < num_tsteps {
             // println!("========================================");
             // println!("tstep: {}/{}", self.state.tstep, num_tsteps);

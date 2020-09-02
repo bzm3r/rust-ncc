@@ -77,3 +77,4 @@ pub fn capped_linear_function(x: f32, max_x: f32) -> f32 {
         x / max_x
     }
 }
+

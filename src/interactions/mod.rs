@@ -6,13 +6,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use crate::math::geometry::{calc_dist_point_to_seg, Bbox};
-use crate::math::matrices::{Mat, SymMat};
+use crate::math::geometry::{calc_dist_point_to_seg, BBox};
+use crate::math::matrices::SymMat;
 use crate::math::p2d::P2D;
 use crate::utils::circ_ix_plus;
 use crate::NVERTS;
 use avro_schema_derive::Schematize;
 use serde::{Deserialize, Serialize};
+use std::cmp::Ordering;
 
 #[derive(Copy, Clone, Debug, Default, Deserialize, Schematize, Serialize)]
 pub struct InteractionState {
@@ -49,37 +50,96 @@ impl CilMat {
 }
 
 /// Stores whether cells are in contact.
-pub struct ContactMat {
+#[derive(Clone, Default)]
+pub struct Contacts {
     dat: SymMat<bool>,
     range: f32,
 }
 
-impl ContactMat {
-    pub fn get(&self, i: usize, j: usize) -> bool {
-        self.dat.get(i, j)
-    }
-
+impl Contacts {
     pub fn num_cells(&self) -> usize {
         self.dat.n
+    }
+
+    pub fn get_contacts(&self, ci: usize) -> Vec<usize> {
+        (0..self.dat.n)
+            .filter(|&oci| self.dat.get(ci, oci))
+            .collect()
+    }
+
+    pub fn in_contact(&self, ci: usize, oci: usize) -> bool {
+        self.dat.get(ci, oci)
+    }
+
+    /// Calculate distances between vertices of cells in contact.
+    pub fn calc_dists(&self, cell_vcs: &[[P2D; NVERTS]]) -> ContactDists {
+        let num_cells = self.num_cells();
+        let mut dist_mat = ContactDists::new(num_cells);
+        for (ci, vcs) in cell_vcs.iter().enumerate() {
+            for (oci, ovcs) in cell_vcs.iter().enumerate() {
+                if ci != oci && self.in_contact(ci, oci) {
+                    for (vi, vc) in vcs.iter().enumerate() {
+                        for (ovi, ovc) in ovcs.iter().enumerate() {
+                            let ovc2 = &ovcs[circ_ix_plus(ovi, NVERTS)];
+                            let d = calc_dist_point_to_seg(vc, ovc, ovc2);
+                            match d.partial_cmp(&self.range) {
+                                Some(ord) => match ord {
+                                    Ordering::Greater => {
+                                        continue;
+                                    }
+                                    _ => {
+                                        dist_mat.set(ci, vi, oci, ovi, d);
+                                        break;
+                                    }
+                                },
+                                _ => panic!("cannot compare {} and  {}", d, &self.range),
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        dist_mat
     }
 }
 
 /// Stores distance between vertices of cells.
-pub struct ContactDistMat(Mat<f32>);
+#[derive(Clone)]
+pub struct ContactDists {
+    num_cells: usize,
+    /// Number of elements between data of different cells.
+    stride_c: usize,
+    /// Number of elements between data of different vertices of a cell.
+    stride_v: usize,
+    dat: Vec<f32>,
+}
 
 #[allow(unused)]
 pub struct CloseEdge {
-    cell_ix: usize,
-    vert_ix: usize,
-    dist: f32,
+    pub cell_ix: usize,
+    pub vert_ix: usize,
+    pub dist: f32,
 }
 
-impl ContactDistMat {
+impl ContactDists {
+    pub fn new(num_cells: usize) -> ContactDists {
+        let stride_v = (num_cells - 1) * NVERTS as usize;
+        let stride_c = stride_v * NVERTS as usize;
+        ContactDists {
+            num_cells,
+            stride_c,
+            stride_v,
+            dat: vec![f32::INFINITY; num_cells * stride_c],
+        }
+    }
+
     /// Get edges containing points on cell `oci` which are close to vertex `vi` on cell `ci`.
     pub fn close_edges_on_cell(&self, ci: usize, vi: usize, oci: usize) -> Vec<CloseEdge> {
         (0..NVERTS)
             .filter_map(|ovi| {
-                let dist = self.0.get(ci * NVERTS + vi, oci * NVERTS + vi);
+                #[cfg(debug_assertions)]
+                self.check_indices(ci, vi, oci, ovi);
+                let dist = self.get(ci, vi, oci, ovi);
                 if dist < f32::INFINITY {
                     Some(CloseEdge {
                         cell_ix: oci,
@@ -96,109 +156,92 @@ impl ContactDistMat {
     /// Get edges which contain points close to vertex `vi` on cell `ci`.
     pub fn close_edges(&self, ci: usize, vi: usize) -> Vec<CloseEdge> {
         let mut r = vec![];
-        let num_cells = self.0.n_r / NVERTS;
-        for oci in 0..num_cells {
+        for oci in 0..self.num_cells {
             r.append(&mut self.close_edges_on_cell(ci, vi, oci))
         }
         r
     }
 
-    pub fn num_cells(&self) -> usize {
-        self.0.n_r / NVERTS
+    #[cfg(debug_assertions)]
+    pub fn check_indices(&self, ci: usize, vi: usize, oci: usize, ovi: usize) {
+        if ci > self.num_cells - 1 {
+            panic!("{} cells tracked, received ci: {}", self.num_cells, ci);
+        }
+
+        if vi > NVERTS as usize {
+            panic!("{} vertices tracked, received vi: {}", NVERTS, vi);
+        }
+
+        if oci > self.num_cells {
+            panic!("{} cells tracked, received oci: {}", self.num_cells, oci);
+        }
+
+        if ovi > NVERTS as usize {
+            panic!("{} vertices tracked, received vi: {}", NVERTS, vi);
+        }
+    }
+
+    pub fn calc_ix(&self, ci: usize, vi: usize, oci: usize, ovi: usize) -> Option<usize> {
+        #[cfg(debug_assertions)]
+        self.check_indices(ci, vi, oci, ovi);
+        match oci.cmp(&ci) {
+            Ordering::Greater => {
+                Some(ci * self.stride_c + vi * self.stride_v + (oci - 1) * (NVERTS as usize) + ovi)
+            }
+            Ordering::Less => {
+                Some(ci * self.stride_c + vi * self.stride_v + oci * (NVERTS as usize) + ovi)
+            }
+            Ordering::Equal => None,
+        }
+    }
+
+    pub fn set(&mut self, ci: usize, vi: usize, oci: usize, ovi: usize, x: f32) {
+        if let Some(i) = self.calc_ix(ci, vi, oci, ovi) {
+            self.dat[i] = x;
+        }
+    }
+
+    pub fn get(&self, ci: usize, vi: usize, oci: usize, ovi: usize) -> f32 {
+        if let Some(i) = self.calc_ix(ci, vi, oci, ovi) {
+            self.dat[i]
+        } else {
+            f32::INFINITY
+        }
+    }
+
+    pub fn interactions(&self, cil_mat: &CilMat) -> Vec<InteractionState> {
+        let num_cells = self.num_cells;
+        let mut interactions = vec![InteractionState::default(); num_cells];
+        for (ci, inter_state) in interactions.iter_mut().enumerate() {
+            for vi in 0..NVERTS {
+                for CloseEdge { cell_ix: oci, .. } in self.close_edges(ci, vi).iter() {
+                    inter_state.x_cils[vi] = cil_mat.get(ci, *oci);
+                    //let adh_f1 = cells[oci].mech_state.sum_fs[ovi];
+                    //let adh_f2 = cells[oci].mech_state.sum_fs[circ_ix_plus(ovi, NVERTS)];
+                    inter_state.x_adhs[vi] = P2D { x: 0.0, y: 0.0 }; //interactions[ci].x_adhs[vi] + adh_f1 + adh_f2;
+                }
+            }
+        }
+        interactions
     }
 }
 
-/// Calculate a symmetric matrix whose `(i, j)` element is a boolean representing whether cells `i`
-/// and `j` are in contact range.
-pub fn calc_contact_mat(bboxes: &[Bbox], contact_range: f32) -> ContactMat {
+/// Determine intercellular contacts within `contact_range`.
+pub fn find_contacts(bboxes: &[BBox], contact_range: f32) -> Contacts {
     let num_cells: usize = bboxes.len();
     let bboxes = bboxes
         .iter()
         .map(|bbox| bbox.expand_by(contact_range))
-        .collect::<Vec<Bbox>>();
+        .collect::<Vec<BBox>>();
     let mut contact_mat = SymMat::new(num_cells, false);
-    for ci in 0..num_cells {
-        let this_bbox = &bboxes[ci];
-        for oci in (ci + 1)..num_cells {
-            contact_mat.set(ci, oci, bboxes[oci].intersects(this_bbox));
+    for (ci, bb) in bboxes.iter().enumerate() {
+        for (oxi, obb) in bboxes[(ci + 1)..].iter().enumerate() {
+            let intersects = obb.intersects(bb);
+            contact_mat.set(ci, ci + 1 + oxi, intersects);
         }
     }
-    ContactMat {
+    Contacts {
         dat: contact_mat,
         range: contact_range,
-    }
-}
-
-/// Calculate distance between vertices of cells to edges of other cells. Rows are cell vertices,
-/// and columns are cell edges, defined by the smaller periodic (periodicity given by number of
-/// vertices) index of the two vertices which define the edge. Thus, edge `vi` refers to the edge
-/// formed by vertices `vi` and `vi + 1 mod NVERTS`.
-pub fn calc_contact_dist_mat(
-    cell_vcs: &[[P2D; NVERTS]],
-    contact_mat: &ContactMat,
-) -> ContactDistMat {
-    let num_cells = contact_mat.num_cells();
-    let mut dist_mat = Mat::new(num_cells * NVERTS, num_cells * NVERTS, f32::INFINITY);
-    for ci in 0..num_cells {
-        let this_vcs = &cell_vcs[ci];
-        for vi in 0..NVERTS {
-            for oci in 0..num_cells {
-                if contact_mat.get(ci, oci) {
-                    let other_vcs = &cell_vcs[oci];
-                    for ovi in 0..(NVERTS) {
-                        let ovi2 = circ_ix_plus(ovi, NVERTS);
-                        let d = calc_dist_point_to_seg(
-                            &this_vcs[vi],
-                            &other_vcs[ovi],
-                            &other_vcs[ovi2],
-                        );
-                        if d < contact_mat.range || (d - contact_mat.range).abs() < f32::EPSILON {
-                            dist_mat.set(ci * NVERTS + vi, oci, d);
-                            break;
-                        }
-                    }
-                }
-            }
-        }
-    }
-    ContactDistMat(dist_mat)
-}
-
-#[derive(Clone, Default, Deserialize, Serialize, Schematize)]
-pub struct CloseCellInfo {
-    pub num: usize,
-    pub indices: [usize; 9],
-}
-
-impl CloseCellInfo {
-    pub fn insert(&mut self, ix: usize) {
-        if self.num < 9 {
-            self.indices[self.num] = ix;
-            self.num += 1;
-        }
-    }
-}
-
-impl InteractionState {
-    pub fn from_contacts(
-        contact_dist_mat: &ContactDistMat,
-        cil_mat: &CilMat,
-    ) -> (Vec<InteractionState>, Vec<CloseCellInfo>) {
-        let num_cells = contact_dist_mat.num_cells();
-        let mut closest_cells = vec![CloseCellInfo::default(); num_cells];
-        let mut interactions = vec![InteractionState::default(); num_cells];
-        for ci in 0..num_cells {
-            for vi in 0..NVERTS {
-                let close_points = contact_dist_mat.close_edges(ci, vi);
-                for CloseEdge { cell_ix: oci, .. } in close_points.into_iter() {
-                    closest_cells[ci].insert(oci);
-                    interactions[ci].x_cils[vi] = cil_mat.get(ci, oci);
-                    //let adh_f1 = cells[oci].mech_state.sum_fs[ovi];
-                    //let adh_f2 = cells[oci].mech_state.sum_fs[circ_ix_plus(ovi, NVERTS)];
-                    interactions[ci].x_adhs[vi] = P2D { x: 0.0, y: 0.0 }; //interactions[ci].x_adhs[vi] + adh_f1 + adh_f2;
-                }
-            }
-        }
-        (interactions, closest_cells)
     }
 }

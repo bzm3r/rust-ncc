@@ -116,8 +116,8 @@ def paint(delta):
     global num_tsteps
     ax.cla()
     ax.set_aspect('equal')
-    ax.set_xlim([20.0 - 500.0, 20.0 + 500.0])
-    ax.set_ylim([20.0 - 500.0, 20.0 + 500.0])
+    ax.set_xlim([20.0 - 150.0, 20.0 + 150.0])
+    ax.set_ylim([20.0 - 150.0, 20.0 + 150.0])
     for poly in poly_per_cell_per_tstep[tstep]:
         for vix in range(16):
             ax.plot([poly[vix, 0], poly[(vix + 1) % 16, 0]],

@@ -166,6 +166,8 @@ pub fn calc_kdgtps_rac(
     let mut kdgtps_rac = [0.0_f32; NVERTS];
 
     for i in 0..nvs {
+        // let x_cil =
+        //     (x_cils[circ_ix_minus(i, NVERTS)] + x_cils[i] + x_cils[circ_ix_plus(i, NVERTS)]) / 3.0;
         let base = (1.0 + x_tens + x_cils[i]) * kdgtp_rac_base;
         let mutual = hill_function3(halfmax_conc_rho, conc_rho_acts[i]) * kdgtp_rho_on_rac;
         kdgtps_rac[i] = base + mutual;
@@ -186,6 +188,8 @@ pub fn calc_kgtps_rho(
     let mut kgtps_rho = [0.0_f32; NVERTS];
 
     for i in 0..nvs {
+        // let x_cil =
+        //     (x_cils[circ_ix_minus(i, NVERTS)] + x_cils[i] + x_cils[circ_ix_plus(i, NVERTS)]) / 3.0;
         let base = (1.0 + x_cils[i]) * kgtp_rho_base;
         let auto = hill_function3(halfmax_rho_thresh, conc_rho_acts[i]) * kgtp_rho_auto;
         kgtps_rho[i] = base + auto;

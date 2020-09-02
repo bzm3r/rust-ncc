@@ -1,7 +1,7 @@
 mod avro_schema;
 use quote::quote;
 use std::iter::Iterator;
-use syn::{parse_macro_input, DeriveInput, Fields, Ident, Type};
+use syn::{parse_macro_input, DeriveInput, Fields, Ident, Meta, NestedMeta, Type};
 
 #[proc_macro_derive(Schematize)]
 pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
@@ -16,14 +16,34 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         syn::Data::Struct(ds) => match ds.fields {
             Fields::Named(nfs) => {
                 for nf in nfs.named {
-                    let syn::Field { ident: id, ty, .. } = nf;
-                    fids.push(id.unwrap());
-                    ftys.push(ty);
+                    let syn::Field {
+                        ident: id,
+                        ty,
+                        attrs,
+                        ..
+                    } = nf;
+                    let skip = attrs.iter().any(|attr| match attr.parse_meta() {
+                        Ok(meta) => match meta {
+                            Meta::List(ml) => {
+                                ml.path.is_ident("serde")
+                                    && ml.nested.iter().any(|nm| match nm {
+                                        NestedMeta::Meta(inner) => inner.path().is_ident("skip"),
+                                        _ => false,
+                                    })
+                            }
+                            _ => false,
+                        },
+                        _ => false,
+                    });
+                    if !skip {
+                        fids.push(id.unwrap());
+                        ftys.push(ty);
+                    }
                 }
             }
-            _ => panic!("overrides only apply to named fields"),
+            _ => panic!("Only structs with named fields can be schematized."),
         },
-        _ => panic!("Override macro expects struct, but found enum/union"),
+        _ => panic!("Only structs can be schematized."),
     };
 
     let fid_strings: Vec<String> = fids.iter().map(|fid| fid.to_string()).collect();

@@ -170,12 +170,12 @@ pub struct GeomState {
     pub unit_inward_vecs: [P2D; NVERTS],
 }
 
-#[derive(Copy, Clone, Debug, Default, Deserialize, Serialize, Schematize)]
-pub struct DepStates {
-    pub geom_state: GeomState,
-    pub chem_state: ChemState,
-    pub mech_state: MechState,
-}
+// #[derive(Copy, Clone, Debug, Default, Deserialize, Serialize, Schematize)]
+// pub struct DepStates {
+//     pub geom_state: GeomState,
+//     pub chem_state: ChemState,
+//     pub mech_state: MechState,
+// }
 
 pub fn fmt_var_arr<T: fmt::Display>(
     f: &mut fmt::Formatter<'_>,
@@ -230,21 +230,21 @@ impl Display for ChemState {
     }
 }
 
-impl Display for DepStates {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        writeln!(f, "{}", &self.geom_state)?;
-        writeln!(f, "{}", &self.mech_state)?;
-        writeln!(f, "{}", &self.chem_state)
-    }
-}
+// impl Display for DepStates {
+//     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+//         writeln!(f, "{}", &self.geom_state)?;
+//         writeln!(f, "{}", &self.mech_state)?;
+//         writeln!(f, "{}", &self.chem_state)
+//     }
+// }
 
 impl CoreState {
     pub fn num_vars() -> usize {
         (NVERTS * 6) as usize
     }
 
-    pub fn calc_geom_state(state: &CoreState) -> GeomState {
-        let evs = calc_edge_vecs(&state.vertex_coords);
+    pub fn calc_geom_state(&self) -> GeomState {
+        let evs = calc_edge_vecs(&self.vertex_coords);
         let mut edge_lens = [0.0_f32; NVERTS];
         (0..NVERTS).for_each(|i| edge_lens[i] = (&evs[i]).mag());
         let mut uevs = [P2D::default(); NVERTS];
@@ -263,26 +263,22 @@ impl CoreState {
         }
     }
 
-    pub fn calc_mech_state(
-        state: &CoreState,
-        geom_state: &GeomState,
-        parameters: &Parameters,
-    ) -> MechState {
+    pub fn calc_mech_state(&self, geom_state: &GeomState, parameters: &Parameters) -> MechState {
         let GeomState {
             unit_edge_vecs: uevs,
             edge_lens,
             unit_inward_vecs: uivs,
         } = geom_state;
         let rgtp_forces = calc_rgtp_forces(
-            &state.rac_acts,
-            &state.rho_acts,
+            &self.rac_acts,
+            &self.rho_acts,
             uivs,
             parameters.halfmax_vertex_rgtp_act,
             parameters.const_protrusive,
             parameters.const_retractive,
         );
         let cyto_forces = calc_cyto_forces(
-            &state.vertex_coords,
+            &self.vertex_coords,
             &uivs,
             parameters.rest_area,
             parameters.stiffness_ctyo,
@@ -311,7 +307,7 @@ impl CoreState {
     }
 
     pub fn calc_chem_state(
-        state: &CoreState,
+        &self,
         geom_state: &GeomState,
         mech_state: &MechState,
         rac_rand_state: &RacRandState,
@@ -325,13 +321,13 @@ impl CoreState {
             avg_edge_lens[i] = (edge_lens[i] + edge_lens[im1]) / 2.0;
         });
 
-        let conc_rac_acts = calc_conc_rgtps(&avg_edge_lens, &state.rac_acts);
-        let conc_rac_inacts = calc_conc_rgtps(&avg_edge_lens, &state.rac_inacts);
-        let conc_rho_acts = calc_conc_rgtps(&avg_edge_lens, &state.rho_acts);
-        let conc_rho_inacts = calc_conc_rgtps(&avg_edge_lens, &state.rho_inacts);
+        let conc_rac_acts = calc_conc_rgtps(&avg_edge_lens, &self.rac_acts);
+        let conc_rac_inacts = calc_conc_rgtps(&avg_edge_lens, &self.rac_inacts);
+        let conc_rho_acts = calc_conc_rgtps(&avg_edge_lens, &self.rho_acts);
+        let conc_rho_inacts = calc_conc_rgtps(&avg_edge_lens, &self.rho_inacts);
 
         let kgtps_rac = calc_kgtps_rac(
-            &state.rac_acts,
+            &self.rac_acts,
             &conc_rac_acts,
             &rac_rand_state.x_rands,
             &inter_state.x_coas,
@@ -346,7 +342,7 @@ impl CoreState {
         let x_tens = parameters.tension_inhib
             * hill_function3(parameters.halfmax_tension_inhib, *avg_tens_strain);
         let kdgtps_rac = calc_kdgtps_rac(
-            &state.rac_acts,
+            &self.rac_acts,
             &conc_rho_acts,
             &inter_state.x_cils,
             x_tens,
@@ -355,7 +351,7 @@ impl CoreState {
             parameters.halfmax_vertex_rgtp_conc,
         );
         let kgtps_rho = calc_kgtps_rho(
-            &state.rho_acts,
+            &self.rho_acts,
             &conc_rho_acts,
             &inter_state.x_cils,
             parameters.kgtp_rho,
@@ -363,7 +359,7 @@ impl CoreState {
             parameters.kgtp_rho_auto,
         );
         let kdgtps_rho = calc_kdgtps_rho(
-            &state.rho_acts,
+            &self.rho_acts,
             &conc_rac_acts,
             parameters.kdgtp_rho,
             parameters.kdgtp_rac_on_rho,
@@ -379,11 +375,11 @@ impl CoreState {
             calc_net_fluxes(&edge_lens, parameters.diffusion_rgtp, &conc_rho_inacts);
 
         let rac_cyto = parameters.total_rgtp
-            - state.rac_acts.iter().sum::<f32>()
-            - state.rac_inacts.iter().sum::<f32>();
+            - self.rac_acts.iter().sum::<f32>()
+            - self.rac_inacts.iter().sum::<f32>();
         let rho_cyto = parameters.total_rgtp
-            - state.rho_acts.iter().sum::<f32>()
-            - state.rho_inacts.iter().sum::<f32>();
+            - self.rho_acts.iter().sum::<f32>()
+            - self.rho_inacts.iter().sum::<f32>();
         ChemState {
             x_tens,
             kdgtps_rac,
@@ -399,12 +395,13 @@ impl CoreState {
         }
     }
 
-    pub(crate) fn calc_dep_states(
+    pub fn dynamics_f(
         state: &CoreState,
         rac_rand_state: &RacRandState,
         inter_state: &InteractionState,
+        world_parameters: &WorldParameters,
         parameters: &Parameters,
-    ) -> DepStates {
+    ) -> CoreState {
         let geom_state = Self::calc_geom_state(state);
         let mech_state = Self::calc_mech_state(state, &geom_state, parameters);
         let chem_state = Self::calc_chem_state(
@@ -415,26 +412,6 @@ impl CoreState {
             inter_state,
             parameters,
         );
-
-        DepStates {
-            geom_state,
-            chem_state,
-            mech_state,
-        }
-    }
-
-    pub fn dynamics_f(
-        state: &CoreState,
-        rac_rand_state: &RacRandState,
-        inter_state: &InteractionState,
-        world_parameters: &WorldParameters,
-        parameters: &Parameters,
-    ) -> CoreState {
-        let DepStates {
-            chem_state,
-            mech_state,
-            ..
-        } = CoreState::calc_dep_states(state, rac_rand_state, inter_state, parameters);
         let mut delta = CoreState::default();
         for i in 0..NVERTS {
             let inactivated_rac = chem_state.kdgtps_rac[i] * state.rac_acts[i];
