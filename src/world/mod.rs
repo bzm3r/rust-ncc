@@ -9,8 +9,9 @@
 pub mod hardio;
 use crate::cell::ModelCell;
 use crate::experiments::{CellGroup, Experiment};
-use crate::interactions::{find_contacts, Contacts, InteractionState};
+use crate::interactions::{find_possible_contacts, Contacts, InteractionState};
 use crate::math::geometry::BBox;
+use crate::math::modulo_f32;
 use crate::math::p2d::P2D;
 use crate::parameters::{Parameters, WorldParameters};
 use crate::world::hardio::{save_data, save_schema};
@@ -80,12 +81,18 @@ impl WorldState {
             .iter()
             .map(|vcs| BBox::calc(vcs))
             .collect::<Vec<BBox>>();
-        let contacts = find_contacts(&cell_bboxes, world_parameters.close_criterion);
-        let contact_dists = contacts.calc_dists(cell_vcs.as_slice());
+        let contacts = find_possible_contacts(&cell_bboxes, world_parameters.close_criterion);
+        let iv_dists = contacts.calc_dists(cell_vcs.as_slice());
         WorldState {
             tstep: self.tstep + 1,
             cells,
-            interactions: contact_dists.interactions(&world_parameters.cil),
+            interactions: iv_dists.gen_interactions(
+                &cell_vcs,
+                &world_parameters.cil,
+                world_parameters.adh_const,
+                0.5 * world_parameters.close_criterion,
+                world_parameters.close_criterion,
+            ),
             contacts,
         }
     }
@@ -152,9 +159,15 @@ impl World {
             .iter()
             .map(|vcs| BBox::calc(vcs))
             .collect::<Vec<BBox>>();
-        let contacts = find_contacts(&cell_bboxes, world_parameters.close_criterion);
+        let contacts = find_possible_contacts(&cell_bboxes, world_parameters.close_criterion);
         let contact_dists = contacts.calc_dists(&cell_vcs);
-        let interactions = contact_dists.interactions(&world_parameters.cil);
+        let interactions = contact_dists.gen_interactions(
+            &cell_vcs,
+            &world_parameters.cil,
+            world_parameters.adh_const,
+            world_parameters.close_criterion * 0.5,
+            world_parameters.close_criterion,
+        );
         let mut cells = vec![];
         let mut primary = thread_rng();
         let mut cell_regs = vec![];
@@ -248,9 +261,9 @@ fn gen_cell_centroids(cg: &CellGroup) -> Result<Vec<P2D>, String> {
             y: 2.0 * cell_r,
         };
         for ix in 0..*num_cells {
-            let row = (ix / layout.width) as f32;
-            let col = ix as f32 - row;
-            r.push(first_cell_centroid + col * delta_x + row * delta_y);
+            let row = (ix / layout.width);
+            let col = ix - layout.width * row;
+            r.push(first_cell_centroid + (col as f32) * delta_x + (row as f32) * delta_y);
         }
         Ok(r)
     } else {

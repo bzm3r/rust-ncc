@@ -6,8 +6,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+pub mod adh;
+pub mod adh2;
 pub mod cil;
 pub mod single;
+
 use crate::math::p2d::P2D;
 use crate::parameters::{BasicQuants, Parameters, WorldParameters};
 

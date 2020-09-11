@@ -132,16 +132,17 @@ pub fn is_point_in_poly(p: &P2D, poly_bbox: &BBox, poly: &[P2D]) -> bool {
     }
 }
 
-pub fn calc_dist_point_to_seg(point: &P2D, s0: &P2D, s1: &P2D) -> f32 {
+/// Returns (t, d), where `k = (s1 - s0)*t + s1` is the point on `s0` to `s1` closest to `point`.
+pub fn calc_dist_point_to_seg(point: &P2D, s0: &P2D, s1: &P2D) -> (f32, f32) {
     let seg = s1 - s0;
     let rel_pt = point - s0;
     let t = (seg.x * rel_pt.x + seg.y * rel_pt.y) / (seg.x * seg.x + seg.y * seg.y);
 
     if t < 0.0 || t > 1.0 {
-        f32::INFINITY
+        (f32::INFINITY, f32::INFINITY)
     } else {
         let w = t * seg;
         let x = rel_pt - w;
-        x.mag()
+        (t, x.mag())
     }
 }

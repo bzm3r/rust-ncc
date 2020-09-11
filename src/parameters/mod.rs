@@ -47,6 +47,7 @@ pub struct RawWorldParameters {
     pub vertex_eta: Viscosity,
     pub close_criterion: Length,
     pub cil: CilMat,
+    pub adh_const: Force,
 }
 
 #[derive(Clone)]
@@ -54,6 +55,7 @@ pub struct WorldParameters {
     pub vertex_eta: f32,
     pub close_criterion: f32,
     pub cil: CilMat,
+    pub adh_const: f32,
 }
 
 impl RawWorldParameters {
@@ -62,6 +64,7 @@ impl RawWorldParameters {
             vertex_eta: bq.normalize(&self.vertex_eta),
             close_criterion: bq.normalize(&self.close_criterion),
             cil: self.cil.clone(),
+            adh_const: bq.normalize(&self.adh_const),
         }
     }
 }

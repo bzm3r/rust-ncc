@@ -7,14 +7,14 @@ use crate::parameters::{BasicQuants, RawParameters, RawWorldParameters};
 use crate::NVERTS;
 
 fn g0_layout(bq: &BasicQuants) -> GroupLayout {
-    let raw_centroid = [Length(-40.0).micro(), Length(0.0)];
+    let raw_centroid = [Length(-80.0).micro(), Length(-80.0).micro()];
     let centroid = P2D {
         x: bq.normalize(&raw_centroid[0]),
         y: bq.normalize(&raw_centroid[1]),
     };
     GroupLayout {
-        width: 1,
-        height: 1,
+        width: 4,
+        height: 4,
         bottom_left: centroid,
     }
 }
@@ -33,18 +33,11 @@ fn g1_layout(bq: &BasicQuants) -> GroupLayout {
 }
 
 fn cell_groups(bq: &BasicQuants) -> Vec<CellGroup> {
-    vec![
-        CellGroup {
-            num_cells: 1,
-            layout: g0_layout(bq),
-            parameters: raw_parameters0().gen_parameters(bq),
-        },
-        CellGroup {
-            num_cells: 1,
-            layout: g1_layout(bq),
-            parameters: raw_parameters1().gen_parameters(bq),
-        },
-    ]
+    vec![CellGroup {
+        num_cells: 16,
+        layout: g0_layout(bq),
+        parameters: raw_parameters0().gen_parameters(bq),
+    }]
 }
 
 fn basic_quants() -> BasicQuants {
@@ -69,7 +62,7 @@ fn basic_quants() -> BasicQuants {
 }
 
 fn gen_cil_mat() -> CilMat {
-    CilMat::new(2, 60.0)
+    CilMat::new(16, 60.0)
 }
 
 fn raw_world_parameters() -> RawWorldParameters {
@@ -77,7 +70,11 @@ fn raw_world_parameters() -> RawWorldParameters {
         vertex_eta: Viscosity(0.29).mulf(1.0 / (NVERTS as f32)),
         close_criterion: Length(0.5).micro(),
         cil: gen_cil_mat(),
-        adh_const: Force(0.0),
+        adh_const: (Viscosity(0.29).mulf(1.0 / (NVERTS as f32)).g()
+            * (Length(3.0).micro().g() * Tinv(1.0 / 60.0).g()))
+        .to_force()
+        .unwrap()
+        .mulf(5.0),
     }
 }
 
@@ -128,7 +125,7 @@ fn raw_parameters0() -> RawParameters {
 
     RawParameters {
         cell_diam: Length(40.0).micro(),
-        stiffness_cortex: Stress(8.0).kilo(),
+        stiffness_cortex: Stress(5.0).kilo(),
         lm_h: Length(200.0).nano(),
         halfmax_rgtp_max_f_frac: 0.3,
         halfmax_rgtp_frac: 0.4,
@@ -146,13 +143,13 @@ fn raw_parameters0() -> RawParameters {
         coa_half_d: Length(110.0e-6),
         kdgtp_rac: 8.0,
         kdgtp_rho_on_rac: 4000.0,
-        halfmax_tension_inhib: 0.1,
+        halfmax_tension_inhib: 0.10,
         tension_inhib: 40.0,
         kgtp_rho: 28.0,
         kgtp_auto_rho: 390.0,
         kdgtp_rho: 60.0,
         kdgtp_rac_on_rho: 400.0,
-        randomization: false,
+        randomization: true,
         rand_avg_t: Time(40.0 * 60.0),
         rand_std_t: Time(0.2 * 40.0 * 60.0),
         rand_mag: 10.0,

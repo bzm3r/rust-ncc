@@ -439,7 +439,8 @@ impl CoreState {
             let vertex_rho_inact_flux = chem_state.rho_inact_net_fluxes[i];
             delta.rho_acts[i] = delta_rho_activated + vertex_rho_act_flux;
             delta.rho_inacts[i] = rho_cyto_exchange + vertex_rho_inact_flux - delta_rho_activated;
-            delta.vertex_coords[i] = (1.0 / world_parameters.vertex_eta) * mech_state.sum_fs[i];
+            delta.vertex_coords[i] = (1.0 / world_parameters.vertex_eta)
+                * (mech_state.sum_fs[i] + inter_state.x_adhs[i]);
         }
         delta
     }

@@ -58,6 +58,7 @@ fn raw_world_parameters() -> RawWorldParameters {
         vertex_eta: Viscosity(0.29).mulf(1.0 / (NVERTS as f32)),
         close_criterion: Length(0.5).micro(),
         cil: gen_cil_mat(),
+        adh_const: Force(0.0),
     }
 }
 

@@ -72,23 +72,23 @@ impl Contacts {
     }
 
     /// Calculate distances between vertices of cells in contact.
-    pub fn calc_dists(&self, cell_vcs: &[[P2D; NVERTS]]) -> ContactDists {
+    pub fn calc_dists(&self, cell_vcs: &[[P2D; NVERTS]]) -> IVDists {
         let num_cells = self.num_cells();
-        let mut dist_mat = ContactDists::new(num_cells);
+        let mut dist_mat = IVDists::new(num_cells);
         for (ci, vcs) in cell_vcs.iter().enumerate() {
             for (oci, ovcs) in cell_vcs.iter().enumerate() {
                 if ci != oci && self.in_contact(ci, oci) {
                     for (vi, vc) in vcs.iter().enumerate() {
                         for (ovi, ovc) in ovcs.iter().enumerate() {
                             let ovc2 = &ovcs[circ_ix_plus(ovi, NVERTS)];
-                            let d = calc_dist_point_to_seg(vc, ovc, ovc2);
+                            let (t, d) = calc_dist_point_to_seg(vc, ovc, ovc2);
                             match d.partial_cmp(&self.range) {
                                 Some(ord) => match ord {
                                     Ordering::Greater => {
                                         continue;
                                     }
                                     _ => {
-                                        dist_mat.set(ci, vi, oci, ovi, d);
+                                        dist_mat.set(ci, vi, oci, ovi, (t, d));
                                         break;
                                     }
                                 },
@@ -103,48 +103,72 @@ impl Contacts {
     }
 }
 
-/// Stores distance between vertices of cells.
+/// Stores inter-vertex distances, if these distances are less than `cutoff`.
 #[derive(Clone)]
-pub struct ContactDists {
+pub struct IVDists {
     num_cells: usize,
     /// Number of elements between data of different cells.
     stride_c: usize,
     /// Number of elements between data of different vertices of a cell.
     stride_v: usize,
-    dat: Vec<f32>,
+    /// Stores `(t, d)`, where `(t, d)` is information returned by
+    /// `crate::math::geometry::calc_dist_point_to_seg`.
+    dat: Vec<(f32, f32)>,
 }
 
-#[allow(unused)]
+/// Information relevant to calculating CIL and adhesion due to an edge in proximity to the focus
+/// vertex.
 pub struct CloseEdge {
+    /// Cell containing edge close to focus vertex.
     pub cell_ix: usize,
+    /// Close edge runs from `vert_ix` to `vert_ix + 1`.
     pub vert_ix: usize,
-    pub dist: f32,
+    /// Let the position of the point on the close edge closest to the focus vertex be denoted `p`,
+    /// and the position of the focus vertex be denoted `v`. `delta` is such that `delta + v = p`.
+    pub delta: P2D,
+    /// Let the position of `vert_ix` be `p0`, and the position of `vert_ix + 1` be `p1`. Let `p`
+    /// be the point on the close edge closest to the focus vertex. Then, `t` is such that
+    /// `(p1 - p0)*t + p0 = p`.
+    pub t: f32,
 }
 
-impl ContactDists {
-    pub fn new(num_cells: usize) -> ContactDists {
+impl IVDists {
+    pub fn new(num_cells: usize) -> IVDists {
         let stride_v = (num_cells - 1) * NVERTS as usize;
         let stride_c = stride_v * NVERTS as usize;
-        ContactDists {
+        IVDists {
             num_cells,
             stride_c,
             stride_v,
-            dat: vec![f32::INFINITY; num_cells * stride_c],
+            dat: vec![(f32::INFINITY, f32::INFINITY); num_cells * stride_c],
         }
     }
 
     /// Get edges containing points on cell `oci` which are close to vertex `vi` on cell `ci`.
-    pub fn close_edges_on_cell(&self, ci: usize, vi: usize, oci: usize) -> Vec<CloseEdge> {
+    pub fn close_edges_on_cell(
+        &self,
+        ci: usize,
+        vi: usize,
+        oci: usize,
+        cell_vcs: &Vec<[P2D; 16]>,
+        filter: f32,
+    ) -> Vec<CloseEdge> {
+        let v = cell_vcs[ci][vi];
         (0..NVERTS)
             .filter_map(|ovi| {
                 #[cfg(debug_assertions)]
                 self.check_indices(ci, vi, oci, ovi);
-                let dist = self.get(ci, vi, oci, ovi);
-                if dist < f32::INFINITY {
+                let (t, d) = self.get(ci, vi, oci, ovi);
+                if d < filter {
+                    let p0 = cell_vcs[oci][ovi];
+                    let p1 = cell_vcs[oci][circ_ix_plus(ovi, NVERTS)];
+                    let p = t * (p1 - p0) + p0;
+                    let delta = p - v;
                     Some(CloseEdge {
                         cell_ix: oci,
                         vert_ix: ovi,
-                        dist,
+                        delta,
+                        t,
                     })
                 } else {
                     None
@@ -154,10 +178,16 @@ impl ContactDists {
     }
 
     /// Get edges which contain points close to vertex `vi` on cell `ci`.
-    pub fn close_edges(&self, ci: usize, vi: usize) -> Vec<CloseEdge> {
+    pub fn close_edges(
+        &self,
+        ci: usize,
+        vi: usize,
+        cell_vcs: &Vec<[P2D; NVERTS]>,
+        filter: f32,
+    ) -> Vec<CloseEdge> {
         let mut r = vec![];
         for oci in 0..self.num_cells {
-            r.append(&mut self.close_edges_on_cell(ci, vi, oci))
+            r.append(&mut self.close_edges_on_cell(ci, vi, oci, cell_vcs, filter))
         }
         r
     }
@@ -195,30 +225,53 @@ impl ContactDists {
         }
     }
 
-    pub fn set(&mut self, ci: usize, vi: usize, oci: usize, ovi: usize, x: f32) {
+    pub fn set(&mut self, ci: usize, vi: usize, oci: usize, ovi: usize, td: (f32, f32)) {
         if let Some(i) = self.calc_ix(ci, vi, oci, ovi) {
-            self.dat[i] = x;
+            self.dat[i] = td;
         }
     }
 
-    pub fn get(&self, ci: usize, vi: usize, oci: usize, ovi: usize) -> f32 {
+    pub fn get(&self, ci: usize, vi: usize, oci: usize, ovi: usize) -> (f32, f32) {
         if let Some(i) = self.calc_ix(ci, vi, oci, ovi) {
             self.dat[i]
         } else {
-            f32::INFINITY
+            (f32::INFINITY, f32::INFINITY)
         }
     }
 
-    pub fn interactions(&self, cil_mat: &CilMat) -> Vec<InteractionState> {
+    pub fn gen_interactions(
+        &self,
+        cell_vcs: &Vec<[P2D; NVERTS]>,
+        cil_mat: &CilMat,
+        adh_const: f32,
+        adh_rest: f32,
+        adh_criterion: f32,
+    ) -> Vec<InteractionState> {
         let num_cells = self.num_cells;
         let mut interactions = vec![InteractionState::default(); num_cells];
-        for (ci, inter_state) in interactions.iter_mut().enumerate() {
+        for ci in 0..num_cells {
             for vi in 0..NVERTS {
-                for CloseEdge { cell_ix: oci, .. } in self.close_edges(ci, vi).iter() {
-                    inter_state.x_cils[vi] = cil_mat.get(ci, *oci);
-                    //let adh_f1 = cells[oci].mech_state.sum_fs[ovi];
-                    //let adh_f2 = cells[oci].mech_state.sum_fs[circ_ix_plus(ovi, NVERTS)];
-                    inter_state.x_adhs[vi] = P2D { x: 0.0, y: 0.0 }; //interactions[ci].x_adhs[vi] + adh_f1 + adh_f2;
+                for CloseEdge {
+                    cell_ix: oci,
+                    vert_ix: ovi,
+                    delta,
+                    t,
+                } in self
+                    .close_edges(ci, vi, cell_vcs, adh_criterion)
+                    .into_iter()
+                {
+                    interactions[ci].x_cils[vi] = cil_mat.get(ci, oci);
+                    let d = delta.mag();
+                    let adh = if d.abs() < 1e-3 {
+                        P2D::default()
+                    } else {
+                        adh_const * d * delta.unitize()
+                    };
+                    interactions[oci].x_adhs[ovi] =
+                        interactions[oci].x_adhs[ovi] + -1.0 * (1.0 - t) * adh;
+                    interactions[oci].x_adhs[circ_ix_plus(ovi, NVERTS)] =
+                        interactions[oci].x_adhs[circ_ix_plus(ovi, NVERTS)] + -1.0 * t * adh;
+                    interactions[ci].x_adhs[vi] = interactions[ci].x_adhs[vi] + adh;
                 }
             }
         }
@@ -227,7 +280,7 @@ impl ContactDists {
 }
 
 /// Determine intercellular contacts within `contact_range`.
-pub fn find_contacts(bboxes: &[BBox], contact_range: f32) -> Contacts {
+pub fn find_possible_contacts(bboxes: &[BBox], contact_range: f32) -> Contacts {
     let num_cells: usize = bboxes.len();
     let bboxes = bboxes
         .iter()
