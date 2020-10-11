@@ -11,7 +11,7 @@ use std::time::Instant;
 pub const NVERTS: usize = 16;
 
 fn main() {
-    let exp = experiments::adh2::generate();
+    let exp = experiments::adh::generate();
     let output_dir = PathBuf::from("C:\\Users\\bhmer\\Desktop\\rust-ncc\\output\\");
     let mut w = world::World::new(exp);
     let now = Instant::now();

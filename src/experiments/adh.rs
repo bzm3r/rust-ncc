@@ -20,7 +20,7 @@ fn g0_layout(bq: &BasicQuants) -> GroupLayout {
 }
 
 fn g1_layout(bq: &BasicQuants) -> GroupLayout {
-    let raw_centroid = [Length(40.0).micro(), Length(0.0)];
+    let raw_centroid = [Length(0.0).micro(), Length(0.0)];
     let centroid = P2D {
         x: bq.normalize(&raw_centroid[0]),
         y: bq.normalize(&raw_centroid[1]),
@@ -81,7 +81,7 @@ fn raw_world_parameters() -> RawWorldParameters {
             * (Length(3.0).micro().g() * Tinv(1.0 / 60.0).g()))
         .to_force()
         .unwrap()
-        .mulf(5.0),
+        .mulf(100.0),
     }
 }
 

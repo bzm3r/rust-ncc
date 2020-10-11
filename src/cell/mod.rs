@@ -57,11 +57,29 @@ fn move_point_out(
     out_p
 }
 
+fn confirm_volume_exclusion(
+    new_vcs: &[P2D; NVERTS],
+    contact_polys: &[&(BBox, [P2D; NVERTS])],
+) -> bool {
+    for vc in new_vcs {
+        for (bbox, poly) in contact_polys {
+            if is_point_in_poly(vc, bbox, poly) {
+                return false;
+            }
+        }
+    }
+    true
+}
+
 fn enforce_volume_exclusion(
     old_vcs: &[P2D; NVERTS],
     mut new_vcs: [P2D; NVERTS],
     contact_polys: Vec<&(BBox, [P2D; NVERTS])>,
 ) -> [P2D; NVERTS] {
+    #[cfg(debug_assertions)]
+    if !confirm_volume_exclusion(old_vcs, contact_polys.as_slice()) {
+        panic!("old vcs violate volume exclusion.")
+    }
     for (old_vc, new_vc) in old_vcs.iter().zip(new_vcs.iter_mut()) {
         for (obb, ovcs) in contact_polys.clone().into_iter() {
             if is_point_in_poly(new_vc, obb, ovcs) {
@@ -71,6 +89,11 @@ fn enforce_volume_exclusion(
             }
         }
     }
+    #[cfg(debug_assertions)]
+    if !confirm_volume_exclusion(&new_vcs, contact_polys.as_slice()) {
+        panic!("volume exclusion did not work.")
+    }
+
     new_vcs
 }
 

@@ -111,22 +111,17 @@ pub fn is_point_in_poly(p: &P2D, poly_bbox: &BBox, poly: &[P2D]) -> bool {
             let p0 = &poly[vi];
             let p1 = &poly[circ_ix_plus(vi, nverts)];
 
-            if (p0.y - p.y).abs() < f32::EPSILON || (p0.y < p.y && p.y < p1.y) {
-                // upward crossing
-                if let PointSegRelation::Left = is_left(p, p0, p1) {
-                    wn += 1
+            if (p0.y - p.y).abs() < f32::EPSILON || p0.y < p.y {
+                if p1.y > p.y {
+                    if let PointSegRelation::Left = is_left(p, p0, p1) {
+                        wn += 1
+                    }
                 }
-            } else if (p1.y - p.y).abs() < f32::EPSILON || (p1.y < p.y && p.y < p0.y) {
-                if let PointSegRelation::Right = is_left(p, p0, p1) {
-                    wn += 1
-                }
+            } else if (p1.y - p0.y).abs() < f32::EPSILON || p1.y < p.y {
+                wn -= 1
             }
         }
-        if wn == 0 {
-            false
-        } else {
-            true
-        }
+        wn != 0
     } else {
         false
     }
