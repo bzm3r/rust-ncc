@@ -12,7 +12,7 @@ pub mod cil;
 pub mod single;
 
 use crate::math::p2d::P2D;
-use crate::parameters::{BasicQuants, Parameters, WorldParameters};
+use crate::parameters::{BasicQuants, GlobalParameters, Parameters};
 
 pub struct GroupLayout {
     pub width: u32,
@@ -29,6 +29,6 @@ pub struct CellGroup {
 pub struct Experiment {
     pub title: String,
     pub basic_quants: BasicQuants,
-    pub world_parameters: WorldParameters,
+    pub world_parameters: GlobalParameters,
     pub cell_groups: Vec<CellGroup>,
 }

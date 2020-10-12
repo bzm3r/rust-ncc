@@ -1,14 +1,14 @@
-use crate::cell::chemistry::{
+use crate::interactions::CellInteractions;
+use crate::math::p2d::P2D;
+use crate::math::{hill_function3, max_f32, min_f32};
+use crate::model_cell::chemistry::{
     calc_conc_rgtps, calc_kdgtps_rac, calc_kdgtps_rho, calc_kgtps_rac, calc_kgtps_rho,
     calc_net_fluxes, RacRandState, RgtpDistribution,
 };
-use crate::cell::mechanics::{
+use crate::model_cell::mechanics::{
     calc_cyto_forces, calc_edge_forces, calc_edge_vecs, calc_rgtp_forces,
 };
-use crate::interactions::InteractionState;
-use crate::math::p2d::P2D;
-use crate::math::{hill_function3, max_f32, min_f32};
-use crate::parameters::{Parameters, WorldParameters};
+use crate::parameters::{GlobalParameters, Parameters};
 use crate::utils::circ_ix_minus;
 use crate::NVERTS;
 use avro_schema_derive::Schematize;
@@ -311,7 +311,7 @@ impl CoreState {
         geom_state: &GeomState,
         mech_state: &MechState,
         rac_rand_state: &RacRandState,
-        inter_state: &InteractionState,
+        inter_state: &CellInteractions,
         parameters: &Parameters,
     ) -> ChemState {
         let GeomState { edge_lens, .. } = geom_state;
@@ -398,8 +398,8 @@ impl CoreState {
     pub fn dynamics_f(
         state: &CoreState,
         rac_rand_state: &RacRandState,
-        inter_state: &InteractionState,
-        world_parameters: &WorldParameters,
+        inter_state: &CellInteractions,
+        world_parameters: &GlobalParameters,
         parameters: &Parameters,
     ) -> CoreState {
         let geom_state = Self::calc_geom_state(state);

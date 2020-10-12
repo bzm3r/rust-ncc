@@ -25,22 +25,23 @@ pub fn calc_poly_area(xys: &[P2D]) -> f32 {
     area * 0.5
 }
 
+#[derive(Copy, Clone)]
 pub struct BBox {
-    pub(crate) xmin: f32,
-    pub(crate) ymin: f32,
-    pub(crate) xmax: f32,
-    pub(crate) ymax: f32,
+    pub xmin: f32,
+    pub ymin: f32,
+    pub xmax: f32,
+    pub ymax: f32,
 }
 
 impl BBox {
-    pub fn calc(xys: &[P2D]) -> BBox {
+    pub fn from_points(xys: &[P2D]) -> BBox {
         let xs: Vec<f32> = xys.iter().map(|v| v.x).collect();
         let ys: Vec<f32> = xys.iter().map(|v| v.y).collect();
         BBox {
             xmin: min_f32s(&xs),
             ymin: min_f32s(&ys),
             xmax: max_f32s(&xs),
-            ymax: max_f32s(&xs),
+            ymax: max_f32s(&ys),
         }
     }
 
@@ -114,11 +115,13 @@ pub fn is_point_in_poly(p: &P2D, poly_bbox: &BBox, poly: &[P2D]) -> bool {
             if (p0.y - p.y).abs() < f32::EPSILON || p0.y < p.y {
                 if p1.y > p.y {
                     if let PointSegRelation::Left = is_left(p, p0, p1) {
-                        wn += 1
+                        wn += 1;
                     }
                 }
-            } else if (p1.y - p0.y).abs() < f32::EPSILON || p1.y < p.y {
-                wn -= 1
+            } else if (p1.y - p.y).abs() < f32::EPSILON || p1.y < p.y {
+                if let PointSegRelation::Right = is_left(p, p0, p1) {
+                    wn -= 1;
+                }
             }
         }
         wn != 0

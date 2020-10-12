@@ -1,7 +1,7 @@
-use crate::cell::chemistry::{DistributionScheme, DistributionType, RgtpDistribution};
 use crate::experiments::{CellGroup, Experiment, GroupLayout};
 use crate::interactions::CilMat;
 use crate::math::p2d::P2D;
+use crate::model_cell::chemistry::{DistributionScheme, DistributionType, RgtpDistribution};
 use crate::parameters::quantity::{Force, Length, Quantity, Stress, Time, Tinv, Viscosity};
 use crate::parameters::{BasicQuants, RawParameters, RawWorldParameters};
 use crate::NVERTS;

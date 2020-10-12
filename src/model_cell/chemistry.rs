@@ -6,8 +6,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use crate::cell::core_state::fmt_var_arr;
 use crate::math::hill_function3;
+use crate::model_cell::core_state::fmt_var_arr;
 use crate::parameters::Parameters;
 use crate::utils::{circ_ix_minus, circ_ix_plus};
 use crate::world::RandomEventGenerator;

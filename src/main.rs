@@ -1,7 +1,7 @@
-mod cell;
 mod experiments;
 mod interactions;
 mod math;
+mod model_cell;
 mod parameters;
 mod utils;
 mod world;

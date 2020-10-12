@@ -1,14 +1,14 @@
 #![allow(unused)]
-use crate::cell::{chemistry::RacRandState, core_state::CoreState};
-use crate::interactions::InteractionState;
+use crate::interactions::CellInteractions;
 use crate::math::{max_f32, min_f32};
-use crate::parameters::{Parameters, WorldParameters};
+use crate::model_cell::{chemistry::RacRandState, core_state::CoreState};
+use crate::parameters::{GlobalParameters, Parameters};
 
 type CellDynamicsFn = fn(
     state: &CoreState,
     rac_random_state: &RacRandState,
-    interactions: &InteractionState,
-    world_parameters: &WorldParameters,
+    interactions: &CellInteractions,
+    world_parameters: &GlobalParameters,
     parameters: &Parameters,
 ) -> CoreState;
 
@@ -96,8 +96,8 @@ impl Ks {
         h: f32,
         init_state: CoreState,
         rand_state: &RacRandState,
-        inter_state: &InteractionState,
-        world_parameters: &WorldParameters,
+        inter_state: &CellInteractions,
+        world_parameters: &GlobalParameters,
         parameters: &Parameters,
     ) -> Ks {
         // since C[0] = 0.0, the function evaluated at that point will return 0
@@ -158,8 +158,8 @@ pub fn integrator(
     f: CellDynamicsFn,
     init_state: &CoreState,
     rand_state: &RacRandState,
-    inter_state: &InteractionState,
-    world_parameters: &WorldParameters,
+    inter_state: &CellInteractions,
+    world_parameters: &GlobalParameters,
     parameters: &Parameters,
     mut aux_args: AuxArgs,
 ) -> Solution {

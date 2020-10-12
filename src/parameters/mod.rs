@@ -8,9 +8,9 @@
 
 pub mod quantity;
 
-use crate::cell::calc_init_cell_area;
-use crate::cell::chemistry::RgtpDistribution;
 use crate::interactions::CilMat;
+use crate::model_cell::calc_init_cell_area;
+use crate::model_cell::chemistry::RgtpDistribution;
 use crate::parameters::quantity::{
     Diffusion, Force, Length, Quantity, Stress, Time, Tinv, Viscosity,
 };
@@ -51,7 +51,7 @@ pub struct RawWorldParameters {
 }
 
 #[derive(Clone)]
-pub struct WorldParameters {
+pub struct GlobalParameters {
     pub vertex_eta: f32,
     pub close_criterion: f32,
     pub cil: CilMat,
@@ -59,8 +59,8 @@ pub struct WorldParameters {
 }
 
 impl RawWorldParameters {
-    pub fn normalize(&self, bq: &BasicQuants) -> WorldParameters {
-        WorldParameters {
+    pub fn normalize(&self, bq: &BasicQuants) -> GlobalParameters {
+        GlobalParameters {
             vertex_eta: bq.normalize(&self.vertex_eta),
             close_criterion: bq.normalize(&self.close_criterion),
             cil: self.cil.clone(),

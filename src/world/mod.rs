@@ -7,19 +7,20 @@
 // except according to those terms.
 
 pub mod hardio;
-use crate::cell::ModelCell;
 use crate::experiments::{CellGroup, Experiment};
-use crate::interactions::{find_possible_contacts, Contacts, InteractionState};
+use crate::interactions::{CellInteractions, InteractionState};
 use crate::math::geometry::BBox;
-use crate::math::modulo_f32;
 use crate::math::p2d::P2D;
-use crate::parameters::{Parameters, WorldParameters};
+use crate::model_cell::{confirm_volume_exclusion, ModelCell};
+use crate::parameters::{GlobalParameters, Parameters};
 use crate::world::hardio::{save_data, save_schema};
 use crate::NVERTS;
 use avro_rs::Writer;
 use avro_schema_derive::Schematize;
 use once_cell::unsync::Lazy;
+use rand::prelude::ThreadRng;
 use rand::rngs::SmallRng;
+use rand::seq::SliceRandom;
 use rand::{thread_rng, SeedableRng};
 use rand_distr::{Distribution, Normal};
 use serde::{Deserialize, Serialize};
@@ -27,73 +28,63 @@ use std::f32::consts::PI;
 use std::path::PathBuf;
 
 #[derive(Clone, Deserialize, Serialize, Schematize)]
-struct WorldState {
+struct Cells {
     tstep: u32,
     cells: Vec<ModelCell>,
-    interactions: Vec<InteractionState>,
-    #[serde(skip)]
-    contacts: Contacts,
+    interactions: Vec<CellInteractions>,
 }
 
-impl WorldState {
+impl Cells {
     fn simulate(
         &self,
+        rng: &mut ThreadRng,
         cell_regs: &mut [Option<RandomEventGenerator>],
-        world_parameters: &WorldParameters,
+        world_parameters: &GlobalParameters,
         group_parameters: &[Parameters],
-    ) -> WorldState {
-        let cell_vcs = self
-            .cells
-            .iter()
-            .map(|c| c.state.vertex_coords)
-            .collect::<Vec<[P2D; NVERTS]>>();
-        let cell_bbs = cell_vcs
-            .iter()
-            .map(|vcs| BBox::calc(vcs))
-            .collect::<Vec<BBox>>();
-        let cell_polys = cell_bbs
-            .into_iter()
-            .zip(cell_vcs.into_iter())
-            .collect::<Vec<(BBox, [P2D; NVERTS])>>();
-        let mut cells = Vec::with_capacity(self.cells.len());
-        for (ci, c) in self.cells.iter().enumerate() {
-            //println!("cell: {}", ix);
-            let contact_polys = self
-                .contacts
-                .get_contacts(ci)
-                .into_iter()
-                .map(|ci| &cell_polys[ci])
-                .collect::<Vec<&(BBox, [P2D; NVERTS])>>();
-            cells.push(c.simulate_euler(
+        interaction_state: &mut InteractionState,
+    ) -> Cells {
+        let mut cells = vec![self.cells[0]; self.cells.len()];
+        let shuffled_cells = {
+            let mut crs = self.cells.iter().collect::<Vec<&ModelCell>>();
+            crs.shuffle(rng);
+            crs
+        };
+        for c in shuffled_cells {
+            println!("------------------");
+            let ci = c.ix as usize;
+            println!("ci: {}", ci);
+            println!("contacts: {:?}", interaction_state.get_contacts(ci));
+            let contact_polys = interaction_state.get_contact_polys(ci);
+            let new_cell_state = c.simulate_euler(
                 self.tstep,
                 &self.interactions[ci],
                 contact_polys,
                 cell_regs[ci].as_mut(),
                 world_parameters,
                 &group_parameters[c.group_ix as usize],
-            ));
+            );
+            println!("----------------------");
+            interaction_state.update(ci, &new_cell_state.state.vertex_coords);
+            cells[ci] = new_cell_state;
         }
-        let cell_vcs = cells
-            .iter()
-            .map(|c| c.state.vertex_coords)
-            .collect::<Vec<[P2D; NVERTS]>>();
-        let cell_bboxes = cell_vcs
-            .iter()
-            .map(|vcs| BBox::calc(vcs))
-            .collect::<Vec<BBox>>();
-        let contacts = find_possible_contacts(&cell_bboxes, world_parameters.close_criterion);
-        let iv_dists = contacts.calc_dists(cell_vcs.as_slice());
-        WorldState {
+        for (ci, c) in cells.iter().enumerate() {
+            println!("+++++++++++++++++");
+            println!("ci: {}", ci);
+            println!("contacts: {:?}", interaction_state.get_contacts(ci));
+            let vcs = &c.state.vertex_coords;
+            let contact_polys = interaction_state.get_contact_polys(ci);
+            confirm_volume_exclusion(vcs, contact_polys.as_slice(), &format!("world cell {}", ci));
+        }
+        println!("+++++++++++++++++");
+        interaction_state.update_cell_interactions();
+        Cells {
             tstep: self.tstep + 1,
             cells,
-            interactions: iv_dists.gen_interactions(
-                &cell_vcs,
-                &world_parameters.cil,
-                world_parameters.adh_const,
-                0.5 * world_parameters.close_criterion,
-                world_parameters.close_criterion,
-            ),
-            contacts,
+            interactions: interaction_state
+                .cell_interactions
+                .iter()
+                .copied()
+                .collect(),
         }
     }
 }
@@ -111,11 +102,13 @@ impl RandomEventGenerator {
 
 pub struct World {
     tstep_length: f32,
-    world_parameters: WorldParameters,
-    group_parameters: Vec<Parameters>,
-    history: Vec<WorldState>,
+    global_params: GlobalParameters,
+    cell_group_params: Vec<Parameters>,
+    history: Vec<Cells>,
     cell_regs: Vec<Option<RandomEventGenerator>>,
-    state: WorldState,
+    cell_states: Cells,
+    interacts: InteractionState,
+    pub rng: ThreadRng,
 }
 
 fn gen_vertex_coords(centroid: &P2D, radius: f32) -> [P2D; NVERTS] {
@@ -157,19 +150,18 @@ impl World {
             .collect::<Vec<[P2D; NVERTS]>>();
         let cell_bboxes = cell_vcs
             .iter()
-            .map(|vcs| BBox::calc(vcs))
+            .map(|vcs| BBox::from_points(vcs))
             .collect::<Vec<BBox>>();
-        let contacts = find_possible_contacts(&cell_bboxes, world_parameters.close_criterion);
-        let contact_dists = contacts.calc_dists(&cell_vcs);
-        let interactions = contact_dists.gen_interactions(
+        let interaction_state = InteractionState::new(
+            &cell_bboxes,
             &cell_vcs,
-            &world_parameters.cil,
+            world_parameters.close_criterion,
+            world_parameters.cil.clone(),
             world_parameters.adh_const,
-            world_parameters.close_criterion * 0.5,
             world_parameters.close_criterion,
         );
         let mut cells = vec![];
-        let mut primary = thread_rng();
+        let mut rng = thread_rng();
         let mut cell_regs = vec![];
         for (ix, gix) in cell_group_ixs.into_iter().enumerate() {
             let parameters = &group_parameters[gix];
@@ -177,7 +169,7 @@ impl World {
                 Lazy::new(|| Normal::new(parameters.rand_avg_t, parameters.rand_std_t).unwrap());
             let mut creg = if parameters.randomization {
                 Some(RandomEventGenerator {
-                    rng: SmallRng::from_rng(&mut primary).unwrap(),
+                    rng: SmallRng::from_rng(&mut rng).unwrap(),
                     distrib: *normal,
                 })
             } else {
@@ -187,48 +179,51 @@ impl World {
                 ix as u32,
                 gix as u32,
                 cell_vcs[ix],
-                &interactions[ix],
+                &interaction_state.cell_interactions[ix],
                 parameters,
                 creg.as_mut(),
             ));
             cell_regs.push(creg);
         }
-        let state = WorldState {
+        let state = Cells {
             tstep: 0,
             cells,
-            interactions,
-            contacts,
+            interactions: interaction_state.cell_interactions.clone(),
         };
         let history = vec![state.clone()];
         World {
             tstep_length: basic_quants.time(),
-            world_parameters,
-            group_parameters,
+            global_params: world_parameters,
+            cell_group_params: group_parameters,
             cell_regs,
             history,
-            state,
+            cell_states: state,
+            interacts: interaction_state,
+            rng,
         }
     }
 
     pub fn simulate(&mut self, final_tpoint: f32) {
         let num_tsteps = (final_tpoint / self.tstep_length).ceil() as u32;
-        while self.state.tstep < num_tsteps {
-            // println!("========================================");
-            // println!("tstep: {}/{}", self.state.tstep, num_tsteps);
-            let new_state = self.state.simulate(
+        while self.cell_states.tstep < num_tsteps {
+            println!("========================================");
+            println!("tstep: {}/{}", self.cell_states.tstep, num_tsteps);
+            let new_state = self.cell_states.simulate(
+                &mut self.rng,
                 self.cell_regs.as_mut_slice(),
-                &self.world_parameters,
-                &self.group_parameters,
+                &self.global_params,
+                &self.cell_group_params,
+                &mut self.interacts,
             );
             self.history.push(new_state.clone());
-            self.state = new_state;
-            //println!("========================================")
+            self.cell_states = new_state;
+            println!("========================================")
         }
     }
 
     pub fn save_history(&self, output_dir: &PathBuf) {
         let name = "history";
-        let schema = WorldState::schematize(None);
+        let schema = Cells::schematize(None);
         save_schema(name, &schema, output_dir);
         let mut writer = Writer::new(&schema, Vec::new()); //Writer::with_codec(&self.state_schema, Vec::new(), avro_rs::Codec::Deflate);
         for ws in self.history.iter() {
@@ -261,7 +256,7 @@ fn gen_cell_centroids(cg: &CellGroup) -> Result<Vec<P2D>, String> {
             y: 2.0 * cell_r,
         };
         for ix in 0..*num_cells {
-            let row = (ix / layout.width);
+            let row = ix / layout.width;
             let col = ix - layout.width * row;
             r.push(first_cell_centroid + (col as f32) * delta_x + (row as f32) * delta_y);
         }

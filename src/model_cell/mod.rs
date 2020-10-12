@@ -10,13 +10,13 @@ pub mod core_state;
 pub mod mechanics;
 pub mod rkdp5;
 
-use crate::cell::chemistry::RacRandState;
-use crate::cell::core_state::{ChemState, CoreState, GeomState, MechState};
-use crate::cell::rkdp5::AuxArgs;
-use crate::interactions::InteractionState;
+use crate::interactions::CellInteractions;
 use crate::math::geometry::{calc_poly_area, is_point_in_poly, BBox};
 use crate::math::p2d::P2D;
-use crate::parameters::{Parameters, WorldParameters};
+use crate::model_cell::chemistry::RacRandState;
+use crate::model_cell::core_state::{ChemState, CoreState, GeomState, MechState};
+use crate::model_cell::rkdp5::AuxArgs;
+use crate::parameters::{GlobalParameters, Parameters};
 use crate::world::RandomEventGenerator;
 use crate::NVERTS;
 use avro_schema_derive::Schematize;
@@ -57,31 +57,33 @@ fn move_point_out(
     out_p
 }
 
-fn confirm_volume_exclusion(
-    new_vcs: &[P2D; NVERTS],
-    contact_polys: &[&(BBox, [P2D; NVERTS])],
-) -> bool {
-    for vc in new_vcs {
+#[cfg(debug_assertions)]
+pub fn confirm_volume_exclusion(
+    vcs: &[P2D; NVERTS],
+    contact_polys: &[(BBox, [P2D; NVERTS])],
+    panic_label: &str,
+) {
+    for (vi, vc) in vcs.iter().enumerate() {
         for (bbox, poly) in contact_polys {
             if is_point_in_poly(vc, bbox, poly) {
-                return false;
+                panic!(
+                    "{:?} violate volume exclusion. vcs[{:?}] = {:?}, other poly = {:?}",
+                    panic_label, vi, vc, poly
+                );
             }
         }
     }
-    true
 }
 
 fn enforce_volume_exclusion(
     old_vcs: &[P2D; NVERTS],
     mut new_vcs: [P2D; NVERTS],
-    contact_polys: Vec<&(BBox, [P2D; NVERTS])>,
+    contact_polys: Vec<(BBox, [P2D; NVERTS])>,
 ) -> [P2D; NVERTS] {
     #[cfg(debug_assertions)]
-    if !confirm_volume_exclusion(old_vcs, contact_polys.as_slice()) {
-        panic!("old vcs violate volume exclusion.")
-    }
+    confirm_volume_exclusion(old_vcs, contact_polys.as_slice(), "old_vcs");
     for (old_vc, new_vc) in old_vcs.iter().zip(new_vcs.iter_mut()) {
-        for (obb, ovcs) in contact_polys.clone().into_iter() {
+        for (obb, ovcs) in contact_polys.iter() {
             if is_point_in_poly(new_vc, obb, ovcs) {
                 let out_p = *old_vc;
                 let in_p = *new_vc;
@@ -90,9 +92,7 @@ fn enforce_volume_exclusion(
         }
     }
     #[cfg(debug_assertions)]
-    if !confirm_volume_exclusion(&new_vcs, contact_polys.as_slice()) {
-        panic!("volume exclusion did not work.")
-    }
+    confirm_volume_exclusion(&new_vcs, &contact_polys, "new_vcs");
 
     new_vcs
 }
@@ -102,7 +102,7 @@ impl ModelCell {
         ix: u32,
         group_ix: u32,
         vertex_coords: [P2D; NVERTS],
-        interactions: &InteractionState,
+        interactions: &CellInteractions,
         parameters: &Parameters,
         reg: Option<&mut RandomEventGenerator>,
     ) -> ModelCell {
@@ -138,10 +138,10 @@ impl ModelCell {
     pub fn simulate_euler(
         &self,
         tstep: u32,
-        interactions: &InteractionState,
-        contact_polys: Vec<&(BBox, [P2D; NVERTS])>,
+        interactions: &CellInteractions,
+        contact_polys: Vec<(BBox, [P2D; NVERTS])>,
         rng: Option<&mut RandomEventGenerator>,
-        world_parameters: &WorldParameters,
+        world_parameters: &GlobalParameters,
         parameters: &Parameters,
     ) -> ModelCell {
         let mut state = self.state;
@@ -206,10 +206,10 @@ impl ModelCell {
     pub fn simulate_rkdp5(
         &self,
         tstep: u32,
-        interactions: &InteractionState,
-        contact_polys: Vec<&(BBox, [P2D; NVERTS])>,
+        interactions: &CellInteractions,
+        contact_polys: Vec<(BBox, [P2D; NVERTS])>,
         rng: Option<&mut RandomEventGenerator>,
-        world_parameters: &WorldParameters,
+        world_parameters: &GlobalParameters,
         parameters: &Parameters,
     ) -> ModelCell {
         // println!("using rkdp5...");
