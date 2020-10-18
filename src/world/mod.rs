@@ -8,9 +8,10 @@
 
 pub mod hardio;
 use crate::experiments::{CellGroup, Experiment};
-use crate::interactions::{CellInteractions, InteractionState};
+use crate::interactions::{CellInteractions, InteractionState, RgtpState};
 use crate::math::geometry::BBox;
 use crate::math::p2d::P2D;
+use crate::model_cell::core_state::CoreState;
 use crate::model_cell::{confirm_volume_exclusion, ModelCell};
 use crate::parameters::{GlobalParameters, Parameters};
 use crate::world::hardio::{save_data, save_schema};
@@ -148,6 +149,22 @@ impl World {
             .zip(cell_centroids.iter())
             .map(|(&gix, cc)| gen_vertex_coords(cc, group_parameters[gix].cell_r))
             .collect::<Vec<[P2D; NVERTS]>>();
+        let cell_states = cell_group_ixs
+            .iter()
+            .zip(cell_vcs.iter())
+            .map(|(&gix, vcs)| {
+                let parameters = &group_parameters[gix];
+                CoreState::new(*vcs, parameters.init_rac, parameters.init_rho)
+            })
+            .collect::<Vec<CoreState>>();
+        let cell_rgtps = cell_group_ixs
+            .iter()
+            .zip(cell_states.iter())
+            .map(|(&gix, state)| {
+                let parameters = &group_parameters[gix];
+                state.calc_rgtp_state(parameters)
+            })
+            .collect::<Vec<[RgtpState; NVERTS]>>();
         let cell_bboxes = cell_vcs
             .iter()
             .map(|vcs| BBox::from_points(vcs))
@@ -155,7 +172,9 @@ impl World {
         let interaction_state = InteractionState::new(
             &cell_bboxes,
             &cell_vcs,
+            &cell_rgtps,
             world_parameters.close_criterion,
+            world_parameters.cal.clone(),
             world_parameters.cil.clone(),
             world_parameters.adh_const,
             world_parameters.close_criterion,
@@ -178,7 +197,7 @@ impl World {
             cells.push(ModelCell::new(
                 ix as u32,
                 gix as u32,
-                cell_vcs[ix],
+                cell_states[gix],
                 &interaction_state.cell_interactions[ix],
                 parameters,
                 creg.as_mut(),

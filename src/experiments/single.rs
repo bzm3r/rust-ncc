@@ -1,6 +1,6 @@
 #![allow(unused)]
 use crate::experiments::{CellGroup, Experiment, GroupLayout};
-use crate::interactions::CilMat;
+use crate::interactions::CrlMat;
 use crate::math::p2d::P2D;
 use crate::model_cell::chemistry::{DistributionScheme, DistributionType, RgtpDistribution};
 use crate::parameters::quantity::{Force, Length, Quantity, Stress, Time, Tinv, Viscosity};
@@ -49,14 +49,19 @@ fn basic_quants() -> BasicQuants {
     }
 }
 
-fn gen_cil_mat() -> CilMat {
-    CilMat::new(2, 60.0)
+fn gen_cal_mat() -> CrlMat {
+    CrlMat::new(2, 60.0)
+}
+
+fn gen_cil_mat() -> CrlMat {
+    CrlMat::new(2, 60.0)
 }
 
 fn raw_world_parameters() -> RawWorldParameters {
     RawWorldParameters {
         vertex_eta: Viscosity(0.29).mulf(1.0 / (NVERTS as f32)),
         close_criterion: Length(0.5).micro(),
+        cal: gen_cal_mat(),
         cil: gen_cil_mat(),
         adh_const: Force(0.0),
     }

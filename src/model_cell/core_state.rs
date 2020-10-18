@@ -1,9 +1,9 @@
-use crate::interactions::CellInteractions;
+use crate::interactions::{CellInteractions, RgtpState};
 use crate::math::p2d::P2D;
 use crate::math::{hill_function3, max_f32, min_f32};
 use crate::model_cell::chemistry::{
     calc_conc_rgtps, calc_kdgtps_rac, calc_kdgtps_rho, calc_kgtps_rac, calc_kgtps_rho,
-    calc_net_fluxes, RacRandState, RgtpDistribution,
+    calc_net_fluxes, calc_rgtp_state, RacRandState, RgtpDistribution,
 };
 use crate::model_cell::mechanics::{
     calc_cyto_forces, calc_edge_forces, calc_edge_vecs, calc_rgtp_forces,
@@ -332,6 +332,7 @@ impl CoreState {
             &rac_rand_state.x_rands,
             &inter_state.x_coas,
             &inter_state.x_chemoas,
+            &inter_state.x_cals,
             parameters.kgtp_rac,
             parameters.kgtp_rac_auto,
             parameters.halfmax_vertex_rgtp_conc,
@@ -361,6 +362,7 @@ impl CoreState {
         let kdgtps_rho = calc_kdgtps_rho(
             &self.rho_acts,
             &conc_rac_acts,
+            &inter_state.x_cals,
             parameters.kdgtp_rho,
             parameters.kdgtp_rac_on_rho,
             parameters.halfmax_vertex_rgtp_conc,
@@ -620,6 +622,14 @@ impl CoreState {
 
     pub fn average(&self) -> f32 {
         self.sum() / (Self::num_vars() as f32)
+    }
+
+    pub fn calc_rgtp_state(&self, parameters: &Parameters) -> [RgtpState; NVERTS] {
+        calc_rgtp_state(
+            &self.rac_acts,
+            &self.rho_acts,
+            parameters.halfmax_vertex_rgtp_act,
+        )
     }
 
     pub fn validate(&self, loc_str: &str, parameters: &Parameters) {

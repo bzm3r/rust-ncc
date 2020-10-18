@@ -101,12 +101,11 @@ impl ModelCell {
     pub fn new(
         ix: u32,
         group_ix: u32,
-        vertex_coords: [P2D; NVERTS],
+        state: CoreState,
         interactions: &CellInteractions,
         parameters: &Parameters,
         reg: Option<&mut RandomEventGenerator>,
     ) -> ModelCell {
-        let state = CoreState::new(vertex_coords, parameters.init_rac, parameters.init_rho);
         let rac_rand_state = RacRandState::init(
             match reg {
                 Some(cr) => Some(&mut cr.rng),

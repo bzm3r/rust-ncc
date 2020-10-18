@@ -17,6 +17,7 @@ use std::cmp::Ordering;
 
 #[derive(Copy, Clone, Debug, Default, Deserialize, Schematize, Serialize)]
 pub struct CellInteractions {
+    pub x_cals: [f32; NVERTS],
     pub x_cils: [f32; NVERTS],
     pub x_adhs: [P2D; NVERTS],
     pub x_chemoas: [f32; NVERTS],
@@ -25,13 +26,13 @@ pub struct CellInteractions {
 }
 
 #[derive(Clone, Default)]
-pub struct CilMat {
+pub struct CrlMat {
     dat: SymMat<f32>,
 }
 
-impl CilMat {
-    pub fn new(num_cells: usize, default: f32) -> CilMat {
-        CilMat {
+impl CrlMat {
+    pub fn new(num_cells: usize, default: f32) -> CrlMat {
+        CrlMat {
             dat: SymMat::<f32>::new(num_cells, default),
         }
     }
@@ -54,11 +55,13 @@ impl CilMat {
 pub struct InteractionState {
     cell_bbs: Vec<BBox>,
     cell_vcs: Vec<[P2D; NVERTS]>,
+    cell_rgtps: Vec<[RgtpState; NVERTS]>,
     contacts: SymMat<bool>,
     iv_dists: IVDists,
     pub cell_interactions: Vec<CellInteractions>,
     contact_range: f32,
-    cil_mat: CilMat,
+    cal_mat: CrlMat,
+    cil_mat: CrlMat,
     adh_const: f32,
     adh_criterion: f32,
 }
@@ -68,8 +71,10 @@ impl InteractionState {
     pub fn new(
         cell_bbs: &[BBox],
         cell_vcs: &[[P2D; NVERTS]],
+        cell_rgtps: &[[RgtpState; NVERTS]],
         contact_range: f32,
-        cil_mat: CilMat,
+        cal_mat: CrlMat,
+        cil_mat: CrlMat,
         adh_const: f32,
         adh_criterion: f32,
     ) -> InteractionState {
@@ -86,15 +91,24 @@ impl InteractionState {
             }
         }
         let iv_dists = IVDists::new(cell_vcs, contact_range, &contacts);
-        let cell_interactions =
-            Self::init_cell_interactions(cell_vcs, &cil_mat, &iv_dists, adh_const, adh_criterion);
+        let cell_interactions = Self::init_cell_interactions(
+            cell_vcs,
+            cell_rgtps,
+            &cal_mat,
+            &cil_mat,
+            &iv_dists,
+            adh_const,
+            adh_criterion,
+        );
         InteractionState {
             cell_bbs: bboxes.iter().copied().collect(),
             cell_vcs: cell_vcs.iter().copied().collect(),
+            cell_rgtps: cell_rgtps.iter().copied().collect(),
             iv_dists,
             contacts,
             contact_range,
             cell_interactions,
+            cal_mat,
             cil_mat,
             adh_const,
             adh_criterion,
@@ -143,6 +157,8 @@ impl InteractionState {
     pub fn update_cell_interactions(&mut self) {
         self.cell_interactions = Self::init_cell_interactions(
             &self.cell_vcs,
+            &self.cell_rgtps,
+            &self.cal_mat,
             &self.cil_mat,
             &self.iv_dists,
             self.adh_const,
@@ -169,7 +185,9 @@ impl InteractionState {
 
     pub fn init_cell_interactions(
         cell_vcs: &[[P2D; NVERTS]],
-        cil_mat: &CilMat,
+        cell_rgtps: &[[RgtpState; NVERTS]],
+        cal_mat: &CrlMat,
+        cil_mat: &CrlMat,
         iv_dists: &IVDists,
         adh_const: f32,
         adh_criterion: f32,
@@ -181,13 +199,18 @@ impl InteractionState {
                 for CloseEdge {
                     cell_ix: oci,
                     vert_ix: ovi,
+                    crl,
                     delta,
                     t,
                 } in iv_dists
-                    .close_edges(ci, vi, cell_vcs, adh_criterion)
+                    .close_edges(ci, vi, cell_vcs, cell_rgtps, adh_criterion)
                     .into_iter()
                 {
-                    interactions[ci].x_cils[vi] = cil_mat.get(ci, oci);
+                    match crl {
+                        CrlEffect::Cal => interactions[ci].x_cals[vi] = cal_mat.get(ci, oci),
+                        CrlEffect::Cil => interactions[ci].x_cils[vi] = cil_mat.get(ci, oci),
+                    };
+
                     let d = delta.mag();
                     let adh = if d.abs() < 1e-3 {
                         P2D::default()
@@ -219,6 +242,22 @@ pub struct IVDists {
     dat: Vec<(f32, f32)>,
 }
 
+pub type RgtpState = f32;
+
+pub enum CrlEffect {
+    Cil,
+    Cal,
+}
+
+impl CrlEffect {
+    pub fn calc(a: RgtpState, b: RgtpState) -> CrlEffect {
+        match (a > 0.0, b > 0.0) {
+            (true, true) => CrlEffect::Cal,
+            (_, _) => CrlEffect::Cil,
+        }
+    }
+}
+
 /// Information relevant to calculating CIL and adhesion due to an edge in proximity to the focus
 /// vertex.
 pub struct CloseEdge {
@@ -226,6 +265,8 @@ pub struct CloseEdge {
     pub cell_ix: usize,
     /// Close edge runs from `vert_ix` to `vert_ix + 1`.
     pub vert_ix: usize,
+    /// Contact regulation of motion.
+    pub crl: CrlEffect,
     /// Let the position of the point on the close edge closest to the focus vertex be denoted `p`,
     /// and the position of the focus vertex be denoted `v`. `delta` is such that `delta + v = p`.
     pub delta: P2D,
@@ -285,9 +326,11 @@ impl IVDists {
         vi: usize,
         oci: usize,
         cell_vcs: &[[P2D; NVERTS]],
+        cell_rgtps: &[[RgtpState; NVERTS]],
         filter: f32,
     ) -> Vec<CloseEdge> {
         let v = cell_vcs[ci][vi];
+        let v_rgtp = cell_rgtps[ci][vi];
         (0..NVERTS)
             .filter_map(|ovi| {
                 #[cfg(debug_assertions)]
@@ -298,9 +341,13 @@ impl IVDists {
                     let p1 = cell_vcs[oci][circ_ix_plus(ovi, NVERTS)];
                     let p = t * (p1 - p0) + p0;
                     let delta = p - v;
+
+                    let edge_rgtp =
+                        (cell_rgtps[oci][ovi] + cell_rgtps[oci][circ_ix_plus(ovi, NVERTS)]) / 2.0;
                     Some(CloseEdge {
                         cell_ix: oci,
                         vert_ix: ovi,
+                        crl: CrlEffect::calc(v_rgtp, edge_rgtp),
                         delta,
                         t,
                     })
@@ -317,11 +364,12 @@ impl IVDists {
         ci: usize,
         vi: usize,
         cell_vcs: &[[P2D; NVERTS]],
+        cell_rgtps: &[[RgtpState; NVERTS]],
         filter: f32,
     ) -> Vec<CloseEdge> {
         let mut r = vec![];
         for oci in 0..self.num_cells {
-            r.append(&mut self.close_edges_on_cell(ci, vi, oci, cell_vcs, filter))
+            r.append(&mut self.close_edges_on_cell(ci, vi, oci, cell_vcs, cell_rgtps, filter))
         }
         r
     }
