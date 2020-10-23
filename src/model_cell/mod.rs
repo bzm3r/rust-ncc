@@ -12,7 +12,7 @@ pub mod rkdp5;
 
 use crate::interactions::CellInteractions;
 use crate::math::geometry::{calc_poly_area, is_point_in_poly, BBox};
-use crate::math::p2d::P2D;
+use crate::math::p2d::V2D;
 use crate::model_cell::chemistry::RacRandState;
 use crate::model_cell::core_state::{ChemState, CoreState, GeomState, MechState};
 use crate::model_cell::rkdp5::AuxArgs;
@@ -38,12 +38,12 @@ pub struct ModelCell {
 }
 
 fn move_point_out(
-    mut out_p: P2D,
-    mut in_p: P2D,
+    mut out_p: V2D,
+    mut in_p: V2D,
     poly_bbox: &BBox,
-    poly: &[P2D],
+    poly: &[V2D],
     num_iters: usize,
-) -> P2D {
+) -> V2D {
     let mut n = 0;
     while n < num_iters {
         let new_p = 0.5 * (out_p + in_p);
@@ -59,8 +59,8 @@ fn move_point_out(
 
 #[cfg(debug_assertions)]
 pub fn confirm_volume_exclusion(
-    vcs: &[P2D; NVERTS],
-    contact_polys: &[(BBox, [P2D; NVERTS])],
+    vcs: &[V2D; NVERTS],
+    contact_polys: &[(BBox, [V2D; NVERTS])],
     panic_label: &str,
 ) {
     for (vi, vc) in vcs.iter().enumerate() {
@@ -76,10 +76,10 @@ pub fn confirm_volume_exclusion(
 }
 
 fn enforce_volume_exclusion(
-    old_vcs: &[P2D; NVERTS],
-    mut new_vcs: [P2D; NVERTS],
-    contact_polys: Vec<(BBox, [P2D; NVERTS])>,
-) -> [P2D; NVERTS] {
+    old_vcs: &[V2D; NVERTS],
+    mut new_vcs: [V2D; NVERTS],
+    contact_polys: Vec<(BBox, [V2D; NVERTS])>,
+) -> [V2D; NVERTS] {
     #[cfg(debug_assertions)]
     confirm_volume_exclusion(old_vcs, contact_polys.as_slice(), "old_vcs");
     for (old_vc, new_vc) in old_vcs.iter().zip(new_vcs.iter_mut()) {
@@ -138,7 +138,7 @@ impl ModelCell {
         &self,
         tstep: u32,
         interactions: &CellInteractions,
-        contact_polys: Vec<(BBox, [P2D; NVERTS])>,
+        contact_polys: Vec<(BBox, [V2D; NVERTS])>,
         rng: Option<&mut RandomEventGenerator>,
         world_parameters: &GlobalParameters,
         parameters: &Parameters,
@@ -206,7 +206,7 @@ impl ModelCell {
         &self,
         tstep: u32,
         interactions: &CellInteractions,
-        contact_polys: Vec<(BBox, [P2D; NVERTS])>,
+        contact_polys: Vec<(BBox, [V2D; NVERTS])>,
         rng: Option<&mut RandomEventGenerator>,
         world_parameters: &GlobalParameters,
         parameters: &Parameters,
@@ -247,7 +247,7 @@ impl ModelCell {
             .sum_fs
             .iter()
             .map(|sf| -1.0 * sf.unitize())
-            .collect::<Vec<P2D>>();
+            .collect::<Vec<V2D>>();
         state.vertex_coords = enforce_volume_exclusion(
             &self.state.vertex_coords,
             state.vertex_coords,
@@ -280,11 +280,11 @@ pub fn calc_init_cell_area(r: f32, n: usize) -> f32 {
     let poly_coords = (0..n)
         .map(|vix| {
             let theta = (vix as f32) / (n as f32) * 2.0 * PI;
-            P2D {
+            V2D {
                 x: r * theta.cos(),
                 y: r * theta.sin(),
             }
         })
-        .collect::<Vec<P2D>>();
+        .collect::<Vec<V2D>>();
     calc_poly_area(&poly_coords)
 }

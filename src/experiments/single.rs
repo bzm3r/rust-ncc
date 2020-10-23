@@ -1,7 +1,7 @@
 #![allow(unused)]
 use crate::experiments::{CellGroup, Experiment, GroupLayout};
 use crate::interactions::CrlMat;
-use crate::math::p2d::P2D;
+use crate::math::p2d::V2D;
 use crate::model_cell::chemistry::{DistributionScheme, DistributionType, RgtpDistribution};
 use crate::parameters::quantity::{Force, Length, Quantity, Stress, Time, Tinv, Viscosity};
 use crate::parameters::{BasicQuants, RawParameters, RawWorldParameters};
@@ -9,7 +9,7 @@ use crate::NVERTS;
 
 fn group_layout(bq: &BasicQuants) -> GroupLayout {
     let raw_centroid = [Length(0.0), Length(0.0)];
-    let centroid = P2D {
+    let centroid = V2D {
         x: bq.normalize(&raw_centroid[0]),
         y: bq.normalize(&raw_centroid[1]),
     };

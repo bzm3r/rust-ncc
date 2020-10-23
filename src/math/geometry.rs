@@ -6,13 +6,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use crate::math::p2d::P2D;
+use crate::math::p2d::V2D;
 use crate::math::{max_f32s, min_f32s};
 use crate::utils::{circ_ix_minus, circ_ix_plus};
 use std::cmp::Ordering;
 
 /// Calculate the area of a polygon with vertices positioned at `xys`. [ref](http://geomalgorithms.com/a01-_area.html)
-pub fn calc_poly_area(xys: &[P2D]) -> f32 {
+pub fn calc_poly_area(xys: &[V2D]) -> f32 {
     let nvs = xys.len();
 
     let mut area = 0.0_f32;
@@ -34,7 +34,7 @@ pub struct BBox {
 }
 
 impl BBox {
-    pub fn from_points(xys: &[P2D]) -> BBox {
+    pub fn from_points(xys: &[V2D]) -> BBox {
         let xs: Vec<f32> = xys.iter().map(|v| v.x).collect();
         let ys: Vec<f32> = xys.iter().map(|v| v.y).collect();
         BBox {
@@ -59,7 +59,7 @@ impl BBox {
             || (self.ymin > other.ymax || self.ymax < other.ymin))
     }
 
-    pub fn contains(&self, point: &P2D) -> bool {
+    pub fn contains(&self, point: &V2D) -> bool {
         !(point.x < self.xmin || point.x > self.xmax || point.y < self.ymin || point.y > self.ymax)
     }
 }
@@ -69,29 +69,13 @@ fn in_unit_interval(x: f32) -> bool {
     (x.abs() < f32::EPSILON || (x - 1.0).abs() < f32::EPSILON) || (0.0 < x && x < 1.0)
 }
 
-#[allow(unused)]
-pub fn calc_intersection(l0: &P2D, l1: &P2D, p0: &P2D, p1: &P2D) -> Option<P2D> {
-    let p = p1 - p0;
-    let l = l1 - l0;
-    let t = ((p0.y - l0.y) * l.x - (p0.x - l0.x) * l.y) / (l.y * p.x - l.x * p.y);
-    let u = match (l.y.abs() < f32::EPSILON, l.x.abs() < f32::EPSILON) {
-        (true, true) => return None,
-        (false, _) => (p.y * t + p0.y - l0.y) / l.y,
-        (_, false) => (p.x * t + p0.x - l0.x) / l.x,
-    };
-    match (u > 0.0, in_unit_interval(t)) {
-        (true, true) => Some(t * p + *p0),
-        (_, _) => None,
-    }
-}
-
 pub enum PointSegRelation {
     Left,
     Right,
     On,
 }
 
-pub fn is_left(p: &P2D, p0: &P2D, p1: &P2D) -> PointSegRelation {
+pub fn is_left(p: &V2D, p0: &V2D, p1: &V2D) -> PointSegRelation {
     let r = (p1.x - p0.x) * (p.y - p0.y) - (p.x - p0.x) * (p1.y - p0.y);
     match 0.0.partial_cmp(&r) {
         Some(Ordering::Less) => PointSegRelation::Left,
@@ -104,7 +88,7 @@ pub fn is_left(p: &P2D, p0: &P2D, p1: &P2D) -> PointSegRelation {
     }
 }
 
-pub fn is_point_in_poly(p: &P2D, poly_bbox: &BBox, poly: &[P2D]) -> bool {
+pub fn is_point_in_poly(p: &V2D, poly_bbox: &BBox, poly: &[V2D]) -> bool {
     if poly_bbox.contains(p) {
         let mut wn: isize = 0;
         let nverts = poly.len();
@@ -131,7 +115,7 @@ pub fn is_point_in_poly(p: &P2D, poly_bbox: &BBox, poly: &[P2D]) -> bool {
 }
 
 /// Returns (t, d), where `k = (s1 - s0)*t + s1` is the point on `s0` to `s1` closest to `point`.
-pub fn calc_dist_point_to_seg(point: &P2D, s0: &P2D, s1: &P2D) -> (f32, f32) {
+pub fn calc_dist_point_to_seg(point: &V2D, s0: &V2D, s1: &V2D) -> (f32, f32) {
     let seg = s1 - s0;
     let rel_pt = point - s0;
     let t = (seg.x * rel_pt.x + seg.y * rel_pt.y) / (seg.x * seg.x + seg.y * seg.y);
@@ -143,4 +127,69 @@ pub fn calc_dist_point_to_seg(point: &P2D, s0: &P2D, s1: &P2D) -> (f32, f32) {
         let x = rel_pt - w;
         (t, x.mag())
     }
+}
+
+pub struct LineSeg {
+    p0: V2D,
+    p1: V2D,
+    p: V2D,
+    normal: V2D,
+    bbox: BBox,
+}
+
+impl LineSeg {
+    pub fn new(p0: &V2D, p1: &V2D) -> LineSeg {
+        let p = p1 - p0;
+        LineSeg {
+            p0: *p0,
+            p1: *p1,
+            p,
+            normal: p.normal(),
+            bbox: BBox::from_points(&[*p0, *p1]),
+        }
+    }
+
+    pub fn check_intersection(&self, p0: &V2D, p1: &V2D) -> Option<f32> {
+        let p = p0 - p1;
+        let alpha = self.p0.x - p0.x;
+        let beta = self.p1.y - p1.y;
+        let gamma = self.p.y * p.x - self.p.x * p.y;
+        let t = -1.0 * (p.y * alpha - p.x * beta) / gamma;
+        let u = self.p.y * alpha - self.p.x * beta / gamma;
+
+        match in_unit_interval(t) && in_unit_interval(u) {
+            true => Some(t),
+            false => None,
+        }
+    }
+
+    #[allow(unused)]
+    pub fn calc_intersection(&self, p0: &V2D, p1: &V2D) -> Option<V2D> {
+        match self.check_intersection(p0, p1) {
+            Some(t) => Some(self.p0 + t * self.p),
+            None => None,
+        }
+    }
+}
+
+pub fn ls_self_intersects_poly(vi: usize, poly: &[V2D], lseg: &LineSeg) -> bool {
+    let nverts = poly.len();
+    poly.iter().enumerate().any(|(i, vc)| {
+        let j = circ_ix_plus(i, nverts);
+        if i != vi && j != vi {
+            let vc = &poly[i];
+            let vc1 = &poly[j];
+            lseg.check_intersection(vc, vc1).is_some()   
+        } else {
+            false
+        }
+    })
+}
+
+pub fn ls_intersects_poly(lseg: &LineSeg, poly: &[V2D]) -> bool {
+    let nverts = poly.len();
+    poly.iter().enumerate().any(|(vi, vc)| {
+        let vc1 = &poly[circ_ix_plus(vi, nverts)];
+        lseg.check_intersection(vc, vc1).is_some()
+    })
 }

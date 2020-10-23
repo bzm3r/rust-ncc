@@ -11,13 +11,13 @@ pub mod adh2;
 pub mod cil;
 pub mod single;
 
-use crate::math::p2d::P2D;
+use crate::math::p2d::V2D;
 use crate::parameters::{BasicQuants, GlobalParameters, Parameters};
 
 pub struct GroupLayout {
     pub width: u32,
     pub height: u32,
-    pub bottom_left: P2D,
+    pub bottom_left: V2D,
 }
 
 pub struct CellGroup {

@@ -10,7 +10,7 @@ pub mod hardio;
 use crate::experiments::{CellGroup, Experiment};
 use crate::interactions::{CellInteractions, InteractionState, RgtpState};
 use crate::math::geometry::BBox;
-use crate::math::p2d::P2D;
+use crate::math::p2d::V2D;
 use crate::model_cell::core_state::CoreState;
 use crate::model_cell::{confirm_volume_exclusion, ModelCell};
 use crate::parameters::{GlobalParameters, Parameters};
@@ -112,12 +112,12 @@ pub struct World {
     pub rng: ThreadRng,
 }
 
-fn gen_vertex_coords(centroid: &P2D, radius: f32) -> [P2D; NVERTS] {
-    let mut r = [P2D::default(); NVERTS];
+fn gen_vertex_coords(centroid: &V2D, radius: f32) -> [V2D; NVERTS] {
+    let mut r = [V2D::default(); NVERTS];
     (0..NVERTS).for_each(|vix| {
         let vf = (vix as f32) / (NVERTS as f32);
         let theta = 2.0 * PI * vf;
-        r[vix] = P2D {
+        r[vix] = V2D {
             x: centroid.x + theta.cos() * radius,
             y: centroid.y + theta.sin() * radius,
         };
@@ -148,7 +148,7 @@ impl World {
             .iter()
             .zip(cell_centroids.iter())
             .map(|(&gix, cc)| gen_vertex_coords(cc, group_parameters[gix].cell_r))
-            .collect::<Vec<[P2D; NVERTS]>>();
+            .collect::<Vec<[V2D; NVERTS]>>();
         let cell_states = cell_group_ixs
             .iter()
             .zip(cell_vcs.iter())
@@ -253,7 +253,7 @@ impl World {
     }
 }
 
-fn gen_cell_centroids(cg: &CellGroup) -> Result<Vec<P2D>, String> {
+fn gen_cell_centroids(cg: &CellGroup) -> Result<Vec<V2D>, String> {
     let CellGroup {
         num_cells,
         layout,
@@ -262,15 +262,15 @@ fn gen_cell_centroids(cg: &CellGroup) -> Result<Vec<P2D>, String> {
     let cell_r = parameters.cell_r;
     if layout.width * layout.height >= *num_cells {
         let mut r = vec![];
-        let first_cell_centroid = P2D {
+        let first_cell_centroid = V2D {
             x: layout.bottom_left.x + cell_r,
             y: layout.bottom_left.y + cell_r,
         };
-        let delta_x = P2D {
+        let delta_x = V2D {
             x: 2.0 * cell_r,
             y: 0.0,
         };
-        let delta_y = P2D {
+        let delta_y = V2D {
             x: 0.0,
             y: 2.0 * cell_r,
         };
