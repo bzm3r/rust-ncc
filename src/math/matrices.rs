@@ -28,6 +28,7 @@ fn sort_ixs4d(ci: usize, vi: usize, oci: usize, ovi: usize) -> (usize, usize, us
     }
 }
 
+#[allow(unused)]
 #[cfg(debug_assertions)]
 pub fn check_indices4d(num_cells: usize, ci: usize, vi: usize, oci: usize, ovi: usize) {
     let oci = fix_oci(ci, oci);
@@ -54,6 +55,7 @@ pub fn check_indices4d(num_cells: usize, ci: usize, vi: usize, oci: usize, ovi: 
     }
 }
 
+#[allow(unused)]
 #[cfg(debug_assertions)]
 pub fn check_sym_indices4d(num_cells: usize, ci: usize, vi: usize, oci: usize, ovi: usize) {
     let (ci, vi, oci, ovi) = sort_ixs4d(ci, vi, oci, ovi);
@@ -127,6 +129,7 @@ pub struct CcDat<T: Copy + Default> {
     undefined: T,
 }
 
+#[allow(unused)]
 impl<T: Copy + Default> CcDat<T> {
     pub fn new(num_cells: usize, undefined: T) -> CcDat<T> {
         CcDat {
@@ -159,6 +162,7 @@ impl<T: Copy + Default> CcDat<T> {
 }
 
 /// Matrix to store inter-vertex data in `[cell][cell][vertex][vertex]` format.
+#[allow(unused)]
 pub struct CcVvDat<T: Copy> {
     num_cells: usize,
     vv_stride: usize,
@@ -167,6 +171,7 @@ pub struct CcVvDat<T: Copy> {
     undefined: T,
 }
 
+#[allow(unused)]
 impl<T: Copy> CcVvDat<T> {
     pub fn empty(num_cells: usize, undefined: T) -> CcVvDat<T> {
         let vv_stride = NVERTS * NVERTS;
@@ -246,6 +251,7 @@ impl<T: Copy> SymCcVvDat<T> {
         }
     }
 
+    #[allow(unused)]
     pub fn reset(&mut self, ci: usize, vi: usize, oci: usize, ovi: usize) {
         if ci != oci {
             let ix = self.calc_ix(ci, vi, oci, ovi);
@@ -298,6 +304,7 @@ impl<T: Copy> CvCvDat<T> {
         }
     }
 
+    #[allow(unused)]
     pub fn reset(&mut self, ci: usize, vi: usize, oci: usize, ovi: usize) {
         if ci != oci {
             let ix = self.calc_ix(ci, vi, oci, ovi);

@@ -8,7 +8,8 @@
 
 pub mod quantity;
 
-use crate::interactions::CrlMat;
+use crate::math::geometry::BBox;
+use crate::math::v2d::V2d;
 use crate::model_cell::calc_init_cell_area;
 use crate::model_cell::chemistry::RgtpDistribution;
 use crate::parameters::quantity::{
@@ -43,31 +44,176 @@ impl BasicQuants {
     }
 }
 
-pub struct RawWorldParameters {
-    pub vertex_eta: Viscosity,
-    pub close_criterion: Length,
-    pub cil: CrlMat,
-    pub cal: CrlMat,
-    pub adh_const: Force,
+#[derive(Clone)]
+pub struct RawPhysicalContactParams {
+    pub range: Length,
+    pub adh_mag: Force,
+    pub cal_mag: f32,
+    pub cil_mag: f32,
+}
+
+impl RawPhysicalContactParams {
+    pub fn refine(&self, bq: &BasicQuants) -> PhysicalContactParams {
+        PhysicalContactParams {
+            range: bq.normalize(&self.range),
+            adh_mag: bq.normalize(&self.adh_mag),
+            cal_mag: self.cal_mag,
+            cil_mag: self.cil_mag,
+        }
+    }
 }
 
 #[derive(Clone)]
-pub struct GlobalParameters {
+pub struct RawCoaParams {
+    /// Factor controlling to what extent line-of-sight blockage should be penalized.
+    pub los_penalty: f32,
+    pub range: Length,
+    pub mag: f32,
+}
+
+impl RawCoaParams {
+    pub fn refine(&self, bq: &BasicQuants) -> CoaParams {
+        let range = bq.normalize(&self.range);
+        CoaParams {
+            los_penalty: self.los_penalty,
+            range,
+            mag: self.mag,
+            distrib_exp: 0.5f32.ln() / (0.5 * range),
+        }
+    }
+}
+
+#[derive(Clone)]
+pub struct RawChemAttrParams {
+    center: [Length; 2],
+    center_mag: f32,
+    drop_per_char_l: f32,
+    char_l: Length,
+}
+
+impl RawChemAttrParams {
+    pub fn refine(&self, bq: &BasicQuants) -> ChemAttrParams {
+        ChemAttrParams {
+            center: V2d {
+                x: bq.normalize(&self.center[0]),
+                y: bq.normalize(&self.center[1]),
+            },
+            center_mag: self.center_mag,
+            slope: self.drop_per_char_l / bq.normalize(&self.char_l),
+        }
+    }
+}
+
+#[derive(Clone)]
+pub struct RawBdryParams {
+    shape: Vec<[Length; 2]>,
+    skip_bb_check: bool,
+    mag: f32,
+}
+
+impl RawBdryParams {
+    pub fn refine(&self, bq: &BasicQuants) -> BdryParams {
+        let shape = self
+            .shape
+            .iter()
+            .map(|p| V2d {
+                x: bq.normalize(&p[0]),
+                y: bq.normalize(&p[1]),
+            })
+            .collect::<Vec<V2d>>();
+        let bbox = BBox::from_points(&shape);
+        BdryParams {
+            shape,
+            bbox,
+            skip_bb_check: self.skip_bb_check,
+            mag: self.mag,
+        }
+    }
+}
+
+#[derive(Clone)]
+pub struct RawInteractionParams {
+    pub coa: Option<RawCoaParams>,
+    pub chem_attr: Option<RawChemAttrParams>,
+    pub bdry: Option<RawBdryParams>,
+    pub phys_contact: Option<RawPhysicalContactParams>,
+}
+
+impl RawInteractionParams {
+    pub fn refine(&self, bq: &BasicQuants) -> InteractionParams {
+        InteractionParams {
+            coa: self.coa.as_ref().map(|coa| coa.refine(bq)),
+            chem_attr: self
+                .chem_attr
+                .as_ref()
+                .map(|chem_attr| chem_attr.refine(bq)),
+            bdry: self.bdry.as_ref().map(|bdry| bdry.refine(bq)),
+            phys_contact: self
+                .phys_contact
+                .as_ref()
+                .map(|phys_contact| phys_contact.refine(bq)),
+        }
+    }
+}
+
+#[derive(Clone)]
+pub struct RawWorldParameters {
+    pub vertex_eta: Viscosity,
+    pub interactions: RawInteractionParams,
+}
+
+#[derive(Clone)]
+pub struct PhysicalContactParams {
+    pub range: f32,
+    pub adh_mag: f32,
+    pub cal_mag: f32,
+    pub cil_mag: f32,
+}
+
+#[derive(Clone)]
+pub struct CoaParams {
+    /// Factor controlling to what extent line-of-sight blockage should be penalized.
+    pub los_penalty: f32,
+    /// Factor controlling shape of the exponential modelling COA interaction,
+    pub range: f32,
+    pub mag: f32,
+    pub distrib_exp: f32,
+}
+
+#[derive(Clone)]
+pub struct ChemAttrParams {
+    pub center: V2d,
+    pub center_mag: f32,
+    pub slope: f32,
+}
+
+#[derive(Clone)]
+pub struct BdryParams {
+    pub shape: Vec<V2d>,
+    pub bbox: BBox,
+    pub skip_bb_check: bool,
+    pub mag: f32,
+}
+
+#[derive(Clone)]
+pub struct InteractionParams {
+    pub phys_contact: Option<PhysicalContactParams>,
+    pub coa: Option<CoaParams>,
+    pub chem_attr: Option<ChemAttrParams>,
+    pub bdry: Option<BdryParams>,
+}
+
+#[derive(Clone)]
+pub struct WorldParameters {
     pub vertex_eta: f32,
-    pub close_criterion: f32,
-    pub cil: CrlMat,
-    pub cal: CrlMat,
-    pub adh_const: f32,
+    pub interactions: InteractionParams,
 }
 
 impl RawWorldParameters {
-    pub fn normalize(&self, bq: &BasicQuants) -> GlobalParameters {
-        GlobalParameters {
+    pub fn refine(&self, bq: &BasicQuants) -> WorldParameters {
+        WorldParameters {
             vertex_eta: bq.normalize(&self.vertex_eta),
-            close_criterion: bq.normalize(&self.close_criterion),
-            cil: self.cil.clone(),
-            cal: self.cal.clone(),
-            adh_const: bq.normalize(&self.adh_const),
+            interactions: self.interactions.refine(bq),
         }
     }
 }
@@ -103,10 +249,6 @@ pub struct RawParameters {
     pub kgtp_rac: f32,
     /// Rac1 auto-activation rate as a multiple of baseline Rac1 activation rate.
     pub kgtp_rac_auto: f32,
-    /// Chemoattractant factor affecting Rac1 activation rate.
-    pub chemoa: f32,
-    /// COA factor affecting Rac1 activation rate.
-    pub coa_half_d: Length,
     /// Baseline Rac1 inactivation rate.
     pub kdgtp_rac: f32,
     /// RhoA mediated inhibition of Rac1 as a multiple of baseline Rac1 inactivation rate.
@@ -172,8 +314,6 @@ pub struct Parameters {
     pub kgtp_rac: f32,
     /// Rac1 auto-activation rate as a multiple of baseline Rac1 activation rate.
     pub kgtp_rac_auto: f32,
-    /// Chemoattractant factor affecting Rac1 activation rate.
-    pub chemoa: f32,
     /// Baseline Rac1 inactivation rate.
     pub kdgtp_rac: f32,
     /// RhoA mediated inhibition of Rac1 as a multiple of baseline Rac1 inactivation rate.
@@ -237,7 +377,6 @@ impl RawParameters {
             tot_rho: self.tot_rho,
             kgtp_rac: bq.normalize(&bq.kgtp.mulf(self.kgtp_rac)),
             kgtp_rac_auto: bq.normalize(&bq.kgtp.mulf(self.kgtp_rac_auto)),
-            chemoa: self.chemoa,
             kdgtp_rac: bq.normalize(&bq.kdgtp.mulf(self.kdgtp_rac)),
             kdgtp_rho_on_rac: bq.normalize(&bq.kdgtp.mulf(self.kdgtp_rho_on_rac)),
             halfmax_tension_inhib: self.halfmax_tension_inhib,

@@ -252,7 +252,7 @@ impl Display for General {
     }
 }
 
-#[derive(Deserialize, Clone, Copy)]
+#[derive(Default, Clone, Copy, Deserialize)]
 pub struct Force(pub f32);
 
 impl Quantity for Force {

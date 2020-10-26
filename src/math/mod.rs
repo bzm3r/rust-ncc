@@ -8,8 +8,8 @@
 
 pub mod geometry;
 pub mod matrices;
-pub mod p2d;
 pub mod radians;
+pub mod v2d;
 
 #[inline]
 /// Calculate `x` modulo `y`.
@@ -77,4 +77,3 @@ pub fn capped_linear_function(x: f32, max_x: f32) -> f32 {
         x / max_x
     }
 }
-

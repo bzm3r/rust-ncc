@@ -11,8 +11,11 @@ use std::time::Instant;
 pub const NVERTS: usize = 16;
 
 fn main() {
-    let exp = experiments::adh::generate();
-    let output_dir = PathBuf::from("C:\\Users\\bhmer\\Desktop\\rust-ncc\\output\\");
+    let exp = experiments::single::generate();
+    let output_dir = PathBuf::from(format!(
+        "{}\\output",
+        std::env::current_dir().unwrap().to_str().unwrap()
+    ));
     let mut w = world::World::new(exp);
     let now = Instant::now();
     w.simulate(3.0 * 3600.0);

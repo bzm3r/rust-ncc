@@ -2,13 +2,13 @@
 use crate::interactions::CellInteractions;
 use crate::math::{max_f32, min_f32};
 use crate::model_cell::{chemistry::RacRandState, core_state::CoreState};
-use crate::parameters::{GlobalParameters, Parameters};
+use crate::parameters::{Parameters, WorldParameters};
 
 type CellDynamicsFn = fn(
     state: &CoreState,
     rac_random_state: &RacRandState,
     interactions: &CellInteractions,
-    world_parameters: &GlobalParameters,
+    world_parameters: &WorldParameters,
     parameters: &Parameters,
 ) -> CoreState;
 
@@ -97,7 +97,7 @@ impl Ks {
         init_state: CoreState,
         rand_state: &RacRandState,
         inter_state: &CellInteractions,
-        world_parameters: &GlobalParameters,
+        world_parameters: &WorldParameters,
         parameters: &Parameters,
     ) -> Ks {
         // since C[0] = 0.0, the function evaluated at that point will return 0
@@ -159,7 +159,7 @@ pub fn integrator(
     init_state: &CoreState,
     rand_state: &RacRandState,
     inter_state: &CellInteractions,
-    world_parameters: &GlobalParameters,
+    world_parameters: &WorldParameters,
     parameters: &Parameters,
     mut aux_args: AuxArgs,
 ) -> Solution {

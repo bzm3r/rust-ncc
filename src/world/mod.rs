@@ -8,12 +8,11 @@
 
 pub mod hardio;
 use crate::experiments::{CellGroup, Experiment};
-use crate::interactions::{CellInteractions, InteractionState, RgtpState};
-use crate::math::geometry::BBox;
-use crate::math::p2d::V2D;
+use crate::interactions::{CellInteractions, InteractionGenerator, RgtpState};
+use crate::math::v2d::V2d;
 use crate::model_cell::core_state::CoreState;
 use crate::model_cell::{confirm_volume_exclusion, ModelCell};
-use crate::parameters::{GlobalParameters, Parameters};
+use crate::parameters::{Parameters, WorldParameters};
 use crate::world::hardio::{save_data, save_schema};
 use crate::NVERTS;
 use avro_rs::Writer;
@@ -40,9 +39,9 @@ impl Cells {
         &self,
         rng: &mut ThreadRng,
         cell_regs: &mut [Option<RandomEventGenerator>],
-        world_parameters: &GlobalParameters,
+        world_parameters: &WorldParameters,
         group_parameters: &[Parameters],
-        interaction_state: &mut InteractionState,
+        interaction_generator: &mut InteractionGenerator,
     ) -> Cells {
         let mut cells = vec![self.cells[0]; self.cells.len()];
         let shuffled_cells = {
@@ -54,8 +53,11 @@ impl Cells {
             println!("------------------");
             let ci = c.ix as usize;
             println!("ci: {}", ci);
-            println!("contacts: {:?}", interaction_state.get_contacts(ci));
-            let contact_polys = interaction_state.get_contact_polys(ci);
+            println!(
+                "contacts: {:?}",
+                interaction_generator.get_physical_contacts(ci)
+            );
+            let contact_polys = interaction_generator.get_physical_contact_polys(ci);
             let new_cell_state = c.simulate_euler(
                 self.tstep,
                 &self.interactions[ci],
@@ -65,27 +67,26 @@ impl Cells {
                 &group_parameters[c.group_ix as usize],
             );
             println!("----------------------");
-            interaction_state.update(ci, &new_cell_state.state.vertex_coords);
+            interaction_generator.update(ci, &new_cell_state.state.vertex_coords);
             cells[ci] = new_cell_state;
         }
         for (ci, c) in cells.iter().enumerate() {
             println!("+++++++++++++++++");
             println!("ci: {}", ci);
-            println!("contacts: {:?}", interaction_state.get_contacts(ci));
+            println!(
+                "contacts: {:?}",
+                interaction_generator.get_physical_contacts(ci)
+            );
             let vcs = &c.state.vertex_coords;
-            let contact_polys = interaction_state.get_contact_polys(ci);
+            let contact_polys = interaction_generator.get_physical_contact_polys(ci);
             confirm_volume_exclusion(vcs, contact_polys.as_slice(), &format!("world cell {}", ci));
         }
         println!("+++++++++++++++++");
-        interaction_state.update_cell_interactions();
+        let cell_interactions = interaction_generator.generate();
         Cells {
             tstep: self.tstep + 1,
             cells,
-            interactions: interaction_state
-                .cell_interactions
-                .iter()
-                .copied()
-                .collect(),
+            interactions: cell_interactions,
         }
     }
 }
@@ -103,21 +104,21 @@ impl RandomEventGenerator {
 
 pub struct World {
     tstep_length: f32,
-    global_params: GlobalParameters,
+    global_params: WorldParameters,
     cell_group_params: Vec<Parameters>,
     history: Vec<Cells>,
     cell_regs: Vec<Option<RandomEventGenerator>>,
     cell_states: Cells,
-    interacts: InteractionState,
+    interaction_generator: InteractionGenerator,
     pub rng: ThreadRng,
 }
 
-fn gen_vertex_coords(centroid: &V2D, radius: f32) -> [V2D; NVERTS] {
-    let mut r = [V2D::default(); NVERTS];
+fn gen_vertex_coords(centroid: &V2d, radius: f32) -> [V2d; NVERTS] {
+    let mut r = [V2d::default(); NVERTS];
     (0..NVERTS).for_each(|vix| {
         let vf = (vix as f32) / (NVERTS as f32);
         let theta = 2.0 * PI * vf;
-        r[vix] = V2D {
+        r[vix] = V2d {
             x: centroid.x + theta.cos() * radius,
             y: centroid.y + theta.sin() * radius,
         };
@@ -148,7 +149,7 @@ impl World {
             .iter()
             .zip(cell_centroids.iter())
             .map(|(&gix, cc)| gen_vertex_coords(cc, group_parameters[gix].cell_r))
-            .collect::<Vec<[V2D; NVERTS]>>();
+            .collect::<Vec<[V2d; NVERTS]>>();
         let cell_states = cell_group_ixs
             .iter()
             .zip(cell_vcs.iter())
@@ -165,20 +166,12 @@ impl World {
                 state.calc_rgtp_state(parameters)
             })
             .collect::<Vec<[RgtpState; NVERTS]>>();
-        let cell_bboxes = cell_vcs
-            .iter()
-            .map(|vcs| BBox::from_points(vcs))
-            .collect::<Vec<BBox>>();
-        let interaction_state = InteractionState::new(
-            &cell_bboxes,
+        let interaction_generator = InteractionGenerator::new(
             &cell_vcs,
             &cell_rgtps,
-            world_parameters.close_criterion,
-            world_parameters.cal.clone(),
-            world_parameters.cil.clone(),
-            world_parameters.adh_const,
-            world_parameters.close_criterion,
+            world_parameters.interactions.clone(),
         );
+        let cell_interactions = interaction_generator.generate();
         let mut cells = vec![];
         let mut rng = thread_rng();
         let mut cell_regs = vec![];
@@ -198,7 +191,7 @@ impl World {
                 ix as u32,
                 gix as u32,
                 cell_states[gix],
-                &interaction_state.cell_interactions[ix],
+                &cell_interactions[ix],
                 parameters,
                 creg.as_mut(),
             ));
@@ -207,7 +200,7 @@ impl World {
         let state = Cells {
             tstep: 0,
             cells,
-            interactions: interaction_state.cell_interactions.clone(),
+            interactions: cell_interactions.clone(),
         };
         let history = vec![state.clone()];
         World {
@@ -217,7 +210,7 @@ impl World {
             cell_regs,
             history,
             cell_states: state,
-            interacts: interaction_state,
+            interaction_generator,
             rng,
         }
     }
@@ -232,7 +225,7 @@ impl World {
                 self.cell_regs.as_mut_slice(),
                 &self.global_params,
                 &self.cell_group_params,
-                &mut self.interacts,
+                &mut self.interaction_generator,
             );
             self.history.push(new_state.clone());
             self.cell_states = new_state;
@@ -253,7 +246,7 @@ impl World {
     }
 }
 
-fn gen_cell_centroids(cg: &CellGroup) -> Result<Vec<V2D>, String> {
+fn gen_cell_centroids(cg: &CellGroup) -> Result<Vec<V2d>, String> {
     let CellGroup {
         num_cells,
         layout,
@@ -262,15 +255,15 @@ fn gen_cell_centroids(cg: &CellGroup) -> Result<Vec<V2D>, String> {
     let cell_r = parameters.cell_r;
     if layout.width * layout.height >= *num_cells {
         let mut r = vec![];
-        let first_cell_centroid = V2D {
+        let first_cell_centroid = V2d {
             x: layout.bottom_left.x + cell_r,
             y: layout.bottom_left.y + cell_r,
         };
-        let delta_x = V2D {
+        let delta_x = V2d {
             x: 2.0 * cell_r,
             y: 0.0,
         };
-        let delta_y = V2D {
+        let delta_y = V2d {
             x: 0.0,
             y: 2.0 * cell_r,
         };

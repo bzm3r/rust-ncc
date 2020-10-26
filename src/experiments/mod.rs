@@ -6,18 +6,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub mod adh;
-pub mod adh2;
-pub mod cil;
 pub mod single;
 
-use crate::math::p2d::V2D;
-use crate::parameters::{BasicQuants, GlobalParameters, Parameters};
+use crate::math::v2d::V2d;
+use crate::parameters::{BasicQuants, Parameters, WorldParameters};
 
 pub struct GroupLayout {
     pub width: u32,
     pub height: u32,
-    pub bottom_left: V2D,
+    pub bottom_left: V2d,
 }
 
 pub struct CellGroup {
@@ -29,6 +26,6 @@ pub struct CellGroup {
 pub struct Experiment {
     pub title: String,
     pub basic_quants: BasicQuants,
-    pub world_parameters: GlobalParameters,
+    pub world_parameters: WorldParameters,
     pub cell_groups: Vec<CellGroup>,
 }

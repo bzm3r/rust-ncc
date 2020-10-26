@@ -16,12 +16,12 @@ use std::ops::{Add, Div, Mul, Sub};
 
 /// 2D vector with `f32` elements.
 #[derive(Clone, Copy, Debug, Default, Deserialize, Serialize, Schematize)]
-pub struct V2D {
+pub struct V2d {
     pub x: f32,
     pub y: f32,
 }
 
-impl V2D {
+impl V2d {
     /// Calculate direction of vector from origin to point in radians.
     pub fn direction(&self) -> Radians {
         arctan(self.x, self.y)
@@ -32,165 +32,165 @@ impl V2D {
         (self.x.powi(2) + self.y.powi(2)).sqrt()
     }
 
-    pub fn dot(&self, other: &V2D) -> f32 {
+    pub fn dot(&self, other: &V2d) -> f32 {
         self.x * other.x + self.y * other.y
     }
 
-    pub fn abs(&self) -> V2D {
-        V2D {
+    pub fn abs(&self) -> V2d {
+        V2d {
             x: self.x.abs(),
             y: self.y.abs(),
         }
     }
 
-    pub fn max(&self, other: &V2D) -> V2D {
-        V2D {
+    pub fn max(&self, other: &V2d) -> V2d {
+        V2d {
             x: max_f32(self.x, other.x),
             y: max_f32(self.y, other.y),
         }
     }
 
-    pub fn min(&self, other: &V2D) -> V2D {
-        V2D {
+    pub fn min(&self, other: &V2d) -> V2d {
+        V2d {
             x: min_f32(self.x, other.x),
             y: min_f32(self.y, other.y),
         }
     }
 
-    pub fn unitize(&self) -> V2D {
+    pub fn unitize(&self) -> V2d {
         let m = self.mag();
         (1.0 / m) * self
     }
 
-    pub fn normal(&self) -> V2D {
-        V2D {
+    pub fn normal(&self) -> V2d {
+        V2d {
             x: -1.0 * self.y,
             y: self.x,
         }
     }
 
-    pub fn scalar_mul_x(&self, s: f32) -> V2D {
-        V2D {
+    pub fn scalar_mul_x(&self, s: f32) -> V2d {
+        V2d {
             x: self.x * s,
             y: self.y,
         }
     }
 
-    pub fn scalar_mul_y(&self, s: f32) -> V2D {
-        V2D {
+    pub fn scalar_mul_y(&self, s: f32) -> V2d {
+        V2d {
             x: self.x,
             y: self.y * s,
         }
     }
 
-    pub fn powi(&self, x: i32) -> V2D {
-        V2D {
+    pub fn powi(&self, x: i32) -> V2d {
+        V2d {
             x: self.x.powi(x),
             y: self.y.powi(x),
         }
     }
 }
 
-impl Add for V2D {
+impl Add for V2d {
     type Output = Self;
 
     fn add(self, rhs: Self) -> Self::Output {
-        V2D {
+        V2d {
             x: self.x + rhs.x,
             y: self.y + rhs.y,
         }
     }
 }
 
-impl Add for &V2D {
-    type Output = V2D;
+impl Add for &V2d {
+    type Output = V2d;
 
     fn add(self, rhs: Self) -> Self::Output {
-        V2D {
+        V2d {
             x: self.x + rhs.x,
             y: self.y + rhs.y,
         }
     }
 }
 
-impl Div for V2D {
+impl Div for V2d {
     type Output = Self;
 
     fn div(self, rhs: Self) -> Self::Output {
-        V2D {
+        V2d {
             x: self.x / rhs.x,
             y: self.y / rhs.y,
         }
     }
 }
 
-impl Mul<V2D> for f32 {
-    type Output = V2D;
+impl Mul<V2d> for f32 {
+    type Output = V2d;
 
-    fn mul(self, rhs: V2D) -> Self::Output {
-        V2D {
+    fn mul(self, rhs: V2d) -> Self::Output {
+        V2d {
             x: self * rhs.x,
             y: self * rhs.y,
         }
     }
 }
 
-impl Mul<&V2D> for f32 {
-    type Output = V2D;
+impl Mul<&V2d> for f32 {
+    type Output = V2d;
 
-    fn mul(self, rhs: &V2D) -> Self::Output {
-        V2D {
+    fn mul(self, rhs: &V2d) -> Self::Output {
+        V2d {
             x: self * rhs.x,
             y: self * rhs.y,
         }
     }
 }
 
-impl Mul<V2D> for &f32 {
-    type Output = V2D;
+impl Mul<V2d> for &f32 {
+    type Output = V2d;
 
-    fn mul(self, rhs: V2D) -> Self::Output {
-        V2D {
+    fn mul(self, rhs: V2d) -> Self::Output {
+        V2d {
             x: self * rhs.x,
             y: self * rhs.y,
         }
     }
 }
 
-impl Add<V2D> for f32 {
-    type Output = V2D;
+impl Add<V2d> for f32 {
+    type Output = V2d;
 
-    fn add(self, rhs: V2D) -> Self::Output {
-        V2D {
+    fn add(self, rhs: V2d) -> Self::Output {
+        V2d {
             x: self + rhs.x,
             y: self + rhs.y,
         }
     }
 }
 
-impl Sub for V2D {
+impl Sub for V2d {
     type Output = Self;
 
     fn sub(self, rhs: Self) -> Self::Output {
-        V2D {
+        V2d {
             x: self.x - rhs.x,
             y: self.y - rhs.y,
         }
     }
 }
 
-impl<'a, 'b> Sub<&'b V2D> for &'a V2D {
-    type Output = V2D;
+impl<'a, 'b> Sub<&'b V2d> for &'a V2d {
+    type Output = V2d;
 
-    fn sub(self, other: &'b V2D) -> V2D {
-        V2D {
+    fn sub(self, other: &'b V2d) -> V2d {
+        V2d {
             x: self.x - other.x,
             y: self.y - other.y,
         }
     }
 }
 
-impl Display for V2D {
+impl Display for V2d {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "[{}, {}]", self.x, self.y)
     }

@@ -1,15 +1,15 @@
 #![allow(unused)]
 use crate::experiments::{CellGroup, Experiment, GroupLayout};
-use crate::interactions::CrlMat;
-use crate::math::p2d::V2D;
+use crate::math::matrices::SymCcDat;
+use crate::math::v2d::V2d;
 use crate::model_cell::chemistry::{DistributionScheme, DistributionType, RgtpDistribution};
 use crate::parameters::quantity::{Force, Length, Quantity, Stress, Time, Tinv, Viscosity};
-use crate::parameters::{BasicQuants, RawParameters, RawWorldParameters};
+use crate::parameters::{BasicQuants, RawInteractionParams, RawParameters, RawWorldParameters};
 use crate::NVERTS;
 
 fn group_layout(bq: &BasicQuants) -> GroupLayout {
     let raw_centroid = [Length(0.0), Length(0.0)];
-    let centroid = V2D {
+    let centroid = V2d {
         x: bq.normalize(&raw_centroid[0]),
         y: bq.normalize(&raw_centroid[1]),
     };
@@ -49,21 +49,23 @@ fn basic_quants() -> BasicQuants {
     }
 }
 
-fn gen_cal_mat() -> CrlMat {
-    CrlMat::new(2, 60.0)
+fn gen_cal_mat() -> SymCcDat<f32> {
+    SymCcDat::<f32>::new(2, 60.0)
 }
 
-fn gen_cil_mat() -> CrlMat {
-    CrlMat::new(2, 60.0)
+fn gen_cil_mat() -> SymCcDat<f32> {
+    SymCcDat::<f32>::new(2, 60.0)
 }
 
 fn raw_world_parameters() -> RawWorldParameters {
     RawWorldParameters {
         vertex_eta: Viscosity(0.29).mulf(1.0 / (NVERTS as f32)),
-        close_criterion: Length(0.5).micro(),
-        cal: gen_cal_mat(),
-        cil: gen_cil_mat(),
-        adh_const: Force(0.0),
+        interactions: RawInteractionParams {
+            coa: None,
+            chem_attr: None,
+            bdry: None,
+            phys_contact: None,
+        },
     }
 }
 
@@ -96,8 +98,6 @@ fn raw_parameters() -> RawParameters {
         tot_rho: 1e6,
         kgtp_rac: 24.0,
         kgtp_rac_auto: 500.0,
-        chemoa: 7.5,
-        coa_half_d: Length(110.0e-6),
         kdgtp_rac: 8.0,
         kdgtp_rho_on_rac: 4000.0,
         halfmax_tension_inhib: 0.1,
@@ -118,10 +118,10 @@ fn raw_parameters() -> RawParameters {
 
 pub fn generate() -> Experiment {
     let basic_quants = basic_quants();
-    let world_parameters = raw_world_parameters().normalize(&basic_quants);
+    let world_parameters = raw_world_parameters().refine(&basic_quants);
     let cell_groups = cell_groups(&basic_quants);
     Experiment {
-        title: "CIL test".to_string(),
+        title: "single cell".to_string(),
         basic_quants,
         world_parameters,
         cell_groups,
