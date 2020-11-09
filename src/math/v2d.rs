@@ -89,6 +89,20 @@ impl V2d {
             y: self.y.powi(x),
         }
     }
+
+    pub fn scale(&self, factor: f32) -> V2d {
+        V2d {
+            x: self.x * factor,
+            y: self.y * factor,
+        }
+    }
+
+    pub fn translate(&self, dx: f32, dy: f32) -> V2d {
+        V2d {
+            x: self.x + dx,
+            y: self.y + dy,
+        }
+    }
 }
 
 impl Add for V2d {

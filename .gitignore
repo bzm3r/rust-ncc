@@ -17,3 +17,5 @@ Cargo.lock
 # piped output from runs
 out.txt
 out_*.txt
+
+*.mp4

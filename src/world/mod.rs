@@ -25,13 +25,13 @@ use rand::{thread_rng, SeedableRng};
 use rand_distr::{Distribution, Normal};
 use serde::{Deserialize, Serialize};
 use std::f32::consts::PI;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 #[derive(Clone, Deserialize, Serialize, Schematize)]
-struct Cells {
-    tstep: u32,
-    cells: Vec<ModelCell>,
-    interactions: Vec<CellInteractions>,
+pub struct Cells {
+    pub tstep: u32,
+    pub cells: Vec<ModelCell>,
+    pub interactions: Vec<CellInteractions>,
 }
 
 impl Cells {
@@ -106,7 +106,7 @@ pub struct World {
     tstep_length: f32,
     global_params: WorldParameters,
     cell_group_params: Vec<Parameters>,
-    history: Vec<Cells>,
+    pub history: Vec<Cells>,
     cell_regs: Vec<Option<RandomEventGenerator>>,
     cell_states: Cells,
     interaction_generator: InteractionGenerator,

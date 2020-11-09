@@ -1,7 +1,8 @@
-use avro_rs::Schema;
-use std::fs::OpenOptions;
+use crate::world::Cells;
+use avro_rs::{from_value, Reader, Schema};
+use std::fs::{read, OpenOptions};
 use std::io::Write;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 pub fn save_schema(name: &str, schema: &Schema, output_dir: &PathBuf) {
     let mut avsc_path = output_dir.clone();
@@ -30,4 +31,17 @@ pub fn save_data(name: &str, encoded: &[u8], output_dir: &PathBuf) {
         .open(path)
         .unwrap();
     f.write_all(&encoded).unwrap();
+}
+
+pub fn load_history(history_path: &Path) -> Vec<Cells> {
+    let mut r = vec![];
+    let history = read(&history_path).unwrap();
+    let reader = Reader::new(&history[..]).unwrap();
+
+    // value is a Result in case the read operation fails
+    for value in reader {
+        r.push(from_value::<Cells>(&value.unwrap()).unwrap())
+    }
+
+    r
 }
