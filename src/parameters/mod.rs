@@ -8,10 +8,10 @@
 
 pub mod quantity;
 
+use crate::cell::calc_init_cell_area;
+use crate::cell::chemistry::RgtpDistribution;
 use crate::math::geometry::BBox;
 use crate::math::v2d::V2d;
-use crate::model_cell::calc_init_cell_area;
-use crate::model_cell::chemistry::RgtpDistribution;
 use crate::parameters::quantity::{
     Diffusion, Force, Length, Quantity, Stress, Time, Tinv, Viscosity,
 };

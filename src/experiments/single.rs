@@ -1,8 +1,8 @@
 #![allow(unused)]
+use crate::cell::chemistry::{DistributionScheme, DistributionType, RgtpDistribution};
 use crate::experiments::{CellGroup, Experiment, GroupLayout};
 use crate::math::matrices::SymCcDat;
 use crate::math::v2d::V2d;
-use crate::model_cell::chemistry::{DistributionScheme, DistributionType, RgtpDistribution};
 use crate::parameters::quantity::{Force, Length, Quantity, Stress, Time, Tinv, Viscosity};
 use crate::parameters::{BasicQuants, RawInteractionParams, RawParameters, RawWorldParameters};
 use crate::NVERTS;

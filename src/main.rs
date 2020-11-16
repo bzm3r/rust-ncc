@@ -1,16 +1,19 @@
+#![deny(missing_docs)]
+//! The entry point.
 mod animator;
+mod cell;
 mod experiments;
 mod interactions;
 mod math;
-mod model_cell;
 mod parameters;
 mod utils;
 mod world;
 
 use crate::animator::create_animation;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::time::Instant;
 
+/// Number of vertices per model cell.
 pub const NVERTS: usize = 16;
 
 fn main() {

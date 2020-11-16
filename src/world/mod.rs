@@ -7,11 +7,13 @@
 // except according to those terms.
 
 pub mod hardio;
+#[cfg(debug_assertions)]
+use crate::cell::confirm_volume_exclusion;
+use crate::cell::core_state::CoreState;
+use crate::cell::ModelCell;
 use crate::experiments::{CellGroup, Experiment};
 use crate::interactions::{CellInteractions, InteractionGenerator, RgtpState};
 use crate::math::v2d::V2d;
-use crate::model_cell::core_state::CoreState;
-use crate::model_cell::{confirm_volume_exclusion, ModelCell};
 use crate::parameters::{Parameters, WorldParameters};
 use crate::world::hardio::{save_data, save_schema};
 use crate::NVERTS;
@@ -25,7 +27,7 @@ use rand::{thread_rng, SeedableRng};
 use rand_distr::{Distribution, Normal};
 use serde::{Deserialize, Serialize};
 use std::f32::consts::PI;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 #[derive(Clone, Deserialize, Serialize, Schematize)]
 pub struct Cells {
@@ -79,6 +81,7 @@ impl Cells {
             );
             let vcs = &c.state.vertex_coords;
             let contact_polys = interaction_generator.get_physical_contact_polys(ci);
+            #[cfg(debug_assertions)]
             confirm_volume_exclusion(vcs, contact_polys.as_slice(), &format!("world cell {}", ci));
         }
         println!("+++++++++++++++++");

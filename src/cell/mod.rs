@@ -13,9 +13,9 @@ pub mod rkdp5;
 use crate::cell::chemistry::RacRandState;
 use crate::cell::core_state::{ChemState, CoreState, GeomState, MechState};
 use crate::cell::rkdp5::AuxArgs;
-use crate::interactions::InteractionState;
+use crate::interactions::CellInteractions;
 use crate::math::geometry::{calc_poly_area, is_point_in_poly, BBox};
-use crate::math::p2d::P2D;
+use crate::math::v2d::V2d;
 use crate::parameters::{Parameters, WorldParameters};
 use crate::world::RandomEventGenerator;
 use crate::NVERTS;
@@ -38,12 +38,12 @@ pub struct ModelCell {
 }
 
 fn move_point_out(
-    mut out_p: P2D,
-    mut in_p: P2D,
+    mut out_p: V2d,
+    mut in_p: V2d,
     poly_bbox: &BBox,
-    poly: &[P2D],
+    poly: &[V2d],
     num_iters: usize,
-) -> P2D {
+) -> V2d {
     let mut n = 0;
     while n < num_iters {
         let new_p = 0.5 * (out_p + in_p);
@@ -57,13 +57,33 @@ fn move_point_out(
     out_p
 }
 
-fn enforce_volume_exclusion(
-    old_vcs: &[P2D; NVERTS],
-    mut new_vcs: [P2D; NVERTS],
-    contact_polys: Vec<&(BBox, [P2D; NVERTS])>,
-) -> [P2D; NVERTS] {
+#[cfg(debug_assertions)]
+pub fn confirm_volume_exclusion(
+    vcs: &[V2d; NVERTS],
+    contact_polys: &[(BBox, [V2d; NVERTS])],
+    panic_label: &str,
+) {
+    for (vi, vc) in vcs.iter().enumerate() {
+        for (bbox, poly) in contact_polys {
+            if is_point_in_poly(vc, bbox, poly) {
+                panic!(
+                    "{:?} violate volume exclusion. vcs[{:?}] = {:?}, other poly = {:?}",
+                    panic_label, vi, vc, poly
+                );
+            }
+        }
+    }
+}
+
+pub fn enforce_volume_exclusion(
+    old_vcs: &[V2d; NVERTS],
+    mut new_vcs: [V2d; NVERTS],
+    contact_polys: Vec<(BBox, [V2d; NVERTS])>,
+) -> [V2d; NVERTS] {
+    #[cfg(debug_assertions)]
+    confirm_volume_exclusion(old_vcs, contact_polys.as_slice(), "old_vcs");
     for (old_vc, new_vc) in old_vcs.iter().zip(new_vcs.iter_mut()) {
-        for (obb, ovcs) in contact_polys.clone().into_iter() {
+        for (obb, ovcs) in contact_polys.iter() {
             if is_point_in_poly(new_vc, obb, ovcs) {
                 let out_p = *old_vc;
                 let in_p = *new_vc;
@@ -71,6 +91,9 @@ fn enforce_volume_exclusion(
             }
         }
     }
+    #[cfg(debug_assertions)]
+    confirm_volume_exclusion(&new_vcs, &contact_polys, "new_vcs");
+
     new_vcs
 }
 
@@ -78,12 +101,11 @@ impl ModelCell {
     pub fn new(
         ix: u32,
         group_ix: u32,
-        vertex_coords: [P2D; NVERTS],
-        interactions: &InteractionState,
+        state: CoreState,
+        interactions: &CellInteractions,
         parameters: &Parameters,
         reg: Option<&mut RandomEventGenerator>,
     ) -> ModelCell {
-        let state = CoreState::new(vertex_coords, parameters.init_rac, parameters.init_rho);
         let rac_rand_state = RacRandState::init(
             match reg {
                 Some(cr) => Some(&mut cr.rng),
@@ -115,8 +137,8 @@ impl ModelCell {
     pub fn simulate_euler(
         &self,
         tstep: u32,
-        interactions: &InteractionState,
-        contact_polys: Vec<&(BBox, [P2D; NVERTS])>,
+        interactions: &CellInteractions,
+        contact_polys: Vec<(BBox, [V2d; NVERTS])>,
         rng: Option<&mut RandomEventGenerator>,
         world_parameters: &WorldParameters,
         parameters: &Parameters,
@@ -183,8 +205,8 @@ impl ModelCell {
     pub fn simulate_rkdp5(
         &self,
         tstep: u32,
-        interactions: &InteractionState,
-        contact_polys: Vec<&(BBox, [P2D; NVERTS])>,
+        interactions: &CellInteractions,
+        contact_polys: Vec<(BBox, [V2d; NVERTS])>,
         rng: Option<&mut RandomEventGenerator>,
         world_parameters: &WorldParameters,
         parameters: &Parameters,
@@ -225,7 +247,7 @@ impl ModelCell {
             .sum_fs
             .iter()
             .map(|sf| -1.0 * sf.unitize())
-            .collect::<Vec<P2D>>();
+            .collect::<Vec<V2d>>();
         state.vertex_coords = enforce_volume_exclusion(
             &self.state.vertex_coords,
             state.vertex_coords,
@@ -258,11 +280,11 @@ pub fn calc_init_cell_area(r: f32, n: usize) -> f32 {
     let poly_coords = (0..n)
         .map(|vix| {
             let theta = (vix as f32) / (n as f32) * 2.0 * PI;
-            P2D {
+            V2d {
                 x: r * theta.cos(),
                 y: r * theta.sin(),
             }
         })
-        .collect::<Vec<P2D>>();
+        .collect::<Vec<V2d>>();
     calc_poly_area(&poly_coords)
 }

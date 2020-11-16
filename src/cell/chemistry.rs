@@ -7,6 +7,7 @@
 // except according to those terms.
 
 use crate::cell::core_state::fmt_var_arr;
+use crate::interactions::RgtpState;
 use crate::math::hill_function3;
 use crate::parameters::Parameters;
 use crate::utils::{circ_ix_minus, circ_ix_plus};
@@ -129,6 +130,7 @@ pub fn calc_kgtps_rac(
     x_rands: &[f32; NVERTS],
     x_coas: &[f32; NVERTS],
     x_chemoas: &[f32; NVERTS],
+    x_cals: &[f32; NVERTS],
     kgtp_rac_base: f32,
     kgtp_rac_auto: f32,
     halfmax_rac_conc: f32,
@@ -137,7 +139,7 @@ pub fn calc_kgtps_rac(
     let mut kgtps_rac = [0.0_f32; NVERTS];
 
     for i in 0..nvs {
-        let base = (x_rands[i] + x_coas[i] + 1.0) * kgtp_rac_base;
+        let base = (x_cals[i] + x_rands[i] + x_coas[i] + 1.0) * kgtp_rac_base;
         let auto_factor = {
             let af = hill_function3(halfmax_rac_conc, conc_rac_acts[i]) * (1.0 + x_chemoas[i]);
             if af > 1.25 {
@@ -201,6 +203,7 @@ pub fn calc_kgtps_rho(
 pub fn calc_kdgtps_rho(
     rho_acts: &[f32; NVERTS],
     conc_rac_acts: &[f32; NVERTS],
+    x_cals: &[f32; NVERTS],
     kdgtp_rho_base: f32,
     kdgtp_rac_on_rho: f32,
     halfmax_conc_rac: f32,
@@ -210,7 +213,7 @@ pub fn calc_kdgtps_rho(
 
     for i in 0..nvs {
         let mutual = hill_function3(halfmax_conc_rac, conc_rac_acts[i]) * kdgtp_rac_on_rho;
-        kdgtps_rho[i] = kdgtp_rho_base + mutual;
+        kdgtps_rho[i] = (1.0 + x_cals[i]) * kdgtp_rho_base + mutual;
     }
 
     kdgtps_rho
@@ -278,4 +281,18 @@ impl Display for RacRandState {
         fmt_var_arr(f, "rfs", &self.x_rands)?;
         writeln!(f, "next_update: {}", self.next_update)
     }
+}
+
+pub fn calc_rgtp_state(
+    rac_acts: &[f32; NVERTS],
+    rho_acts: &[f32; NVERTS],
+    halfmax_rgtp_act: f32,
+) -> [RgtpState; NVERTS] {
+    let mut r: [RgtpState; NVERTS] = [0.0; NVERTS];
+    r.iter_mut()
+        .zip(rac_acts.iter().zip(rho_acts.iter()))
+        .for_each(|(x, (&rac, &rho))| {
+            *x = hill_function3(halfmax_rgtp_act, rac) - hill_function3(halfmax_rgtp_act, rho)
+        });
+    r
 }
