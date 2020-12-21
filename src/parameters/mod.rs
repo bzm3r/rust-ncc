@@ -19,7 +19,7 @@ use crate::NVERTS;
 use std::f32::consts::PI;
 
 /// Characteristic quantities used for normalization.
-pub struct BasicQuants {
+pub struct CharQuantities {
     pub eta: Viscosity,
     pub f: Force,
     pub l: Length,
@@ -32,7 +32,7 @@ pub struct BasicQuants {
     pub frac_rgtp: f32,
 }
 
-impl BasicQuants {
+impl CharQuantities {
     pub fn normalize<T: Quantity>(&self, q: &T) -> f32 {
         let q = q.g();
         let u = q.units();
@@ -53,7 +53,7 @@ pub struct RawPhysicalContactParams {
 }
 
 impl RawPhysicalContactParams {
-    pub fn refine(&self, bq: &BasicQuants) -> PhysicalContactParams {
+    pub fn refine(&self, bq: &CharQuantities) -> PhysicalContactParams {
         PhysicalContactParams {
             range: bq.normalize(&self.range),
             adh_mag: bq.normalize(&self.adh_mag),
@@ -72,7 +72,7 @@ pub struct RawCoaParams {
 }
 
 impl RawCoaParams {
-    pub fn refine(&self, bq: &BasicQuants) -> CoaParams {
+    pub fn refine(&self, bq: &CharQuantities) -> CoaParams {
         let range = bq.normalize(&self.range);
         CoaParams {
             los_penalty: self.los_penalty,
@@ -92,7 +92,7 @@ pub struct RawChemAttrParams {
 }
 
 impl RawChemAttrParams {
-    pub fn refine(&self, bq: &BasicQuants) -> ChemAttrParams {
+    pub fn refine(&self, bq: &CharQuantities) -> ChemAttrParams {
         ChemAttrParams {
             center: V2d {
                 x: bq.normalize(&self.center[0]),
@@ -112,7 +112,7 @@ pub struct RawBdryParams {
 }
 
 impl RawBdryParams {
-    pub fn refine(&self, bq: &BasicQuants) -> BdryParams {
+    pub fn refine(&self, bq: &CharQuantities) -> BdryParams {
         let shape = self
             .shape
             .iter()
@@ -140,7 +140,7 @@ pub struct RawInteractionParams {
 }
 
 impl RawInteractionParams {
-    pub fn refine(&self, bq: &BasicQuants) -> InteractionParams {
+    pub fn refine(&self, bq: &CharQuantities) -> InteractionParams {
         InteractionParams {
             coa: self.coa.as_ref().map(|coa| coa.refine(bq)),
             chem_attr: self
@@ -210,7 +210,7 @@ pub struct WorldParameters {
 }
 
 impl RawWorldParameters {
-    pub fn refine(&self, bq: &BasicQuants) -> WorldParameters {
+    pub fn refine(&self, bq: &CharQuantities) -> WorldParameters {
         WorldParameters {
             vertex_eta: bq.normalize(&self.vertex_eta),
             interactions: self.interactions.refine(bq),
@@ -218,6 +218,7 @@ impl RawWorldParameters {
     }
 }
 
+/// The "raw", unprocessed, parameters that are supplied by the user.
 pub struct RawParameters {
     /// Cell diameter.
     pub cell_diam: Length,
@@ -225,17 +226,17 @@ pub struct RawParameters {
     pub halfmax_rgtp_max_f_frac: f32,
     /// Stiffness of the membrane-cortex complex.
     pub stiffness_cortex: Stress,
-    /// Typical lamellipod height.
+    /// Typical lamellipod height: typical height of lamellipod (on the order of 100 nm).
     pub lm_h: Length,
     /// Halfmax Rho GTPase activity.
     pub halfmax_rgtp_frac: f32,
-    /// Lamellipod stall stress.
+    /// Lamellipod stall stress: how much stress can lamellipod exert at most.
     pub lm_ss: Stress,
     /// Friction force opposing RhoA pulling.
     pub rho_friction: f32,
     /// Stiffness of cytoplasm.
     pub stiffness_ctyo: Force,
-    /// Diffusion rate of Rho GTPase on membrane as a multiple of characteristic.
+    /// Diffusion rate of Rho GTPase on membrane.
     pub diffusion_rgtp: Diffusion,
     /// Initial distribution of Rac1.
     pub init_rac: RgtpDistribution,
@@ -245,40 +246,46 @@ pub struct RawParameters {
     pub tot_rac: f32,
     /// Total amount of RhoA in cell.
     pub tot_rho: f32,
-    /// Baseline Rac1 activation rate as a multiple of characteristic.
+    /// Baseline Rac1 activation rate as a multiple of characteristic activation rate, which we
+    /// currently take to be 1e-4/second.
+    ///
+    /// The user only needs to think about providing the baseline Rac1 activity rate in terms of
+    /// the characteristic activity rate.
     pub kgtp_rac: f32,
-    /// Rac1 auto-activation rate as a multiple of baseline Rac1 activation rate.
+    /// Rac1 auto-activation rate as a multiple of the characteristic activity rate.
     pub kgtp_rac_auto: f32,
-    /// Baseline Rac1 inactivation rate.
+    /// Baseline Rac1 inactivation rate as a multiple of the characteristic inactivity rate.
     pub kdgtp_rac: f32,
     /// RhoA mediated inhibition of Rac1 as a multiple of baseline Rac1 inactivation rate.
     pub kdgtp_rho_on_rac: f32,
     /// Strain at which Rac1 tension-mediated inhibition is half-strength.
     pub halfmax_tension_inhib: f32,
-    /// Tension-mediated Rac1 inhibition as a multiple of baseline Rac1 inactivation rate.
+    /// Maximum tension-mediated Rac1 inhibition as a multiple of baseline Rac1 inactivation rate.
     pub tension_inhib: f32,
-    /// Baseline RhoA activation rate.
+    /// Baseline RhoA activation rate as a multiple of characteristic activation rate.
     pub kgtp_rho: f32,
-    /// RhoA auto-activation rate as a multiple of baseline RhoA activation rate.
+    /// RhoA auto-activation rate as a multiple of characteristic activation rate.
     pub kgtp_auto_rho: f32,
-    /// Baseline RhoA inactivation rate.
+    /// Baseline RhoA inactivation rate as a multiple of characteristic inactivation rate.
     pub kdgtp_rho: f32,
-    /// Rac1 mediated inhibition of RhoA as a multiple of baseline RhoA inactivation rate.
+    /// Rac1 mediated inhibition of RhoA as a multiple of characteristic inactivation rate.
     pub kdgtp_rac_on_rho: f32,
-    /// Enable randomization?
+    /// Enable randomization of bursts in Rac1 activity?
     pub randomization: bool,
     /// Average period between randomization events.
     pub rand_avg_t: Time,
-    /// Magnitude of randomly applied factor affecting Rac1 activation rate.
+    /// Standard deviation of period between randomization events.
+    pub rand_std_t: Time,
+    /// Magnitude of randomly applied factor affecting Rac1 activation rate: how big a burst?
     pub rand_mag: f32,
     /// Fraction of vertices to be selected for increased Rac1 activation due to random events.
     pub rand_vs: f32,
-    pub rand_std_t: Time,
 }
 
+/// Parameters necessary for simulation of a cell.
 #[derive(Clone)]
 pub struct Parameters {
-    /// Cell radius.
+    /// Resting cell radius.
     pub cell_r: f32,
     /// Resting edge length.
     pub rest_edge_len: f32,
@@ -330,7 +337,7 @@ pub struct Parameters {
     pub kdgtp_rho: f32,
     /// Rac1 mediated inhibition of RhoA as a multiple of baseline RhoA inactivation rate.
     pub kdgtp_rac_on_rho: f32,
-    /// Enable randomization?
+    /// Enable randomization of bursts in Rac1 activity?
     pub randomization: bool,
     /// Average time between random events, in timesteps.
     pub rand_avg_t: f32,
@@ -340,23 +347,35 @@ pub struct Parameters {
     pub rand_mag: f32,
     /// Number of vertices to be selected for random Rac1 activity boost.
     pub num_rand_vs: usize,
+    /// Total Rho GTPase "fraction" compared to "baseline" fraction of Rho GTPase activity.
+    /// 0.05 = "halfmax level of Rho GTPase"
+    /// 1.0 = " total amount"
+    ///
+    /// At a vertex, assume that we are only at 5% of the halfmax level:
+    /// 0.05 * 0.05 = 0.0025
+    ///
+    /// 1.0 = "halfmax level of Rho GTPase"
+    /// 20.0 = "total amount"
+    /// At a vertex, assume that we are only at 5% of the halfmax:
+    /// 0.05 * 1.0 = 0.05
+    //TODO: should this be removed?
     pub total_rgtp: f32,
 }
 
 impl RawParameters {
-    pub fn gen_parameters(&self, bq: &BasicQuants) -> Parameters {
-        let cell_r = self.cell_diam.mulf(0.5);
-        let rel = self.cell_diam.mulf((PI / (NVERTS as f32)).sin());
+    pub fn gen_parameters(&self, bq: &CharQuantities) -> Parameters {
+        let cell_r = self.cell_diam.mul_const(0.5);
+        let rel = self.cell_diam.mul_const((PI / (NVERTS as f32)).sin());
         let ra = Length(1.0)
             .pow(2.0)
-            .mulf(calc_init_cell_area(cell_r.value(), NVERTS));
+            .mul_const(calc_init_cell_area(cell_r.value(), NVERTS));
         let const_protrusive =
-            (self.lm_h.g() * self.lm_ss.g() * rel.g()).mulf(self.halfmax_rgtp_max_f_frac);
-        let const_retractive = const_protrusive.mulf(self.rho_friction);
+            (self.lm_h.g() * self.lm_ss.g() * rel.g()).mul_const(self.halfmax_rgtp_max_f_frac);
+        let const_retractive = const_protrusive.mul_const(self.rho_friction);
         let halfmax_vertex_rgtp_act = (self.halfmax_rgtp_frac / bq.frac_rgtp) / NVERTS as f32;
-        let halfmax_vertex_rgtp_conc = rel.pow(-1.0).mulf(halfmax_vertex_rgtp_act);
+        let halfmax_vertex_rgtp_conc = rel.pow(-1.0).mul_const(halfmax_vertex_rgtp_act);
         let stiffness_edge = self.stiffness_cortex.g() * bq.l3d.g();
-        let stiffness_cyto = self.stiffness_ctyo.g().mulf(1.0 / NVERTS as f32);
+        let stiffness_cyto = self.stiffness_ctyo.g().mul_const(1.0 / NVERTS as f32);
 
         Parameters {
             cell_r: bq.normalize(&cell_r),
@@ -375,16 +394,16 @@ impl RawParameters {
             halfmax_vertex_rgtp_conc: bq.normalize(&halfmax_vertex_rgtp_conc),
             tot_rac: self.tot_rac,
             tot_rho: self.tot_rho,
-            kgtp_rac: bq.normalize(&bq.kgtp.mulf(self.kgtp_rac)),
-            kgtp_rac_auto: bq.normalize(&bq.kgtp.mulf(self.kgtp_rac_auto)),
-            kdgtp_rac: bq.normalize(&bq.kdgtp.mulf(self.kdgtp_rac)),
-            kdgtp_rho_on_rac: bq.normalize(&bq.kdgtp.mulf(self.kdgtp_rho_on_rac)),
+            kgtp_rac: bq.normalize(&bq.kgtp.mul_const(self.kgtp_rac)),
+            kgtp_rac_auto: bq.normalize(&bq.kgtp.mul_const(self.kgtp_rac_auto)),
+            kdgtp_rac: bq.normalize(&bq.kdgtp.mul_const(self.kdgtp_rac)),
+            kdgtp_rho_on_rac: bq.normalize(&bq.kdgtp.mul_const(self.kdgtp_rho_on_rac)),
             halfmax_tension_inhib: self.halfmax_tension_inhib,
             tension_inhib: self.tension_inhib,
-            kgtp_rho: bq.normalize(&bq.kgtp.mulf(self.kgtp_rho)),
-            kgtp_rho_auto: bq.normalize(&bq.kgtp.mulf(self.kgtp_auto_rho)),
-            kdgtp_rho: bq.normalize(&bq.kdgtp.mulf(self.kdgtp_rho)),
-            kdgtp_rac_on_rho: bq.normalize(&bq.kdgtp.mulf(self.kdgtp_rac_on_rho)),
+            kgtp_rho: bq.normalize(&bq.kgtp.mul_const(self.kgtp_rho)),
+            kgtp_rho_auto: bq.normalize(&bq.kgtp.mul_const(self.kgtp_auto_rho)),
+            kdgtp_rho: bq.normalize(&bq.kdgtp.mul_const(self.kdgtp_rho)),
+            kdgtp_rac_on_rho: bq.normalize(&bq.kdgtp.mul_const(self.kdgtp_rac_on_rho)),
             randomization: self.randomization,
             rand_avg_t: bq.normalize(&self.rand_avg_t).ceil(),
             rand_std_t: bq.normalize(&self.rand_std_t).ceil(),

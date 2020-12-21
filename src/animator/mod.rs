@@ -27,7 +27,7 @@ fn draw_cell_poly(context: &Context, cell_poly: &[V2d; NVERTS]) {
 
 fn create_mp4(data: &DrawingData, width: i32, height: i32, framerate: i32, output_path: &Path) {
     //let frames = history.len();
-    let mut surface =
+    let surface =
         ImageSurface::create(Format::ARgb32, width, height).expect("Couldn't create surface");
     let context = Context::new(&surface);
     let mut child = Command::new("ffmpeg")
@@ -68,6 +68,8 @@ fn create_mp4(data: &DrawingData, width: i32, height: i32, framerate: i32, outpu
 }
 
 pub struct DrawingData {
+    px_w: i32,
+    px_h: i32,
     num_cells: usize,
     num_frames: usize,
     //time_strings: Vec<String>,
@@ -92,12 +94,14 @@ impl DrawingData {
                     .for_each(|(new_vc, old_vc)| {
                         *new_vc = old_vc
                             .scale(px_per_micron)
-                            .translate(0.5 * (px_w as f32), 0.5 * (px_h as f32) - old_vc.y)
+                            .translate(px_w as f32 * 0.5, px_h as f32 * 0.5);
                     });
                 cell_polys.push(transformed_vcs);
             }
         }
         DrawingData {
+            px_w,
+            px_h,
             num_cells,
             num_frames: history.len(),
             cell_polys,
@@ -113,5 +117,5 @@ impl DrawingData {
 
 pub fn create_animation(history: &[Cells], output_path: &Path) {
     let data = DrawingData::from_history(history, 1280, 720, 2.0);
-    create_mp4(&data, 1280, 720, 30, output_path);
+    create_mp4(&data, 1000, 1000, 30, output_path);
 }

@@ -4,23 +4,23 @@ use crate::experiments::{CellGroup, Experiment, GroupLayout};
 use crate::math::matrices::SymCcDat;
 use crate::math::v2d::V2d;
 use crate::parameters::quantity::{Force, Length, Quantity, Stress, Time, Tinv, Viscosity};
-use crate::parameters::{BasicQuants, RawInteractionParams, RawParameters, RawWorldParameters};
+use crate::parameters::{CharQuantities, RawInteractionParams, RawParameters, RawWorldParameters};
 use crate::NVERTS;
 
-fn group_layout(bq: &BasicQuants) -> GroupLayout {
+fn group_layout(bq: &CharQuantities) -> GroupLayout {
     let raw_centroid = [Length(0.0), Length(0.0)];
     let centroid = V2d {
         x: bq.normalize(&raw_centroid[0]),
         y: bq.normalize(&raw_centroid[1]),
     };
     GroupLayout {
-        width: 2,
+        width: 1,
         height: 1,
         bottom_left: centroid,
     }
 }
 
-fn cell_groups(bq: &BasicQuants) -> Vec<CellGroup> {
+fn cell_groups(bq: &CharQuantities) -> Vec<CellGroup> {
     vec![CellGroup {
         num_cells: 1,
         layout: group_layout(bq),
@@ -28,14 +28,14 @@ fn cell_groups(bq: &BasicQuants) -> Vec<CellGroup> {
     }]
 }
 
-fn basic_quants() -> BasicQuants {
+fn basic_quants() -> CharQuantities {
     // Stress on lamellipod is on order of 1kPa, height of lamellipod on order of 100 nm, length of edge on order of 10 um
     let f = (Stress(1.0).kilo().g() * Length(100.0).nano().g() * Length(10.0).micro().g())
         .to_force()
         .unwrap();
     let eta = Viscosity(0.1);
 
-    BasicQuants {
+    CharQuantities {
         eta,
         l: Length(1.0).micro(),
         t: Time(2.0),
@@ -59,7 +59,7 @@ fn gen_cil_mat() -> SymCcDat<f32> {
 
 fn raw_world_parameters() -> RawWorldParameters {
     RawWorldParameters {
-        vertex_eta: Viscosity(0.29).mulf(1.0 / (NVERTS as f32)),
+        vertex_eta: Viscosity(0.29).mul_const(1.0 / (NVERTS as f32)),
         interactions: RawInteractionParams {
             coa: None,
             chem_attr: None,
@@ -122,7 +122,7 @@ pub fn generate() -> Experiment {
     let cell_groups = cell_groups(&basic_quants);
     Experiment {
         title: "single cell".to_string(),
-        basic_quants,
+        char_quants: basic_quants,
         world_parameters,
         cell_groups,
     }

@@ -132,7 +132,7 @@ fn gen_vertex_coords(centroid: &V2d, radius: f32) -> [V2d; NVERTS] {
 impl World {
     pub fn new(experiment: Experiment) -> World {
         let Experiment {
-            basic_quants,
+            char_quants: basic_quants,
             world_parameters,
             cell_groups,
             ..

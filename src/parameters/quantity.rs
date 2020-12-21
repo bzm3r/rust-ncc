@@ -130,7 +130,7 @@ impl Div for Units {
 }
 
 pub trait Quantity {
-    fn mulf(&self, other: f32) -> Self;
+    fn mul_const(&self, other: f32) -> Self;
 
     fn kilo(&self) -> Self;
 
@@ -185,7 +185,7 @@ impl General {
 }
 
 impl Quantity for General {
-    fn mulf(&self, other: f32) -> Self {
+    fn mul_const(&self, other: f32) -> Self {
         General {
             v: self.v * other,
             u: self.u,
@@ -193,15 +193,15 @@ impl Quantity for General {
     }
 
     fn kilo(&self) -> Self {
-        self.mulf(1e3)
+        self.mul_const(1e3)
     }
 
     fn micro(&self) -> Self {
-        self.mulf(1e-6)
+        self.mul_const(1e-6)
     }
 
     fn nano(&self) -> Self {
-        self.mulf(1e-9)
+        self.mul_const(1e-9)
     }
 
     fn value(&self) -> f32 {
@@ -256,20 +256,20 @@ impl Display for General {
 pub struct Force(pub f32);
 
 impl Quantity for Force {
-    fn mulf(&self, other: f32) -> Self {
+    fn mul_const(&self, other: f32) -> Self {
         Force(self.0 * other)
     }
 
     fn kilo(&self) -> Self {
-        self.mulf(1e3)
+        self.mul_const(1e3)
     }
 
     fn micro(&self) -> Self {
-        self.mulf(1e-6)
+        self.mul_const(1e-6)
     }
 
     fn nano(&self) -> Self {
-        self.mulf(1e-9)
+        self.mul_const(1e-9)
     }
 
     fn value(&self) -> f32 {
@@ -296,20 +296,20 @@ impl Quantity for Force {
 pub struct Length(pub f32);
 
 impl Quantity for Length {
-    fn mulf(&self, other: f32) -> Self {
+    fn mul_const(&self, other: f32) -> Self {
         Length(self.0 * other)
     }
 
     fn kilo(&self) -> Self {
-        self.mulf(1e3)
+        self.mul_const(1e3)
     }
 
     fn micro(&self) -> Self {
-        self.mulf(1e-6)
+        self.mul_const(1e-6)
     }
 
     fn nano(&self) -> Self {
-        self.mulf(1e-9)
+        self.mul_const(1e-9)
     }
 
     fn value(&self) -> f32 {
@@ -336,20 +336,20 @@ impl Quantity for Length {
 pub struct Time(pub f32);
 
 impl Quantity for Time {
-    fn mulf(&self, other: f32) -> Self {
+    fn mul_const(&self, other: f32) -> Self {
         Time(self.0 * other)
     }
 
     fn kilo(&self) -> Self {
-        self.mulf(1e3)
+        self.mul_const(1e3)
     }
 
     fn micro(&self) -> Self {
-        self.mulf(1e-6)
+        self.mul_const(1e-6)
     }
 
     fn nano(&self) -> Self {
-        self.mulf(1e-9)
+        self.mul_const(1e-9)
     }
 
     fn value(&self) -> f32 {
@@ -376,20 +376,20 @@ impl Quantity for Time {
 pub struct Tinv(pub f32);
 
 impl Quantity for Tinv {
-    fn mulf(&self, other: f32) -> Self {
+    fn mul_const(&self, other: f32) -> Self {
         Tinv(self.0 * other)
     }
 
     fn kilo(&self) -> Self {
-        self.mulf(1e3)
+        self.mul_const(1e3)
     }
 
     fn micro(&self) -> Self {
-        self.mulf(1e-6)
+        self.mul_const(1e-6)
     }
 
     fn nano(&self) -> Self {
-        self.mulf(1e-9)
+        self.mul_const(1e-9)
     }
 
     fn value(&self) -> f32 {
@@ -416,20 +416,20 @@ impl Quantity for Tinv {
 pub struct Diffusion(pub f32);
 
 impl Quantity for Diffusion {
-    fn mulf(&self, other: f32) -> Self {
+    fn mul_const(&self, other: f32) -> Self {
         Diffusion(self.0 * other)
     }
 
     fn kilo(&self) -> Self {
-        self.mulf(1e3)
+        self.mul_const(1e3)
     }
 
     fn micro(&self) -> Self {
-        self.mulf(1e-6)
+        self.mul_const(1e-6)
     }
 
     fn nano(&self) -> Self {
-        self.mulf(1e-9)
+        self.mul_const(1e-9)
     }
 
     fn value(&self) -> f32 {
@@ -456,20 +456,20 @@ impl Quantity for Diffusion {
 pub struct Stress(pub f32);
 
 impl Quantity for Stress {
-    fn mulf(&self, other: f32) -> Self {
+    fn mul_const(&self, other: f32) -> Self {
         Stress(self.0 * other)
     }
 
     fn kilo(&self) -> Self {
-        self.mulf(1e3)
+        self.mul_const(1e3)
     }
 
     fn micro(&self) -> Self {
-        self.mulf(1e-6)
+        self.mul_const(1e-6)
     }
 
     fn nano(&self) -> Self {
-        self.mulf(1e-9)
+        self.mul_const(1e-9)
     }
 
     fn value(&self) -> f32 {
@@ -496,20 +496,20 @@ impl Quantity for Stress {
 pub struct Viscosity(pub f32);
 
 impl Quantity for Viscosity {
-    fn mulf(&self, other: f32) -> Self {
+    fn mul_const(&self, other: f32) -> Self {
         Viscosity(self.0 * other)
     }
 
     fn kilo(&self) -> Self {
-        self.mulf(1e3)
+        self.mul_const(1e3)
     }
 
     fn micro(&self) -> Self {
-        self.mulf(1e-6)
+        self.mul_const(1e-6)
     }
 
     fn nano(&self) -> Self {
-        self.mulf(1e-9)
+        self.mul_const(1e-9)
     }
 
     fn value(&self) -> f32 {
@@ -536,20 +536,20 @@ impl Quantity for Viscosity {
 pub struct Unitless(pub f32);
 
 impl Quantity for Unitless {
-    fn mulf(&self, other: f32) -> Self {
+    fn mul_const(&self, other: f32) -> Self {
         Unitless(self.0 * other)
     }
 
     fn kilo(&self) -> Self {
-        self.mulf(1e3)
+        self.mul_const(1e3)
     }
 
     fn micro(&self) -> Self {
-        self.mulf(1e-6)
+        self.mul_const(1e-6)
     }
 
     fn nano(&self) -> Self {
-        self.mulf(1e-9)
+        self.mul_const(1e-9)
     }
 
     fn value(&self) -> f32 {
