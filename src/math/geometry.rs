@@ -150,6 +150,7 @@ impl LineSeg {
     }
 
     pub fn check_intersection(&self, p0: &V2d, p1: &V2d) -> Option<f32> {
+        // TODO: make sure this is correct!
         let p = p0 - p1;
         let alpha = self.p0.x - p0.x;
         let beta = self.p1.y - p1.y;
