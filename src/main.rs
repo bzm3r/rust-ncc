@@ -17,7 +17,7 @@ use std::time::Instant;
 pub const NVERTS: usize = 16;
 
 fn main() {
-    let exp = experiments::single::generate();
+    let exp = experiments::pairs::generate();
     let output_dir = PathBuf::from(format!(
         "{}\\output",
         std::env::current_dir().unwrap().to_str().unwrap()

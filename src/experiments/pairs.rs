@@ -19,7 +19,7 @@ fn group_layout(num_cells: u32, char_quants: &CharQuantities) -> Result<GroupLay
     };
     let r = GroupLayout {
         width: 1,
-        height: 1,
+        height: 2,
         bottom_left: centroid,
     };
     if r.width * r.height > num_cells {
@@ -33,7 +33,7 @@ fn group_layout(num_cells: u32, char_quants: &CharQuantities) -> Result<GroupLay
 
 /// Define the cell groups that will exist in this experiment.
 fn cell_groups(cq: &CharQuantities) -> Vec<CellGroup> {
-    let num_cells = 1;
+    let num_cells = 2;
     vec![CellGroup {
         num_cells,
         layout: group_layout(num_cells, cq).unwrap(),
@@ -43,10 +43,11 @@ fn cell_groups(cq: &CharQuantities) -> Vec<CellGroup> {
 
 /// Generate CAL values between different cells.
 fn gen_cal_mat() -> SymCcDat<f32> {
-    SymCcDat::<f32>::new(2, 60.0)
+    SymCcDat::<f32>::new(2, 0.0)
 }
 
-/// Generate CIL values between different cells.
+/// Generate CIL values between different cells (see SI for
+/// justification).
 fn gen_cil_mat() -> SymCcDat<f32> {
     SymCcDat::<f32>::new(2, 60.0)
 }
@@ -71,7 +72,7 @@ pub fn generate() -> Experiment {
     let world_parameters = raw_world_parameters().refine(&char_quants);
     let cell_groups = cell_groups(&char_quants);
     Experiment {
-        title: "single cell".to_string(),
+        title: "a pair of cells".to_string(),
         char_quants,
         world_parameters,
         cell_groups,

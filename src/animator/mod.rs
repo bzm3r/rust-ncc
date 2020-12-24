@@ -1,10 +1,7 @@
 use crate::math::v2d::V2d;
-use crate::parameters::quantity::Length;
-use crate::world::hardio::load_history;
 use crate::world::Cells;
 use crate::NVERTS;
 use cairo::{Context, Format, ImageSurface};
-use std::f64::consts::PI;
 use std::io::Write;
 use std::path::Path;
 use std::process::{Command, Stdio};
@@ -59,7 +56,7 @@ fn create_mp4(data: &DrawingData, width: i32, height: i32, framerate: i32, outpu
             for cell_poly in data.get_cell_polys(frame) {
                 draw_cell_poly(&context, cell_poly)
             }
-            let d = surface
+            surface
                 .with_data(|buf| child_stdin.write_all(buf).expect("Failed to write bytes"))
                 .expect("Failed to get_data");
         });
@@ -68,8 +65,6 @@ fn create_mp4(data: &DrawingData, width: i32, height: i32, framerate: i32, outpu
 }
 
 pub struct DrawingData {
-    px_w: i32,
-    px_h: i32,
     num_cells: usize,
     num_frames: usize,
     //time_strings: Vec<String>,
@@ -100,8 +95,6 @@ impl DrawingData {
             }
         }
         DrawingData {
-            px_w,
-            px_h,
             num_cells,
             num_frames: history.len(),
             cell_polys,

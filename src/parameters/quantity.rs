@@ -10,10 +10,25 @@ use std::fmt;
 use std::fmt::{Display, Formatter};
 use std::ops::{Div, Mul};
 
+/// A unit is a quantity written as (F^f)(L^l)(T^t), where
+/// F, L and T are units of force, length and time respectively.
+///
+/// For instance, the units of velocity are: L^1/T^1, while
+/// the units of acceleration are: L^1/T^2, which is better
+/// written as L^1 T^(-2).
+///
+/// The reason why we do not use mass as a basic unit, and
+/// instead jump directly to force is because wherever we
+/// need to use some concept of mass, it comes in the form
+/// of a force. That is, recall that force has units
+/// M^1 L^1 T^-2 (mass * acceleration).
 #[derive(Deserialize, Clone, Copy)]
 pub struct Units {
+    /// Exponent for force.
     pub f: f32,
+    /// Exponent for length.
     pub l: f32,
+    /// Exponent for time.
     pub t: f32,
 }
 
@@ -24,7 +39,33 @@ impl PartialEq for Units {
 }
 
 impl Units {
-    fn pow(&self, exp: f32) -> Self {
+    /// Suppose we had units `u` of the form `F^1 T^-3 L^0`,
+    /// and a quantity `q` with units `u`.
+    ///
+    /// Suppose we wanted to raise `q` to the power `n`.
+    /// What units should `q` have? By the laws of
+    /// exponentiation, it should have the units:
+    /// `u^n` = `(F^1 T^-3 L^0)^n` = `F^(n) T^(-3n) L^(0n)`.
+    ///
+    /// In terms of code, `u` would be defined:
+    /// ```
+    /// let u = Units {
+    ///     f: 1.0,
+    ///     t: -3.0,
+    ///     l: 0.0,
+    /// }
+    /// ```
+    ///
+    /// and `u.pow(n)` will give us the `u` to the nth
+    /// power.
+    /// ```
+    /// let u = Units {
+    ///     f: 1.0 * n,
+    ///     t: -3.0 * n,
+    ///     l: 0.0 * n,
+    /// }
+    /// ```
+    fn pow(&self, exp: f32) -> Units {
         Units {
             f: exp * self.f,
             l: exp * self.l,
@@ -32,7 +73,8 @@ impl Units {
         }
     }
 
-    fn inv(&self) -> Self {
+    /// Take the inverse of units.
+    fn inv(&self) -> Units {
         Units {
             f: -1.0 * self.f,
             l: -1.0 * self.l,
@@ -40,6 +82,7 @@ impl Units {
         }
     }
 
+    /// Units for a unitless quantity.
     #[inline]
     fn unitless() -> Units {
         Units {
@@ -49,6 +92,7 @@ impl Units {
         }
     }
 
+    /// Units for a force quantity.
     #[inline]
     fn force() -> Units {
         Units {
@@ -58,6 +102,7 @@ impl Units {
         }
     }
 
+    /// Units for a length quantity.
     #[inline]
     fn length() -> Units {
         Units {
@@ -67,6 +112,7 @@ impl Units {
         }
     }
 
+    /// Units for a time quantity.
     #[inline]
     fn time() -> Units {
         Units {
@@ -76,27 +122,32 @@ impl Units {
         }
     }
 
+    /// Units for a diffusion quantity.
     #[inline]
     fn diffusion() -> Units {
         Units::length().pow(2.0) / Units::time()
     }
 
+    /// Units for a stress quantity.
     #[inline]
     fn stress() -> Units {
         Units::force() / Units::length().pow(2.0)
     }
 
+    /// Units for an inverse time quantity.
     #[inline]
     fn tinv() -> Units {
         Units::time().inv()
     }
 
+    /// Units for a viscosity quantity.
     #[inline]
     fn viscosity() -> Units {
         Units::force() / (Units::length() / Units::time())
     }
 }
 
+/// Implement `Mul` trait for Units.
 impl Mul for Units {
     type Output = Units;
 
@@ -110,17 +161,19 @@ impl Mul for Units {
     }
 }
 
+/// Implement `Display` for Units.
 impl Display for Units {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         write!(f, "F^{} L^{} T^{}", self.f, self.l, self.t)
     }
 }
 
+/// Implement `Div` for units.
 impl Div for Units {
     type Output = Units;
 
     #[allow(clippy::suspicious_arithmetic_impl)]
-    fn div(self, rhs: Self) -> Self::Output {
+    fn div(self, rhs: Units) -> Self::Output {
         Units {
             f: self.f - rhs.f,
             l: self.l - rhs.l,
@@ -129,43 +182,58 @@ impl Div for Units {
     }
 }
 
+/// Implement a specification (trait) for a `Quantity` object.
 pub trait Quantity {
-    fn mul_const(&self, other: f32) -> Self;
+    /// Return a quantity that whose number part is a multiple
+    /// of this quantity.
+    fn mul_number(&self, multiple: f32) -> Self;
 
+    /// Return a quantity that is `10^-3` times the original.
     fn kilo(&self) -> Self;
 
+    /// Return a quantity that is `10^-6` times the original.
     fn micro(&self) -> Self;
 
+    /// Return a quantity that is `10^-9` times the original.
     fn nano(&self) -> Self;
 
-    fn value(&self) -> f32;
+    /// Return the number (`f32`) part of the quantity (not the units).
+    fn number(&self) -> f32;
 
+    /// Return the `Units` of the `Quantity`
     fn units(&self) -> Units;
 
     /// Convert to `General` quantity.
     fn g(&self) -> General;
 
+    /// Return a quantity that is the `exp`th power of
+    /// this quantity.
     fn pow(&self, exp: f32) -> General;
 }
 
+/// A general quantity.
 #[derive(Deserialize, Clone, Copy)]
 pub struct General {
-    v: f32,
+    /// Numerical value of this quantity.
+    n: f32,
+    /// Units of this quantity.
     u: Units,
 }
 
 impl General {
+    /// Convert the general quantity to a force, if possible.
     pub fn to_force(&self) -> Result<Force, String> {
         if self.units() == Units::force() {
-            Ok(Force(self.value()))
+            Ok(Force(self.number()))
         } else {
             Err(String::from("Quantity does not have units of force."))
         }
     }
 
+    /// Convert the general quantity to a diffusion, if possible.
     pub fn to_diffusion(&self) -> Result<Diffusion, String> {
         if self.units() == Units::diffusion() {
-            Ok(Diffusion(self.value()))
+            Ok(Diffusion(self.number()))
         } else {
             Err(String::from("Quantity does not have units of diffusion."))
         }
@@ -185,27 +253,27 @@ impl General {
 }
 
 impl Quantity for General {
-    fn mul_const(&self, other: f32) -> Self {
+    fn mul_number(&self, multiple: f32) -> Self {
         General {
-            v: self.v * other,
+            n: self.n * multiple,
             u: self.u,
         }
     }
 
     fn kilo(&self) -> Self {
-        self.mul_const(1e3)
+        self.mul_number(1e3)
     }
 
     fn micro(&self) -> Self {
-        self.mul_const(1e-6)
+        self.mul_number(1e-6)
     }
 
     fn nano(&self) -> Self {
-        self.mul_const(1e-9)
+        self.mul_number(1e-9)
     }
 
-    fn value(&self) -> f32 {
-        self.v
+    fn number(&self) -> f32 {
+        self.n
     }
 
     fn units(&self) -> Units {
@@ -218,18 +286,18 @@ impl Quantity for General {
 
     fn pow(&self, exp: f32) -> General {
         General {
-            v: self.v.powf(exp),
+            n: self.n.powf(exp),
             u: self.u.pow(exp),
         }
     }
 }
 
 impl Mul for General {
-    type Output = Self;
+    type Output = General;
 
-    fn mul(self, rhs: Self) -> Self::Output {
+    fn mul(self, rhs: General) -> Self::Output {
         General {
-            v: self.v * rhs.v,
+            n: self.n * rhs.n,
             u: self.u * rhs.u,
         }
     }
@@ -240,7 +308,7 @@ impl Div for General {
 
     fn div(self, rhs: Self) -> Self::Output {
         General {
-            v: self.v / rhs.v,
+            n: self.n / rhs.n,
             u: self.u / rhs.u,
         }
     }
@@ -248,7 +316,7 @@ impl Div for General {
 
 impl Display for General {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "{} {}", self.v, self.u)
+        write!(f, "{} {}", self.n, self.u)
     }
 }
 
@@ -256,23 +324,23 @@ impl Display for General {
 pub struct Force(pub f32);
 
 impl Quantity for Force {
-    fn mul_const(&self, other: f32) -> Self {
+    fn mul_number(&self, other: f32) -> Self {
         Force(self.0 * other)
     }
 
     fn kilo(&self) -> Self {
-        self.mul_const(1e3)
+        self.mul_number(1e3)
     }
 
     fn micro(&self) -> Self {
-        self.mul_const(1e-6)
+        self.mul_number(1e-6)
     }
 
     fn nano(&self) -> Self {
-        self.mul_const(1e-9)
+        self.mul_number(1e-9)
     }
 
-    fn value(&self) -> f32 {
+    fn number(&self) -> f32 {
         self.0
     }
 
@@ -282,7 +350,7 @@ impl Quantity for Force {
 
     fn g(&self) -> General {
         General {
-            v: self.value(),
+            n: self.number(),
             u: self.units(),
         }
     }
@@ -296,23 +364,23 @@ impl Quantity for Force {
 pub struct Length(pub f32);
 
 impl Quantity for Length {
-    fn mul_const(&self, other: f32) -> Self {
+    fn mul_number(&self, other: f32) -> Self {
         Length(self.0 * other)
     }
 
     fn kilo(&self) -> Self {
-        self.mul_const(1e3)
+        self.mul_number(1e3)
     }
 
     fn micro(&self) -> Self {
-        self.mul_const(1e-6)
+        self.mul_number(1e-6)
     }
 
     fn nano(&self) -> Self {
-        self.mul_const(1e-9)
+        self.mul_number(1e-9)
     }
 
-    fn value(&self) -> f32 {
+    fn number(&self) -> f32 {
         self.0
     }
 
@@ -322,7 +390,7 @@ impl Quantity for Length {
 
     fn g(&self) -> General {
         General {
-            v: self.value(),
+            n: self.number(),
             u: self.units(),
         }
     }
@@ -336,23 +404,23 @@ impl Quantity for Length {
 pub struct Time(pub f32);
 
 impl Quantity for Time {
-    fn mul_const(&self, other: f32) -> Self {
+    fn mul_number(&self, other: f32) -> Self {
         Time(self.0 * other)
     }
 
     fn kilo(&self) -> Self {
-        self.mul_const(1e3)
+        self.mul_number(1e3)
     }
 
     fn micro(&self) -> Self {
-        self.mul_const(1e-6)
+        self.mul_number(1e-6)
     }
 
     fn nano(&self) -> Self {
-        self.mul_const(1e-9)
+        self.mul_number(1e-9)
     }
 
-    fn value(&self) -> f32 {
+    fn number(&self) -> f32 {
         self.0
     }
 
@@ -362,7 +430,7 @@ impl Quantity for Time {
 
     fn g(&self) -> General {
         General {
-            v: self.value(),
+            n: self.number(),
             u: self.units(),
         }
     }
@@ -376,23 +444,23 @@ impl Quantity for Time {
 pub struct Tinv(pub f32);
 
 impl Quantity for Tinv {
-    fn mul_const(&self, other: f32) -> Self {
+    fn mul_number(&self, other: f32) -> Self {
         Tinv(self.0 * other)
     }
 
     fn kilo(&self) -> Self {
-        self.mul_const(1e3)
+        self.mul_number(1e3)
     }
 
     fn micro(&self) -> Self {
-        self.mul_const(1e-6)
+        self.mul_number(1e-6)
     }
 
     fn nano(&self) -> Self {
-        self.mul_const(1e-9)
+        self.mul_number(1e-9)
     }
 
-    fn value(&self) -> f32 {
+    fn number(&self) -> f32 {
         self.0
     }
 
@@ -402,7 +470,7 @@ impl Quantity for Tinv {
 
     fn g(&self) -> General {
         General {
-            v: self.value(),
+            n: self.number(),
             u: self.units(),
         }
     }
@@ -416,23 +484,23 @@ impl Quantity for Tinv {
 pub struct Diffusion(pub f32);
 
 impl Quantity for Diffusion {
-    fn mul_const(&self, other: f32) -> Self {
+    fn mul_number(&self, other: f32) -> Self {
         Diffusion(self.0 * other)
     }
 
     fn kilo(&self) -> Self {
-        self.mul_const(1e3)
+        self.mul_number(1e3)
     }
 
     fn micro(&self) -> Self {
-        self.mul_const(1e-6)
+        self.mul_number(1e-6)
     }
 
     fn nano(&self) -> Self {
-        self.mul_const(1e-9)
+        self.mul_number(1e-9)
     }
 
-    fn value(&self) -> f32 {
+    fn number(&self) -> f32 {
         self.0
     }
 
@@ -442,7 +510,7 @@ impl Quantity for Diffusion {
 
     fn g(&self) -> General {
         General {
-            v: self.value(),
+            n: self.number(),
             u: self.units(),
         }
     }
@@ -456,23 +524,23 @@ impl Quantity for Diffusion {
 pub struct Stress(pub f32);
 
 impl Quantity for Stress {
-    fn mul_const(&self, other: f32) -> Self {
+    fn mul_number(&self, other: f32) -> Self {
         Stress(self.0 * other)
     }
 
     fn kilo(&self) -> Self {
-        self.mul_const(1e3)
+        self.mul_number(1e3)
     }
 
     fn micro(&self) -> Self {
-        self.mul_const(1e-6)
+        self.mul_number(1e-6)
     }
 
     fn nano(&self) -> Self {
-        self.mul_const(1e-9)
+        self.mul_number(1e-9)
     }
 
-    fn value(&self) -> f32 {
+    fn number(&self) -> f32 {
         self.0
     }
 
@@ -482,7 +550,7 @@ impl Quantity for Stress {
 
     fn g(&self) -> General {
         General {
-            v: self.value(),
+            n: self.number(),
             u: self.units(),
         }
     }
@@ -496,23 +564,23 @@ impl Quantity for Stress {
 pub struct Viscosity(pub f32);
 
 impl Quantity for Viscosity {
-    fn mul_const(&self, other: f32) -> Self {
+    fn mul_number(&self, other: f32) -> Self {
         Viscosity(self.0 * other)
     }
 
     fn kilo(&self) -> Self {
-        self.mul_const(1e3)
+        self.mul_number(1e3)
     }
 
     fn micro(&self) -> Self {
-        self.mul_const(1e-6)
+        self.mul_number(1e-6)
     }
 
-    fn nano(&self) -> Self {
-        self.mul_const(1e-9)
+    fn nano(&self) -> Viscosity {
+        self.mul_number(1e-9)
     }
 
-    fn value(&self) -> f32 {
+    fn number(&self) -> f32 {
         self.0
     }
 
@@ -522,7 +590,7 @@ impl Quantity for Viscosity {
 
     fn g(&self) -> General {
         General {
-            v: self.value(),
+            n: self.number(),
             u: self.units(),
         }
     }
@@ -536,23 +604,23 @@ impl Quantity for Viscosity {
 pub struct Unitless(pub f32);
 
 impl Quantity for Unitless {
-    fn mul_const(&self, other: f32) -> Self {
+    fn mul_number(&self, other: f32) -> Self {
         Unitless(self.0 * other)
     }
 
     fn kilo(&self) -> Self {
-        self.mul_const(1e3)
+        self.mul_number(1e3)
     }
 
     fn micro(&self) -> Self {
-        self.mul_const(1e-6)
+        self.mul_number(1e-6)
     }
 
     fn nano(&self) -> Self {
-        self.mul_const(1e-9)
+        self.mul_number(1e-9)
     }
 
-    fn value(&self) -> f32 {
+    fn number(&self) -> f32 {
         self.0
     }
 
@@ -562,7 +630,7 @@ impl Quantity for Unitless {
 
     fn g(&self) -> General {
         General {
-            v: self.value(),
+            n: self.number(),
             u: self.units(),
         }
     }

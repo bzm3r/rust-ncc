@@ -36,7 +36,7 @@ impl CharQuantities {
     pub fn normalize<T: Quantity>(&self, q: &T) -> f32 {
         let q = q.g();
         let u = q.units();
-        (q * self.f.pow(-1.0 * u.f) * self.l.pow(-1.0 * u.l) * self.t.pow(-1.0 * u.t)).value()
+        (q * self.f.pow(-1.0 * u.f) * self.l.pow(-1.0 * u.l) * self.t.pow(-1.0 * u.t)).number()
     }
 
     pub fn time(&self) -> f32 {
@@ -364,18 +364,18 @@ pub struct Parameters {
 
 impl RawParameters {
     pub fn gen_parameters(&self, bq: &CharQuantities) -> Parameters {
-        let cell_r = self.cell_diam.mul_const(0.5);
-        let rel = self.cell_diam.mul_const((PI / (NVERTS as f32)).sin());
+        let cell_r = self.cell_diam.mul_number(0.5);
+        let rel = self.cell_diam.mul_number((PI / (NVERTS as f32)).sin());
         let ra = Length(1.0)
             .pow(2.0)
-            .mul_const(calc_init_cell_area(cell_r.value(), NVERTS));
+            .mul_number(calc_init_cell_area(cell_r.number(), NVERTS));
         let const_protrusive =
-            (self.lm_h.g() * self.lm_ss.g() * rel.g()).mul_const(self.halfmax_rgtp_max_f_frac);
-        let const_retractive = const_protrusive.mul_const(self.rho_friction);
+            (self.lm_h.g() * self.lm_ss.g() * rel.g()).mul_number(self.halfmax_rgtp_max_f_frac);
+        let const_retractive = const_protrusive.mul_number(self.rho_friction);
         let halfmax_vertex_rgtp_act = (self.halfmax_rgtp_frac / bq.frac_rgtp) / NVERTS as f32;
-        let halfmax_vertex_rgtp_conc = rel.pow(-1.0).mul_const(halfmax_vertex_rgtp_act);
+        let halfmax_vertex_rgtp_conc = rel.pow(-1.0).mul_number(halfmax_vertex_rgtp_act);
         let stiffness_edge = self.stiffness_cortex.g() * bq.l3d.g();
-        let stiffness_cyto = self.stiffness_ctyo.g().mul_const(1.0 / NVERTS as f32);
+        let stiffness_cyto = self.stiffness_ctyo.g().mul_number(1.0 / NVERTS as f32);
 
         Parameters {
             cell_r: bq.normalize(&cell_r),
@@ -394,16 +394,16 @@ impl RawParameters {
             halfmax_vertex_rgtp_conc: bq.normalize(&halfmax_vertex_rgtp_conc),
             tot_rac: self.tot_rac,
             tot_rho: self.tot_rho,
-            kgtp_rac: bq.normalize(&bq.kgtp.mul_const(self.kgtp_rac)),
-            kgtp_rac_auto: bq.normalize(&bq.kgtp.mul_const(self.kgtp_rac_auto)),
-            kdgtp_rac: bq.normalize(&bq.kdgtp.mul_const(self.kdgtp_rac)),
-            kdgtp_rho_on_rac: bq.normalize(&bq.kdgtp.mul_const(self.kdgtp_rho_on_rac)),
+            kgtp_rac: bq.normalize(&bq.kgtp.mul_number(self.kgtp_rac)),
+            kgtp_rac_auto: bq.normalize(&bq.kgtp.mul_number(self.kgtp_rac_auto)),
+            kdgtp_rac: bq.normalize(&bq.kdgtp.mul_number(self.kdgtp_rac)),
+            kdgtp_rho_on_rac: bq.normalize(&bq.kdgtp.mul_number(self.kdgtp_rho_on_rac)),
             halfmax_tension_inhib: self.halfmax_tension_inhib,
             tension_inhib: self.tension_inhib,
-            kgtp_rho: bq.normalize(&bq.kgtp.mul_const(self.kgtp_rho)),
-            kgtp_rho_auto: bq.normalize(&bq.kgtp.mul_const(self.kgtp_auto_rho)),
-            kdgtp_rho: bq.normalize(&bq.kdgtp.mul_const(self.kdgtp_rho)),
-            kdgtp_rac_on_rho: bq.normalize(&bq.kdgtp.mul_const(self.kdgtp_rac_on_rho)),
+            kgtp_rho: bq.normalize(&bq.kgtp.mul_number(self.kgtp_rho)),
+            kgtp_rho_auto: bq.normalize(&bq.kgtp.mul_number(self.kgtp_auto_rho)),
+            kdgtp_rho: bq.normalize(&bq.kdgtp.mul_number(self.kdgtp_rho)),
+            kdgtp_rac_on_rho: bq.normalize(&bq.kdgtp.mul_number(self.kdgtp_rac_on_rho)),
             randomization: self.randomization,
             rand_avg_t: bq.normalize(&self.rand_avg_t).ceil(),
             rand_std_t: bq.normalize(&self.rand_std_t).ceil(),

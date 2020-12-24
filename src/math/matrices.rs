@@ -13,6 +13,16 @@ fn fix_oci(ci: usize, oci: usize) -> usize {
 }
 
 fn sort_ixs(ci: usize, oci: usize) -> (usize, usize) {
+    // let mut smaller = ci;
+    // let mut bigger = oci;
+    // let mut temp = 0;
+    // if bigger < smaller {
+    //     temp = smaller;
+    //     smaller = bigger;
+    //     bigger = temp;
+    // }
+    // let r = (smaller, bigger);
+    // r
     if oci < ci {
         (oci, ci)
     } else {
@@ -100,9 +110,9 @@ impl<T: Copy + Default> SymCcDat<T> {
     }
 
     fn calc_ix(&self, ci: usize, oci: usize) -> usize {
-        let (ci, oci) = sort_ixs(ci, oci);
+        let (small_ix, big_ix) = sort_ixs(ci, oci);
         let k = sym_sum_to(self.num_cells) - sym_sum_to(self.num_cells - ci);
-        k + (ci - oci - 1)
+        k + (big_ix - small_ix - 1)
     }
 
     pub fn set(&mut self, ci: usize, oci: usize, x: T) {

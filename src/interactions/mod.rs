@@ -37,8 +37,11 @@ pub struct ContactInfo {}
 /// Generates interaction related factors.
 #[derive(Clone)]
 pub struct InteractionGenerator {
+    /// Vertex coordinates, per cell, for all cells in the simulation.
     cell_vcs: Vec<[V2d; NVERTS]>,
     cell_rgtps: Vec<[RgtpState; NVERTS]>,
+    /// Generates CIL/CAL related interaction information. In other words,
+    /// interactions that require cells to engage in physical contact.
     phys_contact_generator: PhysicalContactGenerator,
     coa_generator: CoaGenerator,
     chem_attr_generator: ChemAttrGenerator,
@@ -106,7 +109,8 @@ impl InteractionGenerator {
     }
 
     pub fn get_physical_contacts(&self, ci: usize) -> Vec<usize> {
-        (0..self.cell_vcs.len())
+        let num_cells = self.cell_vcs.len();
+        (0..num_cells)
             .filter(|&oci| self.phys_contact_generator.contacts.get(ci, oci))
             .collect()
     }
@@ -125,9 +129,15 @@ impl InteractionGenerator {
     }
 }
 
+pub type ClosestDistLoc = f32;
+pub type ClosestDist = f32;
+
+/// Generates CIL/CAL related interaction information. In other words,
+/// interactions that require cells to engage in physical contact.
 #[derive(Clone)]
 pub struct PhysicalContactGenerator {
-    dat: CvCvDat<(f32, f32)>,
+    ///
+    dat: CvCvDat<(ClosestDistLoc, ClosestDist)>,
     contact_bbs: Vec<BBox>,
     contacts: SymCcDat<bool>,
     params: Option<PhysicalContactParams>,
