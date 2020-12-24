@@ -12,11 +12,16 @@ use crate::math::v2d::V2d;
 use crate::utils::circ_ix_plus;
 use crate::NVERTS;
 
-pub fn calc_edge_vecs(vertex_coords: &[V2d; NVERTS]) -> [V2d; NVERTS] {
-    let mut r = [V2d::default(); NVERTS];
+pub fn calc_edge_vecs(
+    vertex_coords: &[V2d; NVERTS],
+) -> [V2d; NVERTS] {
+    let mut r =
+        [V2d::default(); NVERTS];
     (0..NVERTS).for_each(|i| {
-        let plus_i = circ_ix_plus(i, NVERTS);
-        r[i] = vertex_coords[plus_i] - vertex_coords[i];
+        let plus_i =
+            circ_ix_plus(i, NVERTS);
+        r[i] = vertex_coords[plus_i]
+            - vertex_coords[i];
     });
     r
 }
@@ -26,8 +31,13 @@ pub fn calc_edge_forces(
     edge_unit_vecs: &[V2d; NVERTS],
     stiffness_edge: f32,
 ) -> [V2d; NVERTS] {
-    let mut r = [V2d::default(); NVERTS];
-    (0..NVERTS).for_each(|i| r[i] = edge_strains[i] * stiffness_edge * edge_unit_vecs[i]);
+    let mut r =
+        [V2d::default(); NVERTS];
+    (0..NVERTS).for_each(|i| {
+        r[i] = edge_strains[i]
+            * stiffness_edge
+            * edge_unit_vecs[i]
+    });
     r
 }
 
@@ -37,11 +47,17 @@ pub fn calc_cyto_forces(
     rest_area: f32,
     stiffness_cyto: f32,
 ) -> [V2d; NVERTS] {
-    let mut r = [V2d::default(); NVERTS];
-    let area = calc_poly_area(vertex_coords);
-    let areal_strain = (area / rest_area) - 1.0;
-    let mag = stiffness_cyto * areal_strain;
-    (0..NVERTS).for_each(|i| r[i] = mag * unit_inward_vecs[i]);
+    let mut r =
+        [V2d::default(); NVERTS];
+    let area =
+        calc_poly_area(vertex_coords);
+    let areal_strain =
+        (area / rest_area) - 1.0;
+    let mag =
+        stiffness_cyto * areal_strain;
+    (0..NVERTS).for_each(|i| {
+        r[i] = mag * unit_inward_vecs[i]
+    });
     r
 }
 
@@ -54,7 +70,8 @@ pub fn calc_rgtp_forces(
     const_retractive: f32,
 ) -> [V2d; NVERTS] {
     let nvs = unit_inward_vecs.len();
-    let mut r = [V2d::default(); NVERTS];
+    let mut r =
+        [V2d::default(); NVERTS];
     for i in 0..nvs {
         let uiv = unit_inward_vecs[i];
         let ra = rac_acts[i];

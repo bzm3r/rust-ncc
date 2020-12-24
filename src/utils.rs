@@ -6,7 +6,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub fn circ_ix_minus(ix: usize, num_items: usize) -> usize {
+pub fn circ_ix_minus(
+    ix: usize,
+    num_items: usize,
+) -> usize {
     if ix == 0 {
         num_items - 1
     } else {
@@ -14,7 +17,10 @@ pub fn circ_ix_minus(ix: usize, num_items: usize) -> usize {
     }
 }
 
-pub fn circ_ix_plus(ix: usize, num_items: usize) -> usize {
+pub fn circ_ix_plus(
+    ix: usize,
+    num_items: usize,
+) -> usize {
     if ix == (num_items - 1) {
         0
     } else {

@@ -6,7 +6,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use crate::math::radians::{arctan, Radians};
+use crate::math::radians::{
+    arctan, Radians,
+};
 use crate::math::{max_f32, min_f32};
 use avro_schema_derive::Schematize;
 use serde::{Deserialize, Serialize};
@@ -15,7 +17,15 @@ use std::fmt::Display;
 use std::ops::{Add, Div, Mul, Sub};
 
 /// 2D vector with `f32` elements.
-#[derive(Clone, Copy, Debug, Default, Deserialize, Serialize, Schematize)]
+#[derive(
+    Clone,
+    Copy,
+    Debug,
+    Default,
+    Deserialize,
+    Serialize,
+    Schematize,
+)]
 pub struct V2d {
     pub x: f32,
     pub y: f32,
@@ -29,11 +39,17 @@ impl V2d {
 
     /// Calculate magnitude of vector from origin to point.
     pub fn mag(&self) -> f32 {
-        (self.x.powi(2) + self.y.powi(2)).sqrt()
+        (self.x.powi(2)
+            + self.y.powi(2))
+        .sqrt()
     }
 
-    pub fn dot(&self, other: &V2d) -> f32 {
-        self.x * other.x + self.y * other.y
+    pub fn dot(
+        &self,
+        other: &V2d,
+    ) -> f32 {
+        self.x * other.x
+            + self.y * other.y
     }
 
     pub fn abs(&self) -> V2d {
@@ -43,14 +59,20 @@ impl V2d {
         }
     }
 
-    pub fn max(&self, other: &V2d) -> V2d {
+    pub fn max(
+        &self,
+        other: &V2d,
+    ) -> V2d {
         V2d {
             x: max_f32(self.x, other.x),
             y: max_f32(self.y, other.y),
         }
     }
 
-    pub fn min(&self, other: &V2d) -> V2d {
+    pub fn min(
+        &self,
+        other: &V2d,
+    ) -> V2d {
         V2d {
             x: min_f32(self.x, other.x),
             y: min_f32(self.y, other.y),
@@ -69,14 +91,20 @@ impl V2d {
         }
     }
 
-    pub fn scalar_mul_x(&self, s: f32) -> V2d {
+    pub fn scalar_mul_x(
+        &self,
+        s: f32,
+    ) -> V2d {
         V2d {
             x: self.x * s,
             y: self.y,
         }
     }
 
-    pub fn scalar_mul_y(&self, s: f32) -> V2d {
+    pub fn scalar_mul_y(
+        &self,
+        s: f32,
+    ) -> V2d {
         V2d {
             x: self.x,
             y: self.y * s,
@@ -90,14 +118,21 @@ impl V2d {
         }
     }
 
-    pub fn scale(&self, factor: f32) -> V2d {
+    pub fn scale(
+        &self,
+        factor: f32,
+    ) -> V2d {
         V2d {
             x: self.x * factor,
             y: self.y * factor,
         }
     }
 
-    pub fn translate(&self, dx: f32, dy: f32) -> V2d {
+    pub fn translate(
+        &self,
+        dx: f32,
+        dy: f32,
+    ) -> V2d {
         V2d {
             x: self.x + dx,
             y: self.y + dy,
@@ -108,7 +143,10 @@ impl V2d {
 impl Add for V2d {
     type Output = Self;
 
-    fn add(self, rhs: Self) -> Self::Output {
+    fn add(
+        self,
+        rhs: Self,
+    ) -> Self::Output {
         V2d {
             x: self.x + rhs.x,
             y: self.y + rhs.y,
@@ -119,7 +157,10 @@ impl Add for V2d {
 impl Add for &V2d {
     type Output = V2d;
 
-    fn add(self, rhs: Self) -> Self::Output {
+    fn add(
+        self,
+        rhs: Self,
+    ) -> Self::Output {
         V2d {
             x: self.x + rhs.x,
             y: self.y + rhs.y,
@@ -130,7 +171,10 @@ impl Add for &V2d {
 impl Div for V2d {
     type Output = Self;
 
-    fn div(self, rhs: Self) -> Self::Output {
+    fn div(
+        self,
+        rhs: Self,
+    ) -> Self::Output {
         V2d {
             x: self.x / rhs.x,
             y: self.y / rhs.y,
@@ -141,7 +185,10 @@ impl Div for V2d {
 impl Mul<V2d> for f32 {
     type Output = V2d;
 
-    fn mul(self, rhs: V2d) -> Self::Output {
+    fn mul(
+        self,
+        rhs: V2d,
+    ) -> Self::Output {
         V2d {
             x: self * rhs.x,
             y: self * rhs.y,
@@ -152,7 +199,10 @@ impl Mul<V2d> for f32 {
 impl Mul<&V2d> for f32 {
     type Output = V2d;
 
-    fn mul(self, rhs: &V2d) -> Self::Output {
+    fn mul(
+        self,
+        rhs: &V2d,
+    ) -> Self::Output {
         V2d {
             x: self * rhs.x,
             y: self * rhs.y,
@@ -163,7 +213,10 @@ impl Mul<&V2d> for f32 {
 impl Mul<V2d> for &f32 {
     type Output = V2d;
 
-    fn mul(self, rhs: V2d) -> Self::Output {
+    fn mul(
+        self,
+        rhs: V2d,
+    ) -> Self::Output {
         V2d {
             x: self * rhs.x,
             y: self * rhs.y,
@@ -174,7 +227,10 @@ impl Mul<V2d> for &f32 {
 impl Add<V2d> for f32 {
     type Output = V2d;
 
-    fn add(self, rhs: V2d) -> Self::Output {
+    fn add(
+        self,
+        rhs: V2d,
+    ) -> Self::Output {
         V2d {
             x: self + rhs.x,
             y: self + rhs.y,
@@ -185,7 +241,10 @@ impl Add<V2d> for f32 {
 impl Sub for V2d {
     type Output = Self;
 
-    fn sub(self, rhs: Self) -> Self::Output {
+    fn sub(
+        self,
+        rhs: Self,
+    ) -> Self::Output {
         V2d {
             x: self.x - rhs.x,
             y: self.y - rhs.y,
@@ -196,7 +255,10 @@ impl Sub for V2d {
 impl<'a, 'b> Sub<&'b V2d> for &'a V2d {
     type Output = V2d;
 
-    fn sub(self, other: &'b V2d) -> V2d {
+    fn sub(
+        self,
+        other: &'b V2d,
+    ) -> V2d {
         V2d {
             x: self.x - other.x,
             y: self.y - other.y,
@@ -205,7 +267,14 @@ impl<'a, 'b> Sub<&'b V2d> for &'a V2d {
 }
 
 impl Display for V2d {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "[{}, {}]", self.x, self.y)
+    fn fmt(
+        &self,
+        f: &mut fmt::Formatter<'_>,
+    ) -> fmt::Result {
+        write!(
+            f,
+            "[{}, {}]",
+            self.x, self.y
+        )
     }
 }

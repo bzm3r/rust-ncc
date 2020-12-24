@@ -13,7 +13,8 @@ use crate::cell::chemistry::RgtpDistribution;
 use crate::math::geometry::BBox;
 use crate::math::v2d::V2d;
 use crate::parameters::quantity::{
-    Diffusion, Force, Length, Quantity, Stress, Time, Tinv, Viscosity,
+    Diffusion, Force, Length, Quantity,
+    Stress, Time, Tinv, Viscosity,
 };
 use crate::NVERTS;
 use std::f32::consts::PI;
@@ -33,10 +34,16 @@ pub struct CharQuantities {
 }
 
 impl CharQuantities {
-    pub fn normalize<T: Quantity>(&self, q: &T) -> f32 {
+    pub fn normalize<T: Quantity>(
+        &self,
+        q: &T,
+    ) -> f32 {
         let q = q.g();
         let u = q.units();
-        (q * self.f.pow(-1.0 * u.f) * self.l.pow(-1.0 * u.l) * self.t.pow(-1.0 * u.t)).number()
+        (q * self.f.pow(-1.0 * u.f)
+            * self.l.pow(-1.0 * u.l)
+            * self.t.pow(-1.0 * u.t))
+        .number()
     }
 
     pub fn time(&self) -> f32 {
@@ -53,10 +60,16 @@ pub struct RawPhysicalContactParams {
 }
 
 impl RawPhysicalContactParams {
-    pub fn refine(&self, bq: &CharQuantities) -> PhysicalContactParams {
+    pub fn refine(
+        &self,
+        bq: &CharQuantities,
+    ) -> PhysicalContactParams {
         PhysicalContactParams {
-            range: bq.normalize(&self.range),
-            adh_mag: bq.normalize(&self.adh_mag),
+            range: bq
+                .normalize(&self.range),
+            adh_mag: bq.normalize(
+                &self.adh_mag,
+            ),
             cal_mag: self.cal_mag,
             cil_mag: self.cil_mag,
         }
@@ -72,13 +85,19 @@ pub struct RawCoaParams {
 }
 
 impl RawCoaParams {
-    pub fn refine(&self, bq: &CharQuantities) -> CoaParams {
-        let range = bq.normalize(&self.range);
+    pub fn refine(
+        &self,
+        bq: &CharQuantities,
+    ) -> CoaParams {
+        let range =
+            bq.normalize(&self.range);
         CoaParams {
-            los_penalty: self.los_penalty,
+            los_penalty: self
+                .los_penalty,
             range,
             mag: self.mag,
-            distrib_exp: 0.5f32.ln() / (0.5 * range),
+            distrib_exp: 0.5f32.ln()
+                / (0.5 * range),
         }
     }
 }
@@ -92,14 +111,24 @@ pub struct RawChemAttrParams {
 }
 
 impl RawChemAttrParams {
-    pub fn refine(&self, bq: &CharQuantities) -> ChemAttrParams {
+    pub fn refine(
+        &self,
+        bq: &CharQuantities,
+    ) -> ChemAttrParams {
         ChemAttrParams {
             center: V2d {
-                x: bq.normalize(&self.center[0]),
-                y: bq.normalize(&self.center[1]),
+                x: bq.normalize(
+                    &self.center[0],
+                ),
+                y: bq.normalize(
+                    &self.center[1],
+                ),
             },
             center_mag: self.center_mag,
-            slope: self.drop_per_char_l / bq.normalize(&self.char_l),
+            slope: self.drop_per_char_l
+                / bq.normalize(
+                    &self.char_l,
+                ),
         }
     }
 }
@@ -112,7 +141,10 @@ pub struct RawBdryParams {
 }
 
 impl RawBdryParams {
-    pub fn refine(&self, bq: &CharQuantities) -> BdryParams {
+    pub fn refine(
+        &self,
+        bq: &CharQuantities,
+    ) -> BdryParams {
         let shape = self
             .shape
             .iter()
@@ -121,11 +153,13 @@ impl RawBdryParams {
                 y: bq.normalize(&p[1]),
             })
             .collect::<Vec<V2d>>();
-        let bbox = BBox::from_points(&shape);
+        let bbox =
+            BBox::from_points(&shape);
         BdryParams {
             shape,
             bbox,
-            skip_bb_check: self.skip_bb_check,
+            skip_bb_check: self
+                .skip_bb_check,
             mag: self.mag,
         }
     }
@@ -134,24 +168,42 @@ impl RawBdryParams {
 #[derive(Clone)]
 pub struct RawInteractionParams {
     pub coa: Option<RawCoaParams>,
-    pub chem_attr: Option<RawChemAttrParams>,
+    pub chem_attr:
+        Option<RawChemAttrParams>,
     pub bdry: Option<RawBdryParams>,
-    pub phys_contact: Option<RawPhysicalContactParams>,
+    pub phys_contact: Option<
+        RawPhysicalContactParams,
+    >,
 }
 
 impl RawInteractionParams {
-    pub fn refine(&self, bq: &CharQuantities) -> InteractionParams {
+    pub fn refine(
+        &self,
+        bq: &CharQuantities,
+    ) -> InteractionParams {
         InteractionParams {
-            coa: self.coa.as_ref().map(|coa| coa.refine(bq)),
+            coa: self.coa.as_ref().map(
+                |coa| coa.refine(bq),
+            ),
             chem_attr: self
                 .chem_attr
                 .as_ref()
-                .map(|chem_attr| chem_attr.refine(bq)),
-            bdry: self.bdry.as_ref().map(|bdry| bdry.refine(bq)),
+                .map(|chem_attr| {
+                    chem_attr.refine(bq)
+                }),
+            bdry: self
+                .bdry
+                .as_ref()
+                .map(|bdry| {
+                    bdry.refine(bq)
+                }),
             phys_contact: self
                 .phys_contact
                 .as_ref()
-                .map(|phys_contact| phys_contact.refine(bq)),
+                .map(|phys_contact| {
+                    phys_contact
+                        .refine(bq)
+                }),
         }
     }
 }
@@ -159,7 +211,8 @@ impl RawInteractionParams {
 #[derive(Clone)]
 pub struct RawWorldParameters {
     pub vertex_eta: Viscosity,
-    pub interactions: RawInteractionParams,
+    pub interactions:
+        RawInteractionParams,
 }
 
 #[derive(Clone)]
@@ -197,9 +250,11 @@ pub struct BdryParams {
 
 #[derive(Clone)]
 pub struct InteractionParams {
-    pub phys_contact: Option<PhysicalContactParams>,
+    pub phys_contact:
+        Option<PhysicalContactParams>,
     pub coa: Option<CoaParams>,
-    pub chem_attr: Option<ChemAttrParams>,
+    pub chem_attr:
+        Option<ChemAttrParams>,
     pub bdry: Option<BdryParams>,
 }
 
@@ -210,10 +265,17 @@ pub struct WorldParameters {
 }
 
 impl RawWorldParameters {
-    pub fn refine(&self, bq: &CharQuantities) -> WorldParameters {
+    pub fn refine(
+        &self,
+        bq: &CharQuantities,
+    ) -> WorldParameters {
         WorldParameters {
-            vertex_eta: bq.normalize(&self.vertex_eta),
-            interactions: self.interactions.refine(bq),
+            vertex_eta: bq.normalize(
+                &self.vertex_eta,
+            ),
+            interactions: self
+                .interactions
+                .refine(bq),
         }
     }
 }
@@ -363,19 +425,50 @@ pub struct Parameters {
 }
 
 impl RawParameters {
-    pub fn gen_parameters(&self, bq: &CharQuantities) -> Parameters {
-        let cell_r = self.cell_diam.mul_number(0.5);
-        let rel = self.cell_diam.mul_number((PI / (NVERTS as f32)).sin());
+    pub fn gen_parameters(
+        &self,
+        bq: &CharQuantities,
+    ) -> Parameters {
+        let cell_r = self
+            .cell_diam
+            .mul_number(0.5);
+        let rel =
+            self.cell_diam.mul_number(
+                (PI / (NVERTS as f32))
+                    .sin(),
+            );
         let ra = Length(1.0)
             .pow(2.0)
-            .mul_number(calc_init_cell_area(cell_r.number(), NVERTS));
+            .mul_number(
+                calc_init_cell_area(
+                    cell_r.number(),
+                    NVERTS,
+                ),
+            );
         let const_protrusive =
             (self.lm_h.g() * self.lm_ss.g() * rel.g()).mul_number(self.halfmax_rgtp_max_f_frac);
-        let const_retractive = const_protrusive.mul_number(self.rho_friction);
-        let halfmax_vertex_rgtp_act = (self.halfmax_rgtp_frac / bq.frac_rgtp) / NVERTS as f32;
-        let halfmax_vertex_rgtp_conc = rel.pow(-1.0).mul_number(halfmax_vertex_rgtp_act);
-        let stiffness_edge = self.stiffness_cortex.g() * bq.l3d.g();
-        let stiffness_cyto = self.stiffness_ctyo.g().mul_number(1.0 / NVERTS as f32);
+        let const_retractive =
+            const_protrusive
+                .mul_number(
+                    self.rho_friction,
+                );
+        let halfmax_vertex_rgtp_act =
+            (self.halfmax_rgtp_frac
+                / bq.frac_rgtp)
+                / NVERTS as f32;
+        let halfmax_vertex_rgtp_conc =
+            rel.pow(-1.0).mul_number(
+                halfmax_vertex_rgtp_act,
+            );
+        let stiffness_edge =
+            self.stiffness_cortex.g()
+                * bq.l3d.g();
+        let stiffness_cyto = self
+            .stiffness_ctyo
+            .g()
+            .mul_number(
+                1.0 / NVERTS as f32,
+            );
 
         Parameters {
             cell_r: bq.normalize(&cell_r),

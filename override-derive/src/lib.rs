@@ -1,13 +1,22 @@
 use proc_macro::TokenStream;
 use quote::{format_ident, quote};
 use std::iter::Iterator;
-use syn::{parse_macro_input, DeriveInput, Fields, Ident, Type};
+use syn::{
+    parse_macro_input, DeriveInput,
+    Fields, Ident, Type,
+};
 
 #[proc_macro_derive(Overrides)]
-pub fn derive(input: TokenStream) -> TokenStream {
+pub fn derive(
+    input: TokenStream,
+) -> TokenStream {
     let DeriveInput {
-        ident: id, data, ..
-    } = parse_macro_input!(input as DeriveInput);
+        ident: id,
+        data,
+        ..
+    } = parse_macro_input!(
+        input as DeriveInput
+    );
 
     let mut fids: Vec<Ident> = vec![];
     let mut ftys: Vec<Type> = vec![];
@@ -25,7 +34,10 @@ pub fn derive(input: TokenStream) -> TokenStream {
         _ => panic!("Override macro expects struct, but found enum/union"),
     };
 
-    let oid = format_ident!("{}Overrides", &id.to_string());
+    let oid = format_ident!(
+        "{}Overrides",
+        &id.to_string()
+    );
 
     let output = quote!(
         #[derive(serde::Deserialize)]
