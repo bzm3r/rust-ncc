@@ -6,18 +6,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-mod dat4d;
-mod symdat2d;
-mod dat2d;
+pub mod dat2d;
+pub mod dat4d;
+pub mod symdat2d;
+pub mod symdat4d;
 mod utils;
-mod symdat4d;
 
+use crate::interactions::dat4d::CvCvDat;
+use crate::interactions::symdat2d::SymCcDat;
+use crate::interactions::symdat4d::SymCcVvDat;
 use crate::math::geometry::{
     calc_dist_point_to_seg, is_point_in_poly,
     is_point_in_poly_no_bb_check, ls_intersects_poly,
     ls_self_intersects_poly, BBox, LineSeg,
 };
-use crate::math::matrices::{CvCvDat, SymCcDat, SymCcVvDat};
 use crate::math::v2d::V2d;
 use crate::parameters::{
     BdryParams, ChemAttrParams, CoaParams, InteractionParams,

@@ -12,19 +12,13 @@ pub mod rkdp5;
 
 use crate::cell::chemistry::RacRandState;
 use crate::cell::core_state::{
-    ChemState, CoreState, GeomState,
-    MechState,
+    ChemState, CoreState, GeomState, MechState,
 };
 use crate::cell::rkdp5::AuxArgs;
 use crate::interactions::CellInteractions;
-use crate::math::geometry::{
-    calc_poly_area, is_point_in_poly,
-    BBox,
-};
-use crate::math::v2d::V2d;
-use crate::parameters::{
-    Parameters, WorldParameters,
-};
+use crate::math::geometry::{calc_poly_area, is_point_in_poly, BBox};
+use crate::math::v2d::{poly_to_string, V2d};
+use crate::parameters::{Parameters, WorldParameters};
 use crate::world::RandomEventGenerator;
 use crate::NVERTS;
 use avro_schema_derive::Schematize;
@@ -32,13 +26,7 @@ use serde::{Deserialize, Serialize};
 use std::f32::consts::PI;
 
 /// Model cell.
-#[derive(
-    Copy,
-    Clone,
-    Deserialize,
-    Serialize,
-    Schematize,
-)]
+#[derive(Copy, Clone, Deserialize, Serialize, Schematize)]
 pub struct ModelCell {
     /// Cell index.
     pub ix: u32,
@@ -60,11 +48,8 @@ fn move_point_out(
 ) -> V2d {
     let mut n = 0;
     while n < num_iters {
-        let new_p =
-            0.5 * (out_p + in_p);
-        if is_point_in_poly(
-            &new_p, poly_bbox, poly,
-        ) {
+        let new_p = 0.5 * (out_p + in_p);
+        if is_point_in_poly(&new_p, poly_bbox, poly) {
             in_p = new_p;
         } else {
             out_p = new_p;
@@ -74,74 +59,94 @@ fn move_point_out(
     out_p
 }
 
-#[cfg(debug_assertions)]
+#[cfg(feature = "custom_debug")]
 pub fn confirm_volume_exclusion(
     vcs: &[V2d; NVERTS],
-    contact_polys: &[(
-        BBox,
-        [V2d; NVERTS],
-    )],
-    panic_label: &str,
-) {
-    for (vi, vc) in
-        vcs.iter().enumerate()
-    {
-        for (bbox, poly) in
-            contact_polys
-        {
-            if is_point_in_poly(
-                vc, bbox, poly,
-            ) {
-                panic!(
-                    "{:?} violate volume exclusion. vcs[{:?}] = {:?}, other poly = {:?}",
-                    panic_label, vi, vc, poly
-                );
+    contact_polys: &[(BBox, [V2d; NVERTS])],
+    msg: &str,
+) -> Result<(), String> {
+    for (vi, vc) in vcs.iter().enumerate() {
+        for (bbox, poly) in contact_polys {
+            if is_point_in_poly(vc, bbox, poly) {
+                return Err(format!(
+                    "{} violates volume exclusion.\n\
+                    vcs[{}] = {}, \n\
+                    other poly = {}",
+                    msg,
+                    vi,
+                    vc,
+                    &poly_to_string(poly)
+                ));
             }
         }
     }
+    Ok(())
 }
 
+#[cfg(feature = "custom_debug")]
 pub fn enforce_volume_exclusion(
     old_vcs: &[V2d; NVERTS],
     mut new_vcs: [V2d; NVERTS],
-    contact_polys: Vec<(
-        BBox,
-        [V2d; NVERTS],
-    )>,
+    contact_polys: Vec<(BBox, [V2d; NVERTS])>,
 ) -> [V2d; NVERTS] {
-    #[cfg(debug_assertions)]
-    confirm_volume_exclusion(
-        old_vcs,
-        contact_polys.as_slice(),
-        "old_vcs",
-    );
-    for (old_vc, new_vc) in old_vcs
-        .iter()
-        .zip(new_vcs.iter_mut())
-    {
-        for (obb, ovcs) in
-            contact_polys.iter()
-        {
-            if is_point_in_poly(
-                new_vc, obb, ovcs,
-            ) {
-                let out_p = *old_vc;
-                let in_p = *new_vc;
+    for (old_vc, new_vc) in old_vcs.iter().zip(new_vcs.iter_mut()) {
+        for (obb, ovcs) in contact_polys.iter() {
+            if is_point_in_poly(new_vc, obb, ovcs) {
                 *new_vc =
-                    move_point_out(
-                        out_p, in_p,
-                        obb, ovcs, 3,
-                    );
+                    move_point_out(*old_vc, *new_vc, obb, ovcs, 3);
             }
         }
     }
-    #[cfg(debug_assertions)]
-    confirm_volume_exclusion(
-        &new_vcs,
-        &contact_polys,
-        "new_vcs",
-    );
+    new_vcs
+}
 
+// pub fn enforce_volume_exclusion(
+//     old_vcs: &[V2d; NVERTS],
+//     mut new_vcs: [V2d; NVERTS],
+//     contact_polys: Vec<(BBox, [V2d; NVERTS])>,
+// ) -> Result<[V2d; NVERTS], String> {
+//     match confirm_volume_exclusion(
+//         &new_vcs,
+//         &contact_polys,
+//         "old_vcs",
+//     ) {
+//         Ok(()) => {}
+//         Err(s) => {
+//             return Err(s);
+//         }
+//     }
+//     for (old_vc, new_vc) in old_vcs.iter().zip(new_vcs.iter_mut()) {
+//         for (obb, ovcs) in contact_polys.iter() {
+//             if is_point_in_poly(new_vc, obb, ovcs) {
+//                 *new_vc =
+//                     move_point_out(*old_vc, *new_vc, obb, ovcs, 3);
+//             }
+//         }
+//     }
+//     match confirm_volume_exclusion(
+//         &new_vcs,
+//         &contact_polys,
+//         "new_vcs",
+//     ) {
+//         Ok(()) => Ok(new_vcs),
+//         Err(s) => Err(s),
+//     }
+// }
+
+#[cfg(not(feature = "custom_debug"))]
+pub fn enforce_volume_exclusion(
+    old_vcs: &[V2d; NVERTS],
+    mut new_vcs: [V2d; NVERTS],
+    contact_polys: Vec<(BBox, [V2d; NVERTS])>,
+) -> [V2d; NVERTS] {
+    for (old_vc, new_vc) in old_vcs.iter().zip(new_vcs.iter_mut()) {
+        for (obb, ovcs) in contact_polys.iter() {
+            if is_point_in_poly(new_vc, obb, ovcs) {
+                *new_vc =
+                    move_point_out(*old_vc, *new_vc, obb, ovcs, 3);
+            }
+        }
+    }
     new_vcs
 }
 
@@ -152,35 +157,25 @@ impl ModelCell {
         state: CoreState,
         interactions: &CellInteractions,
         parameters: &Parameters,
-        reg: Option<
-            &mut RandomEventGenerator,
-        >,
+        reg: Option<&mut RandomEventGenerator>,
     ) -> ModelCell {
-        let rac_rand_state =
-            RacRandState::init(
-                match reg {
-                    Some(cr) => Some(
-                        &mut cr.rng,
-                    ),
-                    None => None,
-                },
-                parameters,
-            );
-        let geom_state =
-            state.calc_geom_state();
-        let mech_state = state
-            .calc_mech_state(
-                &geom_state,
-                parameters,
-            );
-        let chem_state = state
-            .calc_chem_state(
-                &geom_state,
-                &mech_state,
-                &rac_rand_state,
-                &interactions,
-                parameters,
-            );
+        let rac_rand_state = RacRandState::init(
+            match reg {
+                Some(cr) => Some(&mut cr.rng),
+                None => None,
+            },
+            parameters,
+        );
+        let geom_state = state.calc_geom_state();
+        let mech_state =
+            state.calc_mech_state(&geom_state, parameters);
+        let chem_state = state.calc_chem_state(
+            &geom_state,
+            &mech_state,
+            &rac_rand_state,
+            &interactions,
+            parameters,
+        );
         ModelCell {
             ix,
             group_ix,
@@ -192,18 +187,84 @@ impl ModelCell {
         }
     }
 
+    // #[allow(unused)]
+    // #[cfg(feature = "custom_debug")]
+    // pub fn simulate_euler(
+    //     &self,
+    //     tstep: u32,
+    //     interactions: &CellInteractions,
+    //     contact_polys: Vec<(BBox, [V2d; NVERTS])>,
+    //     rng: Option<&mut RandomEventGenerator>,
+    //     world_parameters: &WorldParameters,
+    //     parameters: &Parameters,
+    // ) -> Result<ModelCell, String> {
+    //     let mut state = self.state;
+    //     let nsteps: u32 = 10;
+    //     let dt = 1.0 / (nsteps as f32);
+    //     for i in 0..nsteps {
+    //         let delta = CoreState::dynamics_f(
+    //             &state,
+    //             &self.rac_rand_state,
+    //             &interactions,
+    //             world_parameters,
+    //             parameters,
+    //         );
+    //         state = state + dt * delta;
+    //     }
+    //     let geom_state = state.calc_geom_state();
+    //     let mech_state =
+    //         state.calc_mech_state(&geom_state, parameters);
+    //     let chem_state = state.calc_chem_state(
+    //         &geom_state,
+    //         &mech_state,
+    //         &self.rac_rand_state,
+    //         &interactions,
+    //         parameters,
+    //     );
+    //     state.vertex_coords = match enforce_volume_exclusion(
+    //         &self.state.vertex_coords,
+    //         state.vertex_coords,
+    //         contact_polys,
+    //     ) {
+    //         Ok(vcs) => vcs,
+    //         Err(s) => {
+    //             return Err(s);
+    //         }
+    //     };
+    //     let geom_state = state.calc_geom_state();
+    //     // println!("++++++++++++");
+    //     match state.validate("euler", &parameters) {
+    //         Ok(_) => {}
+    //         Err(s) => {
+    //             return Err(s);
+    //         }
+    //     };
+    //     let rac_rand_state =
+    //         match (tstep == self.rac_rand_state.next_update, rng) {
+    //             (true, Some(cr)) => {
+    //                 self.rac_rand_state.update(cr, tstep, parameters)
+    //             }
+    //             _ => self.rac_rand_state,
+    //         };
+    //     Ok(ModelCell {
+    //         ix: self.ix,
+    //         group_ix: self.group_ix,
+    //         state,
+    //         rac_rand_state,
+    //         geom_state,
+    //         chem_state,
+    //         mech_state,
+    //     })
+    // }
+
     #[allow(unused)]
+    #[cfg(not(feature = "custom_debug"))]
     pub fn simulate_euler(
         &self,
         tstep: u32,
         interactions: &CellInteractions,
-        contact_polys: Vec<(
-            BBox,
-            [V2d; NVERTS],
-        )>,
-        rng: Option<
-            &mut RandomEventGenerator,
-        >,
+        contact_polys: Vec<(BBox, [V2d; NVERTS])>,
+        rng: Option<&mut RandomEventGenerator>,
         world_parameters: &WorldParameters,
         parameters: &Parameters,
     ) -> ModelCell {
@@ -211,75 +272,39 @@ impl ModelCell {
         let nsteps: u32 = 10;
         let dt = 1.0 / (nsteps as f32);
         for i in 0..nsteps {
-            //println!("++++++++++++");
-            //println!("{}", state);
-            //let dep_vars =
-            //    CoreState::calc_dep_states(&state, &self.rac_rand_state, interactions, parameters);
-            //println!("{}", dep_vars);
-            //println!("++++++++++++");
-            let delta =
-                CoreState::dynamics_f(
-                    &state,
-                    &self
-                        .rac_rand_state,
-                    &interactions,
-                    world_parameters,
-                    parameters,
-                );
-            state = state + dt * delta;
-        }
-        let geom_state =
-            state.calc_geom_state();
-        let mech_state = state
-            .calc_mech_state(
-                &geom_state,
-                parameters,
-            );
-        let chem_state = state
-            .calc_chem_state(
-                &geom_state,
-                &mech_state,
+            let delta = CoreState::dynamics_f(
+                &state,
                 &self.rac_rand_state,
                 &interactions,
+                world_parameters,
                 parameters,
             );
-        state.vertex_coords =
-            enforce_volume_exclusion(
-                &self
-                    .state
-                    .vertex_coords,
-                state.vertex_coords,
-                contact_polys,
-            );
-        let geom_state =
-            state.calc_geom_state();
-        // println!("++++++++++++");
-        #[cfg(debug_assertions)]
-        state.validate(
-            "euler",
-            &parameters,
+            state = state + dt * delta;
+        }
+        let geom_state = state.calc_geom_state();
+        let mech_state =
+            state.calc_mech_state(&geom_state, parameters);
+        let chem_state = state.calc_chem_state(
+            &geom_state,
+            &mech_state,
+            &self.rac_rand_state,
+            &interactions,
+            parameters,
         );
-        // println!("{}", state);
-        // let dep_vars = CellState::calc_dep_vars(&state, &self.rac_randomization, interactions, parameters);
-        // println!("{}", dep_vars);
+        state.vertex_coords = enforce_volume_exclusion(
+            &self.state.vertex_coords,
+            state.vertex_coords,
+            contact_polys,
+        );
+        let geom_state = state.calc_geom_state();
         // println!("++++++++++++");
-        let rac_rand_state = match (
-            tstep
-                == self
-                    .rac_rand_state
-                    .next_update,
-            rng,
-        ) {
-            (true, Some(cr)) => self
-                .rac_rand_state
-                .update(
-                    cr, tstep,
-                    parameters,
-                ),
-            _ => self.rac_rand_state,
-        };
-        //println!("{}", rac_rand_state);
-        //println!("++++++++++++");
+        let rac_rand_state =
+            match (tstep == self.rac_rand_state.next_update, rng) {
+                (true, Some(cr)) => {
+                    self.rac_rand_state.update(cr, tstep, parameters)
+                }
+                _ => self.rac_rand_state,
+            };
         ModelCell {
             ix: self.ix,
             group_ix: self.group_ix,
@@ -291,18 +316,101 @@ impl ModelCell {
         }
     }
 
+    // #[allow(unused)]
+    // #[cfg(feature = "custom_debug")]
+    // pub fn simulate_rkdp5(
+    //     &self,
+    //     tstep: u32,
+    //     interactions: &CellInteractions,
+    //     contact_polys: Vec<(BBox, [V2d; NVERTS])>,
+    //     rng: Option<&mut RandomEventGenerator>,
+    //     world_parameters: &WorldParameters,
+    //     parameters: &Parameters,
+    // ) -> Result<ModelCell, String> {
+    //     // println!("using rkdp5...");
+    //     let aux_args = AuxArgs {
+    //         max_iters: 100,
+    //         atol: 1e-8,
+    //         rtol: 1e-3,
+    //         init_h_factor: Some(0.1),
+    //     };
+    //     let result = rkdp5::integrator(
+    //         1.0,
+    //         CoreState::dynamics_f,
+    //         &self.state,
+    //         &self.rac_rand_state,
+    //         interactions,
+    //         world_parameters,
+    //         parameters,
+    //         aux_args,
+    //     );
+    //
+    //     // println!(
+    //     //     "num_iters: {}, num_rejections: {}",
+    //     //     result.num_iters, result.num_rejections
+    //     // );
+    //     let mut state = result.y.expect("too many iterations!");
+    //     let geom_state = state.calc_geom_state();
+    //     let mech_state =
+    //         state.calc_mech_state(&geom_state, parameters);
+    //     let chem_state = state.calc_chem_state(
+    //         &geom_state,
+    //         &mech_state,
+    //         &self.rac_rand_state,
+    //         &interactions,
+    //         parameters,
+    //     );
+    //     let mv_dirs = mech_state
+    //         .sum_fs
+    //         .iter()
+    //         .map(|sf| -1.0 * sf.unitize())
+    //         .collect::<Vec<V2d>>();
+    //     state.vertex_coords = match enforce_volume_exclusion(
+    //         &self.state.vertex_coords,
+    //         state.vertex_coords,
+    //         contact_polys,
+    //     ) {
+    //         Ok(vcs) => vcs,
+    //         Err(s) => {
+    //             return Err(s);
+    //         }
+    //     };
+    //     let geom_state = state.calc_geom_state();
+    //     match state.validate("rkdp5", &parameters) {
+    //         Ok(_) => {}
+    //         Err(s) => {
+    //             return Err(s);
+    //         }
+    //     };
+    //     // println!("{}", state);
+    //     //let dep_vars = CoreState::calc_dep_vars(&state, &self.rac_rand_state, interactions, parameters);
+    //     // println!("{}", dep_vars);
+    //     let rac_rand_state =
+    //         match (tstep == self.rac_rand_state.next_update, rng) {
+    //             (true, Some(cr)) => {
+    //                 self.rac_rand_state.update(cr, tstep, parameters)
+    //             }
+    //             _ => self.rac_rand_state,
+    //         };
+    //     Ok(ModelCell {
+    //         ix: self.ix,
+    //         group_ix: self.group_ix,
+    //         state,
+    //         rac_rand_state,
+    //         geom_state,
+    //         chem_state,
+    //         mech_state,
+    //     })
+    // }
+
     #[allow(unused)]
+    //#[cfg(not(feature = "custom_debug"))]
     pub fn simulate_rkdp5(
         &self,
         tstep: u32,
         interactions: &CellInteractions,
-        contact_polys: Vec<(
-            BBox,
-            [V2d; NVERTS],
-        )>,
-        rng: Option<
-            &mut RandomEventGenerator,
-        >,
+        contact_polys: Vec<(BBox, [V2d; NVERTS])>,
+        rng: Option<&mut RandomEventGenerator>,
         world_parameters: &WorldParameters,
         parameters: &Parameters,
     ) -> ModelCell {
@@ -328,64 +436,40 @@ impl ModelCell {
         //     "num_iters: {}, num_rejections: {}",
         //     result.num_iters, result.num_rejections
         // );
-        let mut state =
-            result.y.expect(
-                "too many iterations!",
-            );
-        let geom_state =
-            state.calc_geom_state();
-        let mech_state = state
-            .calc_mech_state(
-                &geom_state,
-                parameters,
-            );
-        let chem_state = state
-            .calc_chem_state(
-                &geom_state,
-                &mech_state,
-                &self.rac_rand_state,
-                &interactions,
-                parameters,
-            );
+        let mut state = result.y.expect("too many iterations!");
+        let geom_state = state.calc_geom_state();
+        let mech_state =
+            state.calc_mech_state(&geom_state, parameters);
+        let chem_state = state.calc_chem_state(
+            &geom_state,
+            &mech_state,
+            &self.rac_rand_state,
+            &interactions,
+            parameters,
+        );
         let mv_dirs = mech_state
             .sum_fs
             .iter()
-            .map(|sf| {
-                -1.0 * sf.unitize()
-            })
+            .map(|sf| -1.0 * sf.unitize())
             .collect::<Vec<V2d>>();
-        state.vertex_coords =
-            enforce_volume_exclusion(
-                &self
-                    .state
-                    .vertex_coords,
-                state.vertex_coords,
-                contact_polys,
-            );
-        let geom_state =
-            state.calc_geom_state();
-        #[cfg(debug_assertions)]
-        state.validate(
-            "rkdp5", parameters,
+        state.vertex_coords = enforce_volume_exclusion(
+            &self.state.vertex_coords,
+            state.vertex_coords,
+            contact_polys,
         );
-        //println!("{}", state);
+        let geom_state = state.calc_geom_state();
+        #[cfg(feature = "custom_debug")]
+        state.validate("rkdp5", parameters);
+        // println!("{}", state);
         //let dep_vars = CoreState::calc_dep_vars(&state, &self.rac_rand_state, interactions, parameters);
-        //println!("{}", dep_vars);
-        let rac_rand_state = match (
-            tstep
-                == self
-                    .rac_rand_state
-                    .next_update,
-            rng,
-        ) {
-            (true, Some(cr)) => self
-                .rac_rand_state
-                .update(
-                    cr, tstep,
-                    parameters,
-                ),
-            _ => self.rac_rand_state,
-        };
+        // println!("{}", dep_vars);
+        let rac_rand_state =
+            match (tstep == self.rac_rand_state.next_update, rng) {
+                (true, Some(cr)) => {
+                    self.rac_rand_state.update(cr, tstep, parameters)
+                }
+                _ => self.rac_rand_state,
+            };
         ModelCell {
             ix: self.ix,
             group_ix: self.group_ix,
@@ -399,16 +483,10 @@ impl ModelCell {
 }
 
 /// Calculate the area of an "ideal" initial cell of radius R, if it has n vertices.
-pub fn calc_init_cell_area(
-    r: f32,
-    n: usize,
-) -> f32 {
+pub fn calc_init_cell_area(r: f32, n: usize) -> f32 {
     let poly_coords = (0..n)
         .map(|vix| {
-            let theta = (vix as f32)
-                / (n as f32)
-                * 2.0
-                * PI;
+            let theta = (vix as f32) / (n as f32) * 2.0 * PI;
             V2d {
                 x: r * theta.cos(),
                 y: r * theta.sin(),

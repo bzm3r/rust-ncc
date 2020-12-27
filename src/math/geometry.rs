@@ -8,23 +8,18 @@
 
 use crate::math::v2d::V2d;
 use crate::math::{max_f32s, min_f32s};
-use crate::utils::{
-    circ_ix_minus, circ_ix_plus,
-};
+use crate::utils::{circ_ix_minus, circ_ix_plus};
 use std::cmp::Ordering;
 
 /// Calculate the area of a polygon with vertices positioned at `xys`. [ref](http://geomalgorithms.com/a01-_area.html)
-pub fn calc_poly_area(
-    xys: &[V2d],
-) -> f32 {
+pub fn calc_poly_area(xys: &[V2d]) -> f32 {
     let nvs = xys.len();
 
     let mut area = 0.0_f32;
     for i in 0..nvs {
         let j = circ_ix_plus(i, nvs);
         let k = circ_ix_minus(i, nvs);
-        area += xys[i].x
-            * (xys[j].y - xys[k].y);
+        area += xys[i].x * (xys[j].y - xys[k].y);
     }
 
     area * 0.5
@@ -39,17 +34,9 @@ pub struct BBox {
 }
 
 impl BBox {
-    pub fn from_points(
-        xys: &[V2d],
-    ) -> BBox {
-        let xs: Vec<f32> = xys
-            .iter()
-            .map(|v| v.x)
-            .collect();
-        let ys: Vec<f32> = xys
-            .iter()
-            .map(|v| v.y)
-            .collect();
+    pub fn from_points(xys: &[V2d]) -> BBox {
+        let xs: Vec<f32> = xys.iter().map(|v| v.x).collect();
+        let ys: Vec<f32> = xys.iter().map(|v| v.y).collect();
         BBox {
             xmin: min_f32s(&xs),
             ymin: min_f32s(&ys),
@@ -58,10 +45,7 @@ impl BBox {
         }
     }
 
-    pub fn expand_by(
-        &self,
-        l: f32,
-    ) -> BBox {
+    pub fn expand_by(&self, l: f32) -> BBox {
         BBox {
             xmin: self.xmin - l,
             ymin: self.ymin - l,
@@ -70,21 +54,12 @@ impl BBox {
         }
     }
 
-    pub fn intersects(
-        &self,
-        other: &BBox,
-    ) -> bool {
-        !((self.xmin > other.xmax
-            || self.xmax < other.xmin)
-            || (self.ymin > other.ymax
-                || self.ymax
-                    < other.ymin))
+    pub fn intersects(&self, other: &BBox) -> bool {
+        !((self.xmin > other.xmax || self.xmax < other.xmin)
+            || (self.ymin > other.ymax || self.ymax < other.ymin))
     }
 
-    pub fn contains(
-        &self,
-        point: &V2d,
-    ) -> bool {
+    pub fn contains(&self, point: &V2d) -> bool {
         !(point.x < self.xmin
             || point.x > self.xmax
             || point.y < self.ymin
@@ -94,9 +69,7 @@ impl BBox {
 
 #[allow(unused)]
 fn in_unit_interval(x: f32) -> bool {
-    (x.abs() < f32::EPSILON
-        || (x - 1.0).abs()
-            < f32::EPSILON)
+    (x.abs() < f32::EPSILON || (x - 1.0).abs() < f32::EPSILON)
         || (0.0 < x && x < 1.0)
 }
 
@@ -106,14 +79,9 @@ pub enum PointSegRelation {
     On,
 }
 
-pub fn is_left(
-    p: &V2d,
-    p0: &V2d,
-    p1: &V2d,
-) -> PointSegRelation {
-    let r = (p1.x - p0.x)
-        * (p.y - p0.y)
-        - (p.x - p0.x) * (p1.y - p0.y);
+pub fn is_left(p: &V2d, p0: &V2d, p1: &V2d) -> PointSegRelation {
+    let r =
+        (p1.x - p0.x) * (p.y - p0.y) - (p.x - p0.x) * (p1.y - p0.y);
     match 0.0.partial_cmp(&r) {
         Some(Ordering::Less) => PointSegRelation::Left,
         Some(Ordering::Greater) => PointSegRelation::Right,
@@ -131,38 +99,26 @@ pub fn is_point_in_poly(
     poly: &[V2d],
 ) -> bool {
     if poly_bbox.contains(p) {
-        is_point_in_poly_no_bb_check(
-            p, poly,
-        )
+        is_point_in_poly_no_bb_check(p, poly)
     } else {
         false
     }
 }
 
-pub fn is_point_in_poly_no_bb_check(
-    p: &V2d,
-    poly: &[V2d],
-) -> bool {
+pub fn is_point_in_poly_no_bb_check(p: &V2d, poly: &[V2d]) -> bool {
     let mut wn: isize = 0;
     let nverts = poly.len();
     for vi in 0..nverts {
         let p0 = &poly[vi];
-        let p1 = &poly
-            [circ_ix_plus(vi, nverts)];
+        let p1 = &poly[circ_ix_plus(vi, nverts)];
 
-        if (p0.y - p.y).abs()
-            < f32::EPSILON
-            || p0.y < p.y
-        {
+        if (p0.y - p.y).abs() < f32::EPSILON || p0.y < p.y {
             if p1.y > p.y {
                 if let PointSegRelation::Left = is_left(p, p0, p1) {
                     wn += 1;
                 }
             }
-        } else if (p1.y - p.y).abs()
-            < f32::EPSILON
-            || p1.y < p.y
-        {
+        } else if (p1.y - p.y).abs() < f32::EPSILON || p1.y < p.y {
             if let PointSegRelation::Right = is_left(p, p0, p1) {
                 wn -= 1;
             }
@@ -179,10 +135,8 @@ pub fn calc_dist_point_to_seg(
 ) -> (f32, f32) {
     let seg = s1 - s0;
     let rel_pt = point - s0;
-    let t = (seg.x * rel_pt.x
-        + seg.y * rel_pt.y)
-        / (seg.x * seg.x
-            + seg.y * seg.y);
+    let t = (seg.x * rel_pt.x + seg.y * rel_pt.y)
+        / (seg.x * seg.x + seg.y * seg.y);
 
     if t < 0.0 || t > 1.0 {
         (f32::INFINITY, f32::INFINITY)
@@ -200,10 +154,7 @@ pub struct LineSeg {
 }
 
 impl LineSeg {
-    pub fn new(
-        p0: &V2d,
-        p1: &V2d,
-    ) -> LineSeg {
+    pub fn new(p0: &V2d, p1: &V2d) -> LineSeg {
         let p = p1 - p0;
         LineSeg {
             p0: *p0,
@@ -221,18 +172,11 @@ impl LineSeg {
         let p = p0 - p1;
         let alpha = self.p0.x - p0.x;
         let beta = self.p1.y - p1.y;
-        let gamma = self.p.y * p.x
-            - self.p.x * p.y;
-        let t = -1.0
-            * (p.y * alpha
-                - p.x * beta)
-            / gamma;
-        let u = self.p.y * alpha
-            - self.p.x * beta / gamma;
+        let gamma = self.p.y * p.x - self.p.x * p.y;
+        let t = -1.0 * (p.y * alpha - p.x * beta) / gamma;
+        let u = self.p.y * alpha - self.p.x * beta / gamma;
 
-        match in_unit_interval(t)
-            && in_unit_interval(u)
-        {
+        match in_unit_interval(t) && in_unit_interval(u) {
             true => Some(t),
             false => None,
         }
@@ -244,12 +188,8 @@ impl LineSeg {
         p0: &V2d,
         p1: &V2d,
     ) -> Option<V2d> {
-        match self
-            .check_intersection(p0, p1)
-        {
-            Some(t) => Some(
-                self.p0 + t * self.p,
-            ),
+        match self.check_intersection(p0, p1) {
+            Some(t) => Some(self.p0 + t * self.p),
             None => None,
         }
     }
@@ -261,38 +201,77 @@ pub fn ls_self_intersects_poly(
     lseg: &LineSeg,
 ) -> bool {
     let nverts = poly.len();
-    poly.iter().enumerate().any(
-        |(i, vc)| {
-            let j =
-                circ_ix_plus(i, nverts);
-            if i != vi && j != vi {
-                let vc1 = &poly[j];
-                lseg.check_intersection(
-                    vc, vc1,
-                )
-                .is_some()
-            } else {
-                false
-            }
-        },
-    )
+    poly.iter().enumerate().any(|(i, vc)| {
+        let j = circ_ix_plus(i, nverts);
+        if i != vi && j != vi {
+            let vc1 = &poly[j];
+            lseg.check_intersection(vc, vc1).is_some()
+        } else {
+            false
+        }
+    })
 }
 
-pub fn ls_intersects_poly(
-    lseg: &LineSeg,
-    poly: &[V2d],
-) -> bool {
+pub fn ls_intersects_poly(lseg: &LineSeg, poly: &[V2d]) -> bool {
     let nverts = poly.len();
-    poly.iter().enumerate().any(
-        |(vi, vc)| {
-            let vc1 = &poly
-                [circ_ix_plus(
-                    vi, nverts,
-                )];
-            lseg.check_intersection(
-                vc, vc1,
-            )
-            .is_some()
-        },
-    )
+    poly.iter().enumerate().any(|(vi, vc)| {
+        let vc1 = &poly[circ_ix_plus(vi, nverts)];
+        lseg.check_intersection(vc, vc1).is_some()
+    })
+}
+
+pub fn refine_raw_poly(raw_poly: [[f32; 2]; 16]) -> [V2d; 16] {
+    let mut r = [V2d::default(); 16];
+    for (q, p) in r.iter_mut().zip(raw_poly.iter()) {
+        q.x = p[0];
+        q.y = p[1];
+    }
+    r
+}
+
+pub fn debug_2516() -> bool {
+    let raw_poly0: [[f32; 2]; 16] = [
+        [17.35927773, 10.05445576],
+        [20.14031792, 17.7357769],
+        [21.07795143, 25.88361168],
+        [20.49790955, 34.3898468],
+        [19.54242516, 43.97360992],
+        [12.60634708, 38.64976501],
+        [5.56152534, 34.1216507],
+        [-0.78408813, 28.81798744],
+        [-6.22881603, 22.60850906],
+        [-10.6268158, 15.61991978],
+        [-13.70013523, 7.96070576],
+        [-14.38947964, -0.25499445],
+        [-8.84416771, -6.33410025],
+        [-0.65162319, -5.81689453],
+        [6.70051908, -2.19530749],
+        [12.799613, 3.26516056],
+    ];
+    let poly0 = refine_raw_poly(raw_poly0);
+    let raw_poly1: [[f32; 2]; 16] = [
+        [14.1334753, 69.59502411],
+        [8.9440918, 75.91790771],
+        [2.32284832, 80.73442841],
+        [-5.37283945, 83.55819702],
+        [-13.57541847, 83.18937683],
+        [-18.46726799, 76.57003784],
+        [-16.97669601, 68.4585495],
+        [-13.16155815, 61.13722229],
+        [-8.07684708, 54.62718964],
+        [-2.01202416, 49.01637268],
+        [4.86732531, 44.42360687],
+        [12.34603977, 40.70920563],
+        [19.99453545, 40.15917206],
+        [19.34379005, 45.62875366],
+        [19.22147942, 54.15409088],
+        [17.59632683, 62.19432068],
+    ];
+    let poly1 = refine_raw_poly(raw_poly1);
+    for p in poly1.iter() {
+        if is_point_in_poly_no_bb_check(p, &poly0) {
+            return true;
+        }
+    }
+    false
 }

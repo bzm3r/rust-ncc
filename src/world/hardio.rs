@@ -8,12 +8,8 @@ pub fn save_schema(
     schema: &Schema,
     output_dir: &PathBuf,
 ) {
-    let mut avsc_path =
-        output_dir.clone();
-    avsc_path.push(format!(
-        "{}_schema",
-        name
-    ));
+    let mut avsc_path = output_dir.clone();
+    avsc_path.push(format!("{}_schema", name));
     avsc_path.set_extension("avsc");
 
     let mut f = OpenOptions::new()
@@ -22,20 +18,11 @@ pub fn save_schema(
         .truncate(true)
         .open(avsc_path)
         .unwrap();
-    let raw_schema =
-        serde_json::to_string_pretty(
-            &schema,
-        )
-        .unwrap();
-    f.write_all(raw_schema.as_bytes())
-        .unwrap();
+    let raw_schema = serde_json::to_string_pretty(&schema).unwrap();
+    f.write_all(raw_schema.as_bytes()).unwrap();
 }
 
-pub fn save_data(
-    name: &str,
-    encoded: &[u8],
-    output_dir: &PathBuf,
-) {
+pub fn save_data(name: &str, encoded: &[u8], output_dir: &PathBuf) {
     let mut path = output_dir.clone();
     path.push(format!("{}_dat", name));
     path.set_extension("avro");

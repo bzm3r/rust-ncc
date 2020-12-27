@@ -42,38 +42,38 @@ pub fn sort_ixs4d(
 }
 
 // Debug mode utility function to confirm that
-#[allow(unused)]
-#[cfg(debug_assertions)]
-pub fn check_indices4d(
-    num_cells: usize,
-    ci: usize,
-    vi: usize,
-    oci: usize,
-    ovi: usize,
-) {
-    let oci = fix_oci(ci, oci);
-
-    if ci > num_cells {
-        panic!("{} cells tracked, received ci: {}", num_cells, ci);
-    }
-
-    if vi > NVERTS as usize {
-        panic!("{} vertices tracked, received vi: {}", NVERTS, vi);
-    }
-
-    if oci > num_cells - 1 {
-        panic!(
-            "{} cells tracked, received oci: {} (max: {})",
-            num_cells,
-            oci,
-            num_cells - 1
-        );
-    }
-
-    if ovi > NVERTS as usize {
-        panic!("{} vertices tracked, received vi: {}", NVERTS, vi);
-    }
-}
+// #[allow(unused)]
+// #[cfg(feature = "custom_debug")]
+// pub fn check_indices4d(
+//     num_cells: usize,
+//     ci: usize,
+//     vi: usize,
+//     oci: usize,
+//     ovi: usize,
+// ) {
+//     let oci = fix_oci(ci, oci);
+//
+//     if ci > num_cells {
+//         panic!("{} cells tracked, received ci: {}", num_cells, ci);
+//     }
+//
+//     if vi > NVERTS as usize {
+//         panic!("{} vertices tracked, received vi: {}", NVERTS, vi);
+//     }
+//
+//     if oci > num_cells - 1 {
+//         panic!(
+//             "{} cells tracked, received oci: {} (max: {})",
+//             num_cells,
+//             oci,
+//             num_cells - 1
+//         );
+//     }
+//
+//     if ovi > NVERTS as usize {
+//         panic!("{} vertices tracked, received vi: {}", NVERTS, vi);
+//     }
+// }
 
 /// Given an `n`x`n` matrix, calculate the number of elements left are
 /// removing the `n` diagonal elements, and de-duplication of the
@@ -82,33 +82,32 @@ pub fn sym_sum(n: usize) -> usize {
     n * (n - 1) / 2
 }
 
-#[allow(unused)]
-#[cfg(debug_assertions)]
-pub fn check_sym_indices4d(
-    num_cells: usize,
-    ci: usize,
-    vi: usize,
-    oci: usize,
-    ovi: usize,
-) {
-    let (ci, vi, oci, ovi) = sort_ixs4d(ci, vi, oci, ovi);
-
-    if ci > num_cells {
-        panic!("{} cells tracked, received ci: {}", num_cells, ci);
-    }
-
-    if vi > NVERTS as usize {
-        panic!("{} vertices tracked, received vi: {}", NVERTS, vi);
-    }
-
-    if oci > num_cells {
-        panic!(
-            "{} cells tracked, received symmetric oci: {}",
-            num_cells, oci
-        );
-    }
-
-    if ovi > NVERTS as usize {
-        panic!("{} vertices tracked, received vi: {}", NVERTS, vi);
-    }
-}
+// #[cfg(feature = "custom_debug")]
+// pub fn check_sym_indices4d(
+//     num_cells: usize,
+//     ci: usize,
+//     vi: usize,
+//     oci: usize,
+//     ovi: usize,
+// ) {
+//     let (ci, vi, oci, ovi) = sort_ixs4d(ci, vi, oci, ovi);
+//
+//     if ci > num_cells {
+//         panic!("{} cells tracked, received ci: {}", num_cells, ci);
+//     }
+//
+//     if vi > NVERTS as usize {
+//         panic!("{} vertices tracked, received vi: {}", NVERTS, vi);
+//     }
+//
+//     if oci > num_cells {
+//         panic!(
+//             "{} cells tracked, received symmetric oci: {}",
+//             num_cells, oci
+//         );
+//     }
+//
+//     if ovi > NVERTS as usize {
+//         panic!("{} vertices tracked, received vi: {}", NVERTS, vi);
+//     }
+// }

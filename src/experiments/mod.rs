@@ -10,19 +10,17 @@ pub mod pairs;
 pub mod single;
 
 use crate::cell::chemistry::{
-    DistributionScheme,
-    DistributionType, RgtpDistribution,
+    DistributionScheme, DistributionType, RgtpDistribution,
 };
 use crate::math::v2d::V2d;
 use crate::parameters::quantity::{
-    Force, Length, Quantity, Stress,
-    Time, Tinv, Viscosity,
+    Force, Length, Quantity, Stress, Time, Tinv, Viscosity,
 };
 use crate::parameters::{
-    CharQuantities, Parameters,
-    RawParameters, WorldParameters,
+    CharQuantities, Parameters, RawParameters, WorldParameters,
 };
 use crate::NVERTS;
+use rand_pcg::Pcg64;
 
 /// Specifies initial placement of the group.
 pub struct GroupLayout {
@@ -49,10 +47,15 @@ pub struct Experiment {
     pub title: String,
     /// Characteristic quantities.
     pub char_quants: CharQuantities,
-    pub world_parameters:
-        WorldParameters,
+    pub world_parameters: WorldParameters,
     /// List of cell groups involved in this experiment.
     pub cell_groups: Vec<CellGroup>,
+    /// Random number generator to be used for various purposes.
+    /// Initialized from a seed, otherwise from "entropy".
+    pub rng: Pcg64,
+    /// Seed that was used to initialize rng, if it generated from a
+    /// seed.
+    pub seed: Option<u64>,
 }
 
 /// Generate default characteristic quantities.
@@ -66,8 +69,7 @@ pub struct Experiment {
 /// the values used.
 // TODO: Document all the justifications here, rather than having to refer
 // to the SI.
-fn gen_default_char_quants(
-) -> CharQuantities {
+fn gen_default_char_quants() -> CharQuantities {
     // Stress on lamellipod is on order of 1kPa, height of lamellipod on order of 100 nm, length of edge on order of 10 um
     let f = (Stress(1.0).kilo().g()
         * Length(100.0).nano().g()
@@ -96,15 +98,13 @@ fn gen_default_char_quants(
 /// particular experiment file. You can use this function
 /// as a template.
 fn gen_default_raw_params(
+    rng: &mut Pcg64,
+    randomization: bool,
 ) -> RawParameters {
-    let rgtp_d =
-        (Length(0.1_f32.sqrt())
-            .micro()
-            .pow(2.0)
-            .g()
-            / Time(1.0).g())
-        .to_diffusion()
-        .unwrap();
+    let rgtp_d = (Length(0.1_f32.sqrt()).micro().pow(2.0).g()
+        / Time(1.0).g())
+    .to_diffusion()
+    .unwrap();
     let init_rac = RgtpDistribution::generate(
         DistributionScheme {
             frac: 0.1,
@@ -114,12 +114,12 @@ fn gen_default_raw_params(
             frac: 0.1,
             ty: DistributionType::Random,
         },
+        rng,
     )
     .unwrap();
     RawParameters {
         cell_diam: Length(40.0).micro(),
-        stiffness_cortex: Stress(8.0)
-            .kilo(),
+        stiffness_cortex: Stress(8.0).kilo(),
         lm_h: Length(200.0).nano(),
         halfmax_rgtp_max_f_frac: 0.3,
         halfmax_rgtp_frac: 0.4,
@@ -139,11 +139,9 @@ fn gen_default_raw_params(
         kgtp_auto_rho: 390.0,
         kdgtp_rho: 60.0,
         kdgtp_rac_on_rho: 400.0,
-        randomization: true,
+        randomization,
         rand_avg_t: Time(40.0 * 60.0),
-        rand_std_t: Time(
-            0.2 * 40.0 * 60.0,
-        ),
+        rand_std_t: Time(0.2 * 40.0 * 60.0),
         rand_mag: 10.0,
         rand_vs: 0.25,
         init_rac,
@@ -157,9 +155,18 @@ fn gen_default_raw_params(
 ///
 /// See SI for justification.
 // TODO: put justification here.
-fn gen_default_viscosity() -> Viscosity
-{
-    Viscosity(0.29).mul_number(
-        1.0 / (NVERTS as f32),
+fn gen_default_viscosity() -> Viscosity {
+    Viscosity(0.29).mul_number(1.0 / (NVERTS as f32))
+}
+
+fn gen_default_phys_contact_dist() -> Length {
+    Length(0.5).micro()
+}
+
+fn gen_default_adhesion_mag() -> Force {
+    let v = Length(2.0).micro().g() * Tinv(1.0).g();
+    (gen_default_viscosity().g() * v).to_force().expect(
+        "Procedure for generating default force does \
+             not produce a force. Check units!",
     )
 }

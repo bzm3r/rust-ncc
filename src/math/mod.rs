@@ -7,16 +7,12 @@
 // except according to those terms.
 
 pub mod geometry;
-pub mod matrices;
 pub mod radians;
 pub mod v2d;
 
 #[inline]
 /// Calculate `x` modulo `y`.
-pub fn modulo_f32(
-    x: f32,
-    y: f32,
-) -> f32 {
+pub fn modulo_f32(x: f32, y: f32) -> f32 {
     (x % y) + y
 }
 
@@ -66,20 +62,14 @@ pub fn max_f32(x: f32, y: f32) -> f32 {
 
 #[inline]
 /// Hill function with exponent 3.
-pub fn hill_function3(
-    thresh: f32,
-    x: f32,
-) -> f32 {
+pub fn hill_function3(thresh: f32, x: f32) -> f32 {
     let x_cubed = x.powi(3);
     x_cubed / (thresh.powi(3) + x_cubed)
 }
 
 #[inline]
 /// If `x > max_x`, returns 1.0, else `x/max_x`.
-pub fn capped_linear_function(
-    x: f32,
-    max_x: f32,
-) -> f32 {
+pub fn capped_linear_function(x: f32, max_x: f32) -> f32 {
     if x > max_x {
         1.0
     } else {

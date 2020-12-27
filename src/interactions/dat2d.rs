@@ -1,5 +1,3 @@
-use crate::interactions::utils::fix_oci;
-
 /// `CcDat` allows storage of cell-cell data indexed by `(ci, oci)`,
 /// (`ci` for "cell index") and (`oci` for "other cell index"). All
 /// data stored must have the same type. However, the structure is

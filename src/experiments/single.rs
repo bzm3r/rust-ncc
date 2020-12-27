@@ -1,23 +1,21 @@
 #![allow(unused)]
 use crate::cell::chemistry::{
-    DistributionScheme,
-    DistributionType, RgtpDistribution,
+    DistributionScheme, DistributionType, RgtpDistribution,
 };
 use crate::experiments::{
-    gen_default_char_quants,
-    gen_default_raw_params,
-    gen_default_viscosity, CellGroup,
-    Experiment, GroupLayout,
+    gen_default_char_quants, gen_default_raw_params,
+    gen_default_viscosity, CellGroup, Experiment, GroupLayout,
 };
-use crate::math::matrices::SymCcDat;
+use crate::interactions::symdat2d::SymCcDat;
 use crate::math::v2d::V2d;
 use crate::parameters::quantity::Length;
 use crate::parameters::{
-    CharQuantities,
-    RawInteractionParams,
-    RawParameters, RawWorldParameters,
+    CharQuantities, RawInteractionParams, RawParameters,
+    RawWorldParameters,
 };
 use crate::NVERTS;
+use rand::SeedableRng;
+use rand_pcg::Pcg64;
 
 /// Generate the group layout to use for this experiment.
 fn group_layout(
@@ -26,10 +24,8 @@ fn group_layout(
 ) -> Result<GroupLayout, String> {
     // specify initial location of group centroid
     let centroid = V2d {
-        x: char_quants
-            .normalize(&Length(0.0)),
-        y: char_quants
-            .normalize(&Length(0.0)),
+        x: char_quants.normalize(&Length(0.0)),
+        y: char_quants.normalize(&Length(0.0)),
     };
     let r = GroupLayout {
         width: 1,
@@ -47,18 +43,15 @@ fn group_layout(
 
 /// Define the cell groups that will exist in this experiment.
 fn cell_groups(
+    rng: &mut Pcg64,
     cq: &CharQuantities,
 ) -> Vec<CellGroup> {
     let num_cells = 1;
     vec![CellGroup {
         num_cells,
-        layout: group_layout(
-            num_cells, cq,
-        )
-        .unwrap(),
-        parameters:
-            gen_default_raw_params()
-                .gen_parameters(cq),
+        layout: group_layout(num_cells, cq).unwrap(),
+        parameters: gen_default_raw_params(rng, true)
+            .gen_parameters(cq),
     }]
 }
 
@@ -74,35 +67,34 @@ fn gen_cil_mat() -> SymCcDat<f32> {
 
 /// Generate raw world parameters, in particular, how
 /// cells interact with each other, and any boundaries.
-fn raw_world_parameters(
-) -> RawWorldParameters {
+fn raw_world_parameters() -> RawWorldParameters {
     RawWorldParameters {
-        vertex_eta:
-            gen_default_viscosity(),
-        interactions:
-            RawInteractionParams {
-                coa: None,
-                chem_attr: None,
-                bdry: None,
-                phys_contact: None,
-            },
+        vertex_eta: gen_default_viscosity(),
+        interactions: RawInteractionParams {
+            coa: None,
+            chem_attr: None,
+            bdry: None,
+            phys_contact: None,
+        },
     }
 }
 
 /// Generate the experiment, so that it can be run.
-pub fn generate() -> Experiment {
-    let char_quants =
-        gen_default_char_quants();
+pub fn generate(seed: Option<u64>) -> Experiment {
+    let mut rng = match seed {
+        Some(s) => Pcg64::seed_from_u64(s),
+        None => Pcg64::from_entropy(),
+    };
+    let char_quants = gen_default_char_quants();
     let world_parameters =
-        raw_world_parameters()
-            .refine(&char_quants);
-    let cell_groups =
-        cell_groups(&char_quants);
+        raw_world_parameters().refine(&char_quants);
+    let cell_groups = cell_groups(&mut rng, &char_quants);
     Experiment {
-        title: "single cell"
-            .to_string(),
+        title: "single cell".to_string(),
         char_quants,
         world_parameters,
         cell_groups,
+        rng,
+        seed,
     }
 }
