@@ -5,17 +5,16 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-
 pub mod hardio;
-// #[cfg(feature = "custom_debug")]
-// use crate::cell::confirm_volume_exclusion;
+#[cfg(feature = "custom_debug")]
+use crate::cell::confirm_volume_exclusion;
 use crate::cell::core_state::CoreState;
 use crate::cell::ModelCell;
 use crate::experiments::{CellGroup, Experiment};
 use crate::interactions::{
     CellInteractions, InteractionGenerator, RgtpState,
 };
-use crate::math::v2d::V2d;
+use crate::math::v2d::V2D;
 use crate::parameters::{Parameters, WorldParameters};
 use crate::world::hardio::{save_data, save_schema};
 use crate::NVERTS;
@@ -39,7 +38,7 @@ pub struct Cells {
 }
 
 impl Cells {
-    // #[cfg(not(feature = "custom_debug"))]
+    #[cfg(not(feature = "custom_debug"))]
     fn simulate(
         &self,
         rng: &mut Pcg64,
@@ -85,66 +84,71 @@ impl Cells {
         }
     }
 
-    // #[cfg(feature = "custom_debug")]
-    // fn simulate(
-    //     &self,
-    //     rng: &mut Pcg64,
-    //     cell_regs: &mut [Option<RandomEventGenerator>],
-    //     world_parameters: &WorldParameters,
-    //     group_parameters: &[Parameters],
-    //     interaction_generator: &mut InteractionGenerator,
-    // ) -> Result<Cells, String> {
-    //     let mut cells = vec![self.cells[0]; self.cells.len()];
-    //     let shuffled_cells = {
-    //         let mut crs =
-    //             self.cells.iter().collect::<Vec<&ModelCell>>();
-    //         crs.shuffle(rng);
-    //         crs
-    //     };
-    //     for c in shuffled_cells {
-    //         // println!("------------------");
-    //         let ci = c.ix as usize;
-    //         // println!("ci: {}", ci);
-    //         // println!(
-    //         //     "contacts: {:?}",
-    //         //     interaction_generator.get_physical_contacts(ci)
-    //         // );
-    //         let contact_polys =
-    //             interaction_generator.get_physical_contact_polys(ci);
-    //         let new_cell_state = match c.simulate_rkdp5(
-    //             self.tstep,
-    //             &self.interactions[ci],
-    //             contact_polys,
-    //             cell_regs[ci].as_mut(),
-    //             world_parameters,
-    //             &group_parameters[c.group_ix as usize],
-    //         ) {
-    //             Ok(r) => r,
-    //             Err(s) => {
-    //                 return Err(s);
-    //             }
-    //         };
-    //         // println!("----------------------");
-    //         interaction_generator
-    //             .update(ci, &new_cell_state.state.vertex_coords);
-    //         match confirm_volume_exclusion(
-    //             &new_cell_state.state.vertex_coords,
-    //             &interaction_generator.get_physical_contact_polys(ci),
-    //             &format!("world cell {}", ci),
-    //         ) {
-    //             Ok(()) => {}
-    //             Err(s) => {
-    //                 return Err(s);
-    //             }
-    //         }
-    //         cells[ci] = new_cell_state;
-    //     }
-    //     Ok(Cells {
-    //         tstep: self.tstep + 1,
-    //         cells,
-    //         interactions: interaction_generator.generate(),
-    //     })
-    // }
+    #[cfg(feature = "custom_debug")]
+    fn simulate(
+        &self,
+        _tstep: u32,
+        rng: &mut Pcg64,
+        cell_regs: &mut [Option<RandomEventGenerator>],
+        world_parameters: &WorldParameters,
+        group_parameters: &[Parameters],
+        interaction_generator: &mut InteractionGenerator,
+    ) -> Result<Cells, String> {
+        let mut cells = vec![self.cells[0]; self.cells.len()];
+        let shuffled_cells = {
+            let mut crs =
+                self.cells.iter().collect::<Vec<&ModelCell>>();
+            crs.shuffle(rng);
+            crs
+        };
+        for c in shuffled_cells {
+            // println!("------------------");
+            let ci = c.ix as usize;
+            // println!("ci: {}", ci);
+            // println!(
+            //     "contacts: {:?}",
+            //     interaction_generator.get_physical_contacts(ci)
+            // );
+            // let contacts =
+            //     interaction_generator.get_physical_contacts(ci);
+            let contact_polys =
+                interaction_generator.get_physical_contact_polys(ci);
+            let new_cell_state = c.simulate_rkdp5(
+                self.tstep,
+                &self.interactions[ci],
+                contact_polys,
+                cell_regs[ci].as_mut(),
+                world_parameters,
+                &group_parameters[c.group_ix as usize],
+            )?;
+            // if (tstep == 347 && ci == 1) || (tstep == 346 && ci == 0)
+            // {
+            //     println!(
+            //         "cell{} at {}->{}: {}",
+            //         ci,
+            //         tstep,
+            //         tstep + 1,
+            //         poly_to_string(
+            //             &new_cell_state.state.vertex_coords
+            //         )
+            //     );
+            // }
+            // println!("----------------------");
+            interaction_generator
+                .update(ci, &new_cell_state.state.vertex_coords);
+            confirm_volume_exclusion(
+                &new_cell_state.state.vertex_coords,
+                &interaction_generator.get_physical_contact_polys(ci),
+                &format!("world cell {}", ci),
+            )?;
+            cells[ci] = new_cell_state;
+        }
+        Ok(Cells {
+            tstep: self.tstep + 1,
+            cells,
+            interactions: interaction_generator.generate(),
+        })
+    }
 }
 
 pub struct RandomEventGenerator {
@@ -171,12 +175,12 @@ pub struct World {
     exp_name: String,
 }
 
-fn gen_vertex_coords(centroid: &V2d, radius: f32) -> [V2d; NVERTS] {
-    let mut r = [V2d::default(); NVERTS];
+fn gen_vertex_coords(centroid: &V2D, radius: f32) -> [V2D; NVERTS] {
+    let mut r = [V2D::default(); NVERTS];
     (0..NVERTS).for_each(|vix| {
         let vf = (vix as f32) / (NVERTS as f32);
         let theta = 2.0 * PI * vf;
-        r[vix] = V2d {
+        r[vix] = V2D {
             x: centroid.x + theta.cos() * radius,
             y: centroid.y + theta.sin() * radius,
         };
@@ -206,20 +210,20 @@ impl World {
             cell_centroids
                 .append(&mut gen_cell_centroids(cg).unwrap())
         });
-        let cell_vcs = cell_group_ixs
+        let cell_polys = cell_group_ixs
             .iter()
             .zip(cell_centroids.iter())
             .map(|(&gix, cc)| {
                 gen_vertex_coords(cc, group_parameters[gix].cell_r)
             })
-            .collect::<Vec<[V2d; NVERTS]>>();
+            .collect::<Vec<[V2D; NVERTS]>>();
         let cell_states = cell_group_ixs
             .iter()
-            .zip(cell_vcs.iter())
-            .map(|(&gix, vcs)| {
+            .zip(cell_polys.iter())
+            .map(|(&gix, vs)| {
                 let parameters = &group_parameters[gix];
                 CoreState::new(
-                    *vcs,
+                    *vs,
                     parameters.init_rac,
                     parameters.init_rho,
                 )
@@ -234,7 +238,7 @@ impl World {
             })
             .collect::<Vec<[RgtpState; NVERTS]>>();
         let interaction_generator = InteractionGenerator::new(
-            &cell_vcs,
+            &cell_polys,
             &cell_rgtps,
             world_parameters.interactions.clone(),
         );
@@ -297,28 +301,27 @@ impl World {
             //     "tstep: {}/{}",
             //     self.cell_states.tstep, num_tsteps
             // );
-            if self.cell_states.tstep == 1 {
-                println!("Problematic step reached.");
-            };
-            // #[cfg(feature = "custom_debug")]
-            // let new_state = match self.cell_states.simulate(
-            //     &mut self.rng,
-            //     self.cell_regs.as_mut_slice(),
-            //     &self.global_params,
-            //     &self.cell_group_params,
-            //     &mut self.interaction_generator,
-            // ) {
-            //     Ok(c) => c,
-            //     Err(s) => {
-            //         self.save_history();
-            //         panic!(format!(
-            //             "tstep={}\n{}",
-            //             self.cell_states.tstep, s
-            //         ));
-            //     }
-            // };
+            let tstep = self.cell_states.tstep;
+            #[cfg(feature = "custom_debug")]
+            let new_state = self
+                .cell_states
+                .simulate(
+                    tstep,
+                    &mut self.rng,
+                    self.cell_regs.as_mut_slice(),
+                    &self.global_params,
+                    &self.cell_group_params,
+                    &mut self.interaction_generator,
+                )
+                .unwrap_or_else(|e| {
+                    self.save_history();
+                    panic!(
+                        "tstep: {}\n{}",
+                        self.cell_states.tstep, e
+                    );
+                });
 
-            // #[cfg(not(feature = "custom_debug"))]
+            #[cfg(not(feature = "custom_debug"))]
             let new_state = self.cell_states.simulate(
                 &mut self.rng,
                 self.cell_regs.as_mut_slice(),
@@ -334,9 +337,9 @@ impl World {
     }
 
     pub fn save_history(&self) {
-        // #[cfg(feature = "custom_debug")]
-        // let name = format!("history_dbg_{}", &self.exp_name);
-        // #[cfg(not(feature = "custom_debug"))]
+        #[cfg(feature = "custom_debug")]
+        let name = format!("history_dbg_{}", &self.exp_name);
+        #[cfg(not(feature = "custom_debug"))]
         let name = format!("history_{}", &self.exp_name);
 
         let schema = Cells::schematize(None);
@@ -350,7 +353,7 @@ impl World {
     }
 }
 
-fn gen_cell_centroids(cg: &CellGroup) -> Result<Vec<V2d>, String> {
+fn gen_cell_centroids(cg: &CellGroup) -> Result<Vec<V2D>, String> {
     let CellGroup {
         num_cells,
         layout,
@@ -359,15 +362,15 @@ fn gen_cell_centroids(cg: &CellGroup) -> Result<Vec<V2d>, String> {
     let cell_r = parameters.cell_r;
     if layout.width * layout.height >= *num_cells {
         let mut r = vec![];
-        let first_cell_centroid = V2d {
+        let first_cell_centroid = V2D {
             x: layout.bottom_left.x + cell_r,
             y: layout.bottom_left.y + cell_r,
         };
-        let row_delta = V2d {
+        let row_delta = V2D {
             x: 0.0,
             y: 2.0 * cell_r,
         };
-        let col_delta = V2d {
+        let col_delta = V2D {
             x: 2.0 * cell_r,
             y: 0.0,
         };

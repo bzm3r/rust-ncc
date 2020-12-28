@@ -3,15 +3,16 @@ use crate::cell::chemistry::{
     DistributionScheme, DistributionType, RgtpDistribution,
 };
 use crate::experiments::{
-    gen_default_char_quants, gen_default_raw_params,
-    gen_default_viscosity, CellGroup, Experiment, GroupLayout,
+    gen_default_char_quants, gen_default_phys_contact_dist,
+    gen_default_raw_params, gen_default_viscosity, CellGroup,
+    Experiment, GroupLayout,
 };
-use crate::interactions::symdat2d::SymCcDat;
-use crate::math::v2d::V2d;
+use crate::interactions::dat_sym2d::SymCcDat;
+use crate::math::v2d::V2D;
 use crate::parameters::quantity::Length;
 use crate::parameters::{
     CharQuantities, RawInteractionParams, RawParameters,
-    RawWorldParameters,
+    RawPhysicalContactParams, RawWorldParameters,
 };
 use crate::NVERTS;
 use rand::SeedableRng;
@@ -23,7 +24,7 @@ fn group_layout(
     char_quants: &CharQuantities,
 ) -> Result<GroupLayout, String> {
     // specify initial location of group centroid
-    let centroid = V2d {
+    let centroid = V2D {
         x: char_quants.normalize(&Length(0.0)),
         y: char_quants.normalize(&Length(0.0)),
     };
@@ -74,7 +75,12 @@ fn raw_world_parameters() -> RawWorldParameters {
             coa: None,
             chem_attr: None,
             bdry: None,
-            phys_contact: None,
+            phys_contact: RawPhysicalContactParams {
+                range: gen_default_phys_contact_dist(),
+                adh_mag: None,
+                cal_mag: None,
+                cil_mag: 0.0,
+            },
         },
     }
 }

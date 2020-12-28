@@ -1,3 +1,5 @@
+/// Currently not included in `mod.rs`, as it is not used in code.
+
 /// `CcDat` allows storage of cell-cell data indexed by `(ci, oci)`,
 /// (`ci` for "cell index") and (`oci` for "other cell index"). All
 /// data stored must have the same type. However, the structure is
@@ -10,7 +12,6 @@ pub struct CcDat<T: Copy + Default> {
     undefined: T,
 }
 
-#[allow(unused)]
 impl<T: Copy + Default> CcDat<T> {
     /// Create a new `CcDat` structure that can hold data for
     /// `num_cells` cells. `undefined` is the value stored when no

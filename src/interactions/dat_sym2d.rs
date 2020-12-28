@@ -1,4 +1,4 @@
-use crate::interactions::utils::{sort_ixs, sym_sum};
+use crate::interactions::dat_utils::{sort_ixs, sym_sum};
 
 #[derive(Clone, Default)]
 pub struct SymCcDat<T: Copy + Default> {

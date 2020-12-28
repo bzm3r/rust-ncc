@@ -8,7 +8,7 @@ use crate::cell::mechanics::{
     calc_rgtp_forces,
 };
 use crate::interactions::{CellInteractions, RgtpState};
-use crate::math::v2d::V2d;
+use crate::math::v2d::V2D;
 use crate::math::{hill_function3, max_f32, min_f32};
 use crate::parameters::{Parameters, WorldParameters};
 use crate::utils::circ_ix_minus;
@@ -23,7 +23,7 @@ use std::ops::{Add, Div, Mul, Sub};
     Copy, Clone, Debug, Default, Deserialize, Serialize, Schematize,
 )]
 pub struct CoreState {
-    pub vertex_coords: [V2d; NVERTS],
+    pub vertex_coords: [V2D; NVERTS],
     rac_acts: [f32; NVERTS],
     rac_inacts: [f32; NVERTS],
     rho_acts: [f32; NVERTS],
@@ -34,7 +34,7 @@ impl Add for CoreState {
     type Output = CoreState;
 
     fn add(self, rhs: CoreState) -> CoreState {
-        let mut vertex_coords = [V2d::default(); NVERTS];
+        let mut vertex_coords = [V2D::default(); NVERTS];
         let mut rac_acts = [0.0_f32; NVERTS];
         let mut rac_inacts = [0.0_f32; NVERTS];
         let mut rho_acts = [0.0_f32; NVERTS];
@@ -63,7 +63,7 @@ impl Sub for CoreState {
     type Output = CoreState;
 
     fn sub(self, rhs: CoreState) -> CoreState {
-        let mut vertex_coords = [V2d::default(); NVERTS];
+        let mut vertex_coords = [V2D::default(); NVERTS];
         let mut rac_acts = [0.0_f32; NVERTS];
         let mut rac_inacts = [0.0_f32; NVERTS];
         let mut rho_acts = [0.0_f32; NVERTS];
@@ -92,7 +92,7 @@ impl Div for CoreState {
     type Output = CoreState;
 
     fn div(self, rhs: CoreState) -> CoreState {
-        let mut vertex_coords = [V2d::default(); NVERTS];
+        let mut vertex_coords = [V2D::default(); NVERTS];
         let mut rac_acts = [0.0_f32; NVERTS];
         let mut rac_inacts = [0.0_f32; NVERTS];
         let mut rho_acts = [0.0_f32; NVERTS];
@@ -121,7 +121,7 @@ impl Mul<CoreState> for f32 {
     type Output = CoreState;
 
     fn mul(self, rhs: CoreState) -> CoreState {
-        let mut vertex_coords = [V2d::default(); NVERTS];
+        let mut vertex_coords = [V2D::default(); NVERTS];
         let mut rac_acts = [0.0_f32; NVERTS];
         let mut rac_inacts = [0.0_f32; NVERTS];
         let mut rho_acts = [0.0_f32; NVERTS];
@@ -150,11 +150,11 @@ impl Mul<CoreState> for f32 {
 )]
 pub struct MechState {
     pub edge_strains: [f32; NVERTS],
-    pub rgtp_forces: [V2d; NVERTS],
-    pub cyto_forces: [V2d; NVERTS],
-    pub edge_forces: [V2d; NVERTS],
+    pub rgtp_forces: [V2D; NVERTS],
+    pub cyto_forces: [V2D; NVERTS],
+    pub edge_forces: [V2D; NVERTS],
     pub avg_tens_strain: f32,
-    pub sum_fs: [V2d; NVERTS],
+    pub sum_fs: [V2D; NVERTS],
 }
 
 #[derive(
@@ -178,9 +178,9 @@ pub struct ChemState {
     Copy, Clone, Debug, Default, Deserialize, Serialize, Schematize,
 )]
 pub struct GeomState {
-    pub unit_edge_vecs: [V2d; NVERTS],
+    pub unit_edge_vecs: [V2D; NVERTS],
     pub edge_lens: [f32; NVERTS],
-    pub unit_inward_vecs: [V2d; NVERTS],
+    pub unit_inward_vecs: [V2D; NVERTS],
 }
 
 // #[derive(Copy, Clone, Debug, Default, Deserialize, Serialize, Schematize)]
@@ -260,9 +260,9 @@ impl CoreState {
         let evs = calc_edge_vecs(&self.vertex_coords);
         let mut edge_lens = [0.0_f32; NVERTS];
         (0..NVERTS).for_each(|i| edge_lens[i] = (&evs[i]).mag());
-        let mut uevs = [V2d::default(); NVERTS];
+        let mut uevs = [V2D::default(); NVERTS];
         (0..NVERTS).for_each(|i| uevs[i] = (&evs[i]).unitize());
-        let mut uivs = [V2d::default(); NVERTS];
+        let mut uivs = [V2D::default(); NVERTS];
         (0..NVERTS).for_each(|i| {
             let im1 = circ_ix_minus(i as usize, NVERTS);
             let tangent = (uevs[i] + uevs[im1]).unitize();
@@ -315,7 +315,7 @@ impl CoreState {
             .map(|&es| if es < 0.0 { 0.0 } else { es })
             .sum::<f32>()
             / NVERTS as f32;
-        let mut sum_fs = [V2d::default(); NVERTS];
+        let mut sum_fs = [V2D::default(); NVERTS];
         (0..NVERTS).for_each(|i| {
             sum_fs[i] =
                 rgtp_forces[i] + cyto_forces[i] + edge_forces[i]
@@ -512,7 +512,7 @@ impl CoreState {
     }
 
     pub fn new(
-        vertex_coords: [V2d; NVERTS],
+        vertex_coords: [V2D; NVERTS],
         init_rac: RgtpDistribution,
         init_rho: RgtpDistribution,
     ) -> CoreState {
@@ -527,7 +527,7 @@ impl CoreState {
     }
 
     pub fn scalar_mul(&self, s: f32) -> CoreState {
-        let mut vertex_coords = [V2d::default(); NVERTS];
+        let mut vertex_coords = [V2D::default(); NVERTS];
         let mut rac_acts = [0.0_f32; NVERTS];
         let mut rac_inacts = [0.0_f32; NVERTS];
         let mut rho_acts = [0.0_f32; NVERTS];
@@ -551,7 +551,7 @@ impl CoreState {
     }
 
     pub fn scalar_add(&self, s: f32) -> CoreState {
-        let mut vertex_coords = [V2d::default(); NVERTS];
+        let mut vertex_coords = [V2D::default(); NVERTS];
         let mut rac_acts = [0.0_f32; NVERTS];
         let mut rac_inacts = [0.0_f32; NVERTS];
         let mut rho_acts = [0.0_f32; NVERTS];
@@ -575,7 +575,7 @@ impl CoreState {
     }
 
     pub fn abs(&self) -> CoreState {
-        let mut vertex_coords = [V2d::default(); NVERTS];
+        let mut vertex_coords = [V2D::default(); NVERTS];
         let mut rac_acts = [0.0_f32; NVERTS];
         let mut rac_inacts = [0.0_f32; NVERTS];
         let mut rho_acts = [0.0_f32; NVERTS];
@@ -599,7 +599,7 @@ impl CoreState {
     }
 
     pub fn powi(&self, x: i32) -> CoreState {
-        let mut vertex_coords = [V2d::default(); NVERTS];
+        let mut vertex_coords = [V2D::default(); NVERTS];
         let mut rac_acts = [0.0_f32; NVERTS];
         let mut rac_inacts = [0.0_f32; NVERTS];
         let mut rho_acts = [0.0_f32; NVERTS];
@@ -623,7 +623,7 @@ impl CoreState {
     }
 
     pub fn max(&self, other: &CoreState) -> CoreState {
-        let mut vertex_coords = [V2d::default(); NVERTS];
+        let mut vertex_coords = [V2D::default(); NVERTS];
         let mut rac_acts = [0.0_f32; NVERTS];
         let mut rac_inacts = [0.0_f32; NVERTS];
         let mut rho_acts = [0.0_f32; NVERTS];
@@ -652,7 +652,7 @@ impl CoreState {
     }
 
     pub fn min(&self, other: &CoreState) -> CoreState {
-        let mut vertex_coords = [V2d::default(); NVERTS];
+        let mut vertex_coords = [V2D::default(); NVERTS];
         let mut rac_acts = [0.0_f32; NVERTS];
         let mut rac_inacts = [0.0_f32; NVERTS];
         let mut rho_acts = [0.0_f32; NVERTS];

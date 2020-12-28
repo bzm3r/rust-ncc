@@ -34,9 +34,7 @@ pub struct Units {
 
 impl PartialEq for Units {
     fn eq(&self, other: &Self) -> bool {
-        self.f == other.f
-            && self.l == other.l
-            && self.t == other.t
+        self.f == other.f && self.l == other.l && self.t == other.t
     }
 }
 
@@ -127,15 +125,13 @@ impl Units {
     /// Units for a diffusion quantity.
     #[inline]
     fn diffusion() -> Units {
-        Units::length().pow(2.0)
-            / Units::time()
+        Units::length().pow(2.0) / Units::time()
     }
 
     /// Units for a stress quantity.
     #[inline]
     fn stress() -> Units {
-        Units::force()
-            / Units::length().pow(2.0)
+        Units::force() / Units::length().pow(2.0)
     }
 
     /// Units for an inverse time quantity.
@@ -147,9 +143,7 @@ impl Units {
     /// Units for a viscosity quantity.
     #[inline]
     fn viscosity() -> Units {
-        Units::force()
-            / (Units::length()
-                / Units::time())
+        Units::force() / (Units::length() / Units::time())
     }
 }
 
@@ -158,10 +152,7 @@ impl Mul for Units {
     type Output = Units;
 
     #[allow(clippy::suspicious_arithmetic_impl)]
-    fn mul(
-        self,
-        rhs: Self,
-    ) -> Self::Output {
+    fn mul(self, rhs: Self) -> Self::Output {
         Units {
             f: self.f + rhs.f,
             l: self.l + rhs.l,
@@ -172,15 +163,8 @@ impl Mul for Units {
 
 /// Implement `Display` for Units.
 impl Display for Units {
-    fn fmt(
-        &self,
-        f: &mut Formatter<'_>,
-    ) -> fmt::Result {
-        write!(
-            f,
-            "F^{} L^{} T^{}",
-            self.f, self.l, self.t
-        )
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "F^{} L^{} T^{}", self.f, self.l, self.t)
     }
 }
 
@@ -189,10 +173,7 @@ impl Div for Units {
     type Output = Units;
 
     #[allow(clippy::suspicious_arithmetic_impl)]
-    fn div(
-        self,
-        rhs: Units,
-    ) -> Self::Output {
+    fn div(self, rhs: Units) -> Self::Output {
         Units {
             f: self.f - rhs.f,
             l: self.l - rhs.l,
@@ -205,10 +186,7 @@ impl Div for Units {
 pub trait Quantity {
     /// Return a quantity that whose number part is a multiple
     /// of this quantity.
-    fn mul_number(
-        &self,
-        multiple: f32,
-    ) -> Self;
+    fn mul_number(&self, multiple: f32) -> Self;
 
     /// Return a quantity that is `10^-3` times the original.
     fn kilo(&self) -> Self;
@@ -244,28 +222,24 @@ pub struct General {
 
 impl General {
     /// Convert the general quantity to a force, if possible.
-    pub fn to_force(
-        &self,
-    ) -> Result<Force, String> {
-        if self.units()
-            == Units::force()
-        {
+    pub fn to_force(&self) -> Result<Force, String> {
+        if self.units() == Units::force() {
             Ok(Force(self.number()))
         } else {
-            Err(String::from("Quantity does not have units of force."))
+            Err(String::from(
+                "Quantity does not have units of force.",
+            ))
         }
     }
 
     /// Convert the general quantity to a diffusion, if possible.
-    pub fn to_diffusion(
-        &self,
-    ) -> Result<Diffusion, String> {
-        if self.units()
-            == Units::diffusion()
-        {
+    pub fn to_diffusion(&self) -> Result<Diffusion, String> {
+        if self.units() == Units::diffusion() {
             Ok(Diffusion(self.number()))
         } else {
-            Err(String::from("Quantity does not have units of diffusion."))
+            Err(String::from(
+                "Quantity does not have units of diffusion.",
+            ))
         }
     }
 
@@ -283,12 +257,9 @@ impl General {
 }
 
 impl Quantity for General {
-    fn mul_number(
-        &self,
-        multiple: f32,
-    ) -> Self {
+    fn mul_number(&self, multiplier: f32) -> Self {
         General {
-            n: self.n * multiple,
+            n: self.n * multiplier,
             u: self.u,
         }
     }
@@ -328,10 +299,7 @@ impl Quantity for General {
 impl Mul for General {
     type Output = General;
 
-    fn mul(
-        self,
-        rhs: General,
-    ) -> Self::Output {
+    fn mul(self, rhs: General) -> Self::Output {
         General {
             n: self.n * rhs.n,
             u: self.u * rhs.u,
@@ -342,10 +310,7 @@ impl Mul for General {
 impl Div for General {
     type Output = Self;
 
-    fn div(
-        self,
-        rhs: Self,
-    ) -> Self::Output {
+    fn div(self, rhs: Self) -> Self::Output {
         General {
             n: self.n / rhs.n,
             u: self.u / rhs.u,
@@ -354,28 +319,16 @@ impl Div for General {
 }
 
 impl Display for General {
-    fn fmt(
-        &self,
-        f: &mut Formatter<'_>,
-    ) -> fmt::Result {
-        write!(
-            f,
-            "{} {}",
-            self.n, self.u
-        )
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "{} {}", self.n, self.u)
     }
 }
 
-#[derive(
-    Default, Clone, Copy, Deserialize,
-)]
+#[derive(Default, Clone, Copy, Deserialize)]
 pub struct Force(pub f32);
 
 impl Quantity for Force {
-    fn mul_number(
-        &self,
-        other: f32,
-    ) -> Self {
+    fn mul_number(&self, other: f32) -> Self {
         Force(self.0 * other)
     }
 
@@ -415,10 +368,7 @@ impl Quantity for Force {
 pub struct Length(pub f32);
 
 impl Quantity for Length {
-    fn mul_number(
-        &self,
-        other: f32,
-    ) -> Self {
+    fn mul_number(&self, other: f32) -> Self {
         Length(self.0 * other)
     }
 
@@ -458,10 +408,7 @@ impl Quantity for Length {
 pub struct Time(pub f32);
 
 impl Quantity for Time {
-    fn mul_number(
-        &self,
-        other: f32,
-    ) -> Self {
+    fn mul_number(&self, other: f32) -> Self {
         Time(self.0 * other)
     }
 
@@ -501,10 +448,7 @@ impl Quantity for Time {
 pub struct Tinv(pub f32);
 
 impl Quantity for Tinv {
-    fn mul_number(
-        &self,
-        other: f32,
-    ) -> Self {
+    fn mul_number(&self, other: f32) -> Self {
         Tinv(self.0 * other)
     }
 
@@ -544,10 +488,7 @@ impl Quantity for Tinv {
 pub struct Diffusion(pub f32);
 
 impl Quantity for Diffusion {
-    fn mul_number(
-        &self,
-        other: f32,
-    ) -> Self {
+    fn mul_number(&self, other: f32) -> Self {
         Diffusion(self.0 * other)
     }
 
@@ -587,10 +528,7 @@ impl Quantity for Diffusion {
 pub struct Stress(pub f32);
 
 impl Quantity for Stress {
-    fn mul_number(
-        &self,
-        other: f32,
-    ) -> Self {
+    fn mul_number(&self, other: f32) -> Self {
         Stress(self.0 * other)
     }
 
@@ -630,10 +568,7 @@ impl Quantity for Stress {
 pub struct Viscosity(pub f32);
 
 impl Quantity for Viscosity {
-    fn mul_number(
-        &self,
-        other: f32,
-    ) -> Self {
+    fn mul_number(&self, other: f32) -> Self {
         Viscosity(self.0 * other)
     }
 
@@ -673,10 +608,7 @@ impl Quantity for Viscosity {
 pub struct Unitless(pub f32);
 
 impl Quantity for Unitless {
-    fn mul_number(
-        &self,
-        other: f32,
-    ) -> Self {
+    fn mul_number(&self, other: f32) -> Self {
         Unitless(self.0 * other)
     }
 

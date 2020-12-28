@@ -1,5 +1,3 @@
-use crate::NVERTS;
-
 /// Given a pair of cell indices `(ci, oci)` (`ci` for "cell index",
 /// and `oci` for "other cell index), return them in ordered format
 /// `(s, b)` (`s` for smaller, and `b` for bigger), where `s = min(ci,
@@ -9,15 +7,6 @@ pub fn sort_ixs(ci: usize, oci: usize) -> (usize, usize) {
         (oci, ci)
     } else {
         (ci, oci)
-    }
-}
-
-/// In a 4D data matrix, indexed by `(ci, vi, oci, ovi)`, where  
-pub fn fix_oci(ci: usize, oci: usize) -> usize {
-    if ci < oci {
-        oci - 1
-    } else {
-        oci
     }
 }
 

@@ -12,7 +12,7 @@ pub mod single;
 use crate::cell::chemistry::{
     DistributionScheme, DistributionType, RgtpDistribution,
 };
-use crate::math::v2d::V2d;
+use crate::math::v2d::V2D;
 use crate::parameters::quantity::{
     Force, Length, Quantity, Stress, Time, Tinv, Viscosity,
 };
@@ -29,7 +29,7 @@ pub struct GroupLayout {
     /// Height of group in terms of number if cells.
     pub height: u32,
     /// Bottom left of the group in micrometers.
-    pub bottom_left: V2d,
+    pub bottom_left: V2D,
 }
 
 /// Information required for a cell group to be created.
@@ -163,9 +163,10 @@ fn gen_default_phys_contact_dist() -> Length {
     Length(0.5).micro()
 }
 
-fn gen_default_adhesion_mag() -> Force {
-    let v = Length(2.0).micro().g() * Tinv(1.0).g();
-    (gen_default_viscosity().g() * v).to_force().expect(
+fn gen_default_adhesion_mag(char_quants: &CharQuantities) -> Force {
+    let v =
+        (Length(1.0).micro().g() * Tinv(1.0).g()).mul_number(0.25);
+    (v * char_quants.eta.g()).to_force().expect(
         "Procedure for generating default force does \
              not produce a force. Check units!",
     )

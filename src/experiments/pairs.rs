@@ -7,12 +7,13 @@ use crate::experiments::{
     gen_default_phys_contact_dist, gen_default_raw_params,
     gen_default_viscosity, CellGroup, Experiment, GroupLayout,
 };
-use crate::interactions::symdat2d::SymCcDat;
-use crate::math::v2d::V2d;
-use crate::parameters::quantity::{Force, Length};
+use crate::interactions::dat_sym2d::SymCcDat;
+use crate::math::v2d::V2D;
+use crate::parameters::quantity::{Force, Length, Quantity};
 use crate::parameters::{
-    CharQuantities, PhysicalContactParams, RawInteractionParams,
-    RawParameters, RawPhysicalContactParams, RawWorldParameters,
+    CharQuantities, CoaParams, PhysicalContactParams, RawCoaParams,
+    RawInteractionParams, RawParameters, RawPhysicalContactParams,
+    RawWorldParameters,
 };
 use crate::NVERTS;
 use rand::SeedableRng;
@@ -24,7 +25,7 @@ fn group_layout(
     char_quants: &CharQuantities,
 ) -> Result<GroupLayout, String> {
     // specify initial location of group centroid
-    let centroid = V2d {
+    let centroid = V2D {
         x: char_quants.normalize(&Length(0.0)),
         y: char_quants.normalize(&Length(0.0)),
     };
@@ -51,7 +52,7 @@ fn cell_groups(
     vec![CellGroup {
         num_cells,
         layout: group_layout(num_cells, cq).unwrap(),
-        parameters: gen_default_raw_params(rng, false)
+        parameters: gen_default_raw_params(rng, true)
             .gen_parameters(cq),
     }]
 }
@@ -69,19 +70,26 @@ fn gen_cil_mat() -> SymCcDat<f32> {
 
 /// Generate raw world parameters, in particular, how
 /// cells interact with each other, and any boundaries.
-fn raw_world_parameters() -> RawWorldParameters {
+fn raw_world_parameters(
+    char_quants: &CharQuantities,
+) -> RawWorldParameters {
+    // Some(RawCoaParams {
+    //     los_penalty: 2.0,
+    //     range: Length(100.0).micro(),
+    //     mag: 100.0,
+    // })
     RawWorldParameters {
         vertex_eta: gen_default_viscosity(),
         interactions: RawInteractionParams {
             coa: None,
             chem_attr: None,
             bdry: None,
-            phys_contact: Some(RawPhysicalContactParams {
+            phys_contact: RawPhysicalContactParams {
                 range: gen_default_phys_contact_dist(),
-                adh_mag: gen_default_adhesion_mag(),
-                cal_mag: 0.0,
+                adh_mag: Some(gen_default_adhesion_mag(char_quants)),
+                cal_mag: Some(0.0),
                 cil_mag: 60.0,
-            }),
+            },
         },
     }
 }
@@ -94,7 +102,7 @@ pub fn generate(seed: Option<u64>) -> Experiment {
     };
     let char_quants = gen_default_char_quants();
     let world_parameters =
-        raw_world_parameters().refine(&char_quants);
+        raw_world_parameters(&char_quants).refine(&char_quants);
     let cell_groups = cell_groups(&mut rng, &char_quants);
     Experiment {
         title: "a pair of cells".to_string(),

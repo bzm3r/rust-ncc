@@ -1,4 +1,4 @@
-use crate::interactions::utils::{sort_ixs4d, sym_sum};
+use crate::interactions::dat_utils::{sort_ixs4d, sym_sum};
 use crate::NVERTS;
 
 /// Matrix to store inter-vertex data.
@@ -51,19 +51,18 @@ impl<T: Copy> SymCcVvDat<T> {
         }
     }
 
-    #[allow(unused)]
-    pub fn reset(
-        &mut self,
-        ci: usize,
-        vi: usize,
-        oci: usize,
-        ovi: usize,
-    ) {
-        if ci != oci {
-            let ix = self.calc_ix(ci, vi, oci, ovi);
-            self.dat[ix] = self.undefined;
-        }
-    }
+    // pub fn reset(
+    //     &mut self,
+    //     ci: usize,
+    //     vi: usize,
+    //     oci: usize,
+    //     ovi: usize,
+    // ) {
+    //     if ci != oci {
+    //         let ix = self.calc_ix(ci, vi, oci, ovi);
+    //         self.dat[ix] = self.undefined;
+    //     }
+    // }
 
     pub fn get(
         &self,

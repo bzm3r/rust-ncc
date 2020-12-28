@@ -79,7 +79,6 @@ impl DistributionScheme {
     }
 }
 
-#[allow(unused)]
 #[derive(Clone, Copy)]
 pub struct RgtpDistribution {
     pub active: [f32; NVERTS as usize],
