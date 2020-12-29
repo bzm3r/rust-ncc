@@ -80,3 +80,15 @@ pub fn capped_linear_function(x: f32, max_x: f32) -> f32 {
 pub fn close_to_zero(x: f32) -> bool {
     x.abs() < f32::EPSILON
 }
+
+#[inline]
+pub fn in_unit_interval(x: f32) -> bool {
+    // Suppose `x` is a real number, then we can easily write
+    // `x == 1` and have it make sense to us. However, if `x` is an
+    // `f32`, we must test if it is sufficiently close to `0.0`, that is
+    // within `f32::EPSILON` of `0.0`.
+    // x.abs() < f32::EPSILON
+    //     || (x - 1.0).abs() < f32::EPSILON
+    //     || !(x < 0.0 || x > 1.0)
+    !(x < 0.0 || x > 1.0)
+}

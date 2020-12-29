@@ -36,7 +36,7 @@ pub fn save_data(name: &str, encoded: &[u8], output_dir: &PathBuf) {
     f.write_all(&encoded).unwrap();
 }
 
-// TODO: finish setting up loading of unfinished, or finished experiments, from hard drive
+//TODO: finish setting up loading of unfinished, or finished experiments, from hard drive
 // pub fn load_history(history_path: &Path) -> Vec<Cells> {
 //     let mut r = vec![];
 //     let history = read(&history_path).unwrap();
