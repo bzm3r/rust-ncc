@@ -27,11 +27,11 @@ fn main() {
         "{}\\output",
         std::env::current_dir().unwrap().to_str().unwrap()
     ));
-    #[cfg(target_os = "unix")]
-    let output_dir = PathBuf::from(format!(
-        "./output",
-        std::env::current_dir().unwrap().to_str().unwrap()
-    ));
+
+
+    #[cfg(target_os = "macos")]
+    let output_dir = PathBuf::from("./output");
+
     let mut w = world::World::new(exp, output_dir.clone());
     let now = Instant::now();
     w.simulate(1.0 * 3600.0);
