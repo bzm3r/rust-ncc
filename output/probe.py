@@ -22,7 +22,7 @@ def extract_p2ds(state_key, dat_key, state_recs):
     dat_per_cell_per_tstep = []
     for rec in state_recs:
         dat_per_cell = []
-        for cell_rec in rec['cells']:
+        for cell_rec in rec['cell_states']:
             dat_per_cell.append(p2ds_to_numpy(cell_rec[state_key][dat_key]))
         dat_per_cell_per_tstep.append(np.array(dat_per_cell))
     return np.array(dat_per_cell_per_tstep)
@@ -32,20 +32,20 @@ def extract_scalars(state_key, dat_key, state_recs):
     dat_per_cell_per_tstep = []
     for rec in state_recs:
         dat_per_cell = []
-        for cell_rec in rec['cells']:
+        for cell_rec in rec['cell_states']:
             dat_per_cell.append(np.array(cell_rec[state_key][dat_key]))
         dat_per_cell_per_tstep.append(np.array(dat_per_cell))
     return np.array(dat_per_cell_per_tstep)
 
 
-poly_per_cell_per_tstep = extract_p2ds('state', 'vertex_coords', state_recs)
-uivs_per_cell_per_tstep = extract_p2ds('geom_state', 'unit_inward_vecs',
+poly_per_cell_per_tstep = extract_p2ds('core', 'vertex_coords', state_recs)
+uivs_per_cell_per_tstep = extract_p2ds('geom', 'unit_inward_vecs',
                                        state_recs)
 uovs_per_cell_per_tstep = -1 * uivs_per_cell_per_tstep
-rac_acts_per_cell_per_tstep = extract_scalars('state', 'rac_acts', state_recs)
+rac_acts_per_cell_per_tstep = extract_scalars('core', 'rac_acts', state_recs)
 rac_act_arrows_per_cell_per_tstep = 50 * rac_acts_per_cell_per_tstep[:, :, :,
                                          np.newaxis] * uovs_per_cell_per_tstep
-rho_acts_per_cell_per_tstep = extract_scalars('state', 'rho_acts', state_recs)
+rho_acts_per_cell_per_tstep = extract_scalars('core', 'rho_acts', state_recs)
 rho_act_arrows_per_cell_per_tstep = 50 * rho_acts_per_cell_per_tstep[:, :, :,
                                          np.newaxis] * uivs_per_cell_per_tstep
 
@@ -122,8 +122,8 @@ def paint(delta):
     global num_tsteps
     ax.cla()
     ax.set_aspect('equal')
-    ax.set_xlim([-25, 50])
-    ax.set_ylim([-25, 100])
+    ax.set_xlim([0, 40])
+    ax.set_ylim([0, 80])
     for (ci, poly) in enumerate(poly_per_cell_per_tstep[tstep]):
         if ci == 0:
             poly_color = "k"

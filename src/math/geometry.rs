@@ -7,7 +7,9 @@
 // except according to those terms.
 
 use crate::math::v2d::V2D;
-use crate::math::{close_to_zero, max_f32s, min_f32s};
+use crate::math::{
+    close_to_zero, in_unit_interval, max_f32s, min_f32s,
+};
 use crate::utils::{circ_ix_minus, circ_ix_plus};
 use crate::NVERTS;
 use std::cmp::Ordering;
@@ -68,18 +70,6 @@ impl BBox {
     }
 }
 
-#[inline]
-fn in_unit_interval(x: f32) -> bool {
-    // Suppose `x` is a real number, then we can easily write
-    // `x == 1` and have it make sense to us. However, if `x` is an
-    // `f32`, we must test if it is sufficiently close to `0.0`, that is
-    // within `f32::EPSILON` of `0.0`.
-    // x.abs() < f32::EPSILON
-    //     || (x - 1.0).abs() < f32::EPSILON
-    //     || !(x < 0.0 || x > 1.0)
-    x < 0.0 || x > 1.0
-}
-
 pub enum PointSegRelation {
     Left,
     Right,
@@ -102,17 +92,14 @@ pub fn is_left(p: &V2D, p0: &V2D, p1: &V2D) -> PointSegRelation {
 
 pub fn is_point_in_poly(
     p: &V2D,
-    poly_bbox: &BBox,
+    poly_bbox: Option<&BBox>,
     poly: &[V2D],
 ) -> bool {
-    if poly_bbox.contains(p) {
-        is_point_in_poly_no_bb_check(p, poly)
-    } else {
-        false
+    if let Some(bb) = poly_bbox {
+        if !bb.contains(p) {
+            return false;
+        }
     }
-}
-
-pub fn is_point_in_poly_no_bb_check(p: &V2D, poly: &[V2D]) -> bool {
     let mut wn: isize = 0;
     let nverts = poly.len();
     for vi in 0..nverts {
@@ -132,26 +119,6 @@ pub fn is_point_in_poly_no_bb_check(p: &V2D, poly: &[V2D]) -> bool {
         }
     }
     wn != 0
-}
-
-/// Returns (t, d), where `k = (s1 - s0)*t + s1` is the point on `s0` to `s1` closest to `point`.
-pub fn seg_to_point_dist(
-    point: &V2D,
-    s0: &V2D,
-    s1: &V2D,
-) -> (f32, f32) {
-    let seg = s1 - s0;
-    let rel_pt = point - s0;
-    let t = (seg.x * rel_pt.x + seg.y * rel_pt.y)
-        / (seg.x * seg.x + seg.y * seg.y);
-
-    if t < 0.0 || t > 1.0 {
-        (f32::INFINITY, f32::INFINITY)
-    } else {
-        let w = t * seg;
-        let x = rel_pt - w;
-        (t, x.mag())
-    }
 }
 
 /// A line segment from p0 to p1 is the set of points `q = tp + p0`,
@@ -375,7 +342,6 @@ impl LineSeg2D {
                 return true;
             }
         }
-
         false
     }
 }

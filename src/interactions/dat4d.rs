@@ -135,6 +135,18 @@ impl<T: Copy> CvCvDat<T> {
         ci * self.c_stride + vi * self.cv_stride + oci * NVERTS + ovi
     }
 
+    pub fn calc_ix_range(
+        &self,
+        ci: usize,
+        vi: usize,
+        oci: usize,
+    ) -> (usize, usize) {
+        let oci = if ci < oci { oci - 1 } else { oci };
+        let begin =
+            ci * self.c_stride + vi * self.cv_stride + oci * NVERTS;
+        (begin, begin + NVERTS)
+    }
+
     pub fn set(
         &mut self,
         ci: usize,
@@ -175,5 +187,19 @@ impl<T: Copy> CvCvDat<T> {
             let ix = self.calc_ix(ci, vi, oci, ovi);
             self.dat[ix]
         }
+    }
+
+    pub fn get_per_other_vertex(
+        &self,
+        ci: usize,
+        vi: usize,
+        oci: usize,
+    ) -> [T; NVERTS] {
+        let mut r = [self.undefined; NVERTS];
+        if ci != oci {
+            let (begin, end) = self.calc_ix_range(ci, vi, oci);
+            r.copy_from_slice(&self.dat[begin..end]);
+        }
+        r
     }
 }

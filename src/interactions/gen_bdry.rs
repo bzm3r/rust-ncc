@@ -1,3 +1,8 @@
+use crate::math::geometry::{is_point_in_poly, BBox};
+use crate::math::v2d::V2D;
+use crate::parameters::BdryParams;
+use crate::NVERTS;
+
 #[derive(Clone)]
 pub struct BdryEffectGenerator {
     shape: Vec<V2D>,
@@ -32,17 +37,16 @@ impl BdryEffectGenerator {
                 let mut x_bdrys = [0.0f32; NVERTS];
                 vs.iter().zip(x_bdrys.iter_mut()).for_each(
                     |(v, x)| {
-                        if (self.skip_bb_check
-                            && is_point_in_poly_no_bb_check(
+                        let in_bdry = if self.skip_bb_check {
+                            is_point_in_poly(v, None, &self.shape)
+                        } else {
+                            is_point_in_poly(
                                 v,
-                                &self.shape,
-                            ))
-                            || is_point_in_poly(
-                                v,
-                                &self.bbox,
+                                Some(&self.bbox),
                                 &self.shape,
                             )
-                        {
+                        };
+                        if in_bdry {
                             *x = self.mag;
                         }
                     },
