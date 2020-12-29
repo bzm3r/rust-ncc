@@ -140,7 +140,9 @@ impl Cells {
             //         - new_cell_state.core.vertex_coords[vi])
             //         .mag()
             // );
-            println!("----------------------------");
+
+            // println!("----------------------------");
+
             // if (tstep == 347 && ci == 1) || (tstep == 346 && ci == 0)
             // {
             //     println!(
