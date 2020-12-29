@@ -67,7 +67,7 @@ pub struct Experiment {
 ///
 /// Refer to SI of first two papers for justification of
 /// the values used.
-// TODO: Document all the justifications here, rather than having to refer
+//TODO: Document all the justifications here, rather than having to refer
 // to the SI.
 fn gen_default_char_quants() -> CharQuantities {
     // Stress on lamellipod is on order of 1kPa, height of lamellipod on order of 100 nm, length of edge on order of 10 um
@@ -154,7 +154,7 @@ fn gen_default_raw_params(
 /// order to scale it properly.
 ///
 /// See SI for justification.
-// TODO: put justification here.
+//TODO: put justification here.
 fn gen_default_viscosity() -> Viscosity {
     Viscosity(0.29).mul_number(1.0 / (NVERTS as f32))
 }
@@ -164,8 +164,10 @@ fn gen_default_phys_contact_dist() -> Length {
 }
 
 fn gen_default_adhesion_mag(char_quants: &CharQuantities) -> Force {
+    // Warning: going above this value may result in weirdness!
+    // Danger zone: (Length(1.0).micro().g() * Tinv(1.0).g()).mul_number(0.1)
     let v =
-        (Length(1.0).micro().g() * Tinv(1.0).g()).mul_number(0.25);
+        (Length(1.0).micro().g() * Tinv(60.0).g()).mul_number(0.01);
     (v * char_quants.eta.g()).to_force().expect(
         "Procedure for generating default force does \
              not produce a force. Check units!",

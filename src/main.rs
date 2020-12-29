@@ -28,11 +28,11 @@ fn main() {
     ));
     let mut w = world::World::new(exp, output_dir.clone());
     let now = Instant::now();
-    w.simulate(3.0 * 3600.0);
+    w.simulate(1.0 * 3600.0);
     w.save_history();
     println!("Simulation complete. {} s.", now.elapsed().as_secs());
     //#[cfg(feature = "animate")]
-    create_animation(&w.history, &output_dir.join("out.mp4"));
+    // create_animation(&w.history, &output_dir.join("out.mp4"));
     // //println!("test result: {}", debug_2516());
     // debug_point_in_poly();
 }

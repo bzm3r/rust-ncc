@@ -1,3 +1,7 @@
+use crate::math::v2d::V2D;
+use crate::parameters::ChemAttrParams;
+use crate::NVERTS;
+
 #[derive(Clone)]
 pub struct ChemAttrGenerator {
     center_mag: f32,

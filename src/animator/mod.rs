@@ -89,14 +89,14 @@ impl DrawingData {
         px_h: i32,
         px_per_micron: f32,
     ) -> DrawingData {
-        let num_cells = history[0].cells.len();
+        let num_cells = history[0].cell_states.len();
         let mut cell_polys: Vec<[V2D; NVERTS]> = vec![];
         for cells in history.iter() {
-            for cell in cells.cells.iter() {
+            for cell in cells.cell_states.iter() {
                 let mut transformed_vs = [V2D::default(); NVERTS];
                 transformed_vs
                     .iter_mut()
-                    .zip(cell.state.vertex_coords.iter())
+                    .zip(cell.core.vertex_coords.iter())
                     .for_each(|(new_v, old_v)| {
                         *new_v =
                             old_v.scale(px_per_micron).translate(
