@@ -22,8 +22,14 @@ pub const NVERTS: usize = 16;
 
 fn main() {
     let exp = experiments::pairs::generate(Some(3));
+    #[cfg(target_os = "windows")]
     let output_dir = PathBuf::from(format!(
         "{}\\output",
+        std::env::current_dir().unwrap().to_str().unwrap()
+    ));
+    #[cfg(target_os = "unix")]
+    let output_dir = PathBuf::from(format!(
+        "./output",
         std::env::current_dir().unwrap().to_str().unwrap()
     ));
     let mut w = world::World::new(exp, output_dir.clone());
