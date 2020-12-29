@@ -32,9 +32,9 @@ use std::f32::consts::PI;
 /// Cell state structure.
 #[derive(Copy, Clone, Deserialize, Serialize, Schematize)]
 pub struct CellState {
-    /// Cell index.
+    /// Index of cell within world.
     pub ix: u32,
-    /// Index of cell type.
+    /// Index of group that cell belongs to.
     pub group_ix: u32,
     pub core: CoreState,
     pub rac_rand: RacRandState,
@@ -243,9 +243,9 @@ impl CellState {
             &interactions,
             parameters,
         );
-        state.vertex_coords = enforce_volume_exclusion(
-            &self.core.vertex_coords,
-            state.vertex_coords,
+        state.poly = enforce_volume_exclusion(
+            &self.core.poly,
+            state.poly,
             contact_data,
         )?;
         let geom_state = state.calc_geom_state();
@@ -303,9 +303,9 @@ impl CellState {
             &interactions,
             parameters,
         );
-        state.vertex_coords = enforce_volume_exclusion(
-            &self.core.vertex_coords,
-            state.vertex_coords,
+        state.poly = enforce_volume_exclusion(
+            &self.core.poly,
+            state.poly,
             contact_polys,
         );
         let geom_state = state.calc_geom_state();
@@ -372,9 +372,9 @@ impl CellState {
             &interactions,
             parameters,
         );
-        state.vertex_coords = enforce_volume_exclusion(
-            &self.core.vertex_coords,
-            state.vertex_coords,
+        state.poly = enforce_volume_exclusion(
+            &self.core.poly,
+            state.poly,
             contact_data,
         )
         .map_err(|e| format!("ci={}\n{}", self.ix, e))?;
@@ -449,9 +449,9 @@ impl CellState {
             .iter()
             .map(|sf| -1.0 * sf.unitize())
             .collect::<Vec<V2D>>();
-        state.vertex_coords = enforce_volume_exclusion(
-            &self.core.vertex_coords,
-            state.vertex_coords,
+        state.poly = enforce_volume_exclusion(
+            &self.core.poly,
+            state.poly,
             contact_polys,
         );
         let geom_state = state.calc_geom_state();

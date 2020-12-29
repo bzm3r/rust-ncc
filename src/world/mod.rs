@@ -155,9 +155,9 @@ impl Cells {
             // }
             // println!("----------------------");
             interaction_generator
-                .update(ci, &new_cell_state.core.vertex_coords);
+                .update(ci, &new_cell_state.core.poly);
             confirm_volume_exclusion(
-                &new_cell_state.core.vertex_coords,
+                &new_cell_state.core.poly,
                 &interaction_generator.get_contact_data(ci),
                 &format!("world cell {}", ci),
             )?;
@@ -195,7 +195,7 @@ pub struct World {
     exp_name: String,
 }
 
-fn gen_vertex_coords(centroid: &V2D, radius: f32) -> [V2D; NVERTS] {
+fn gen_poly(centroid: &V2D, radius: f32) -> [V2D; NVERTS] {
     let mut r = [V2D::default(); NVERTS];
     (0..NVERTS).for_each(|vix| {
         let vf = (vix as f32) / (NVERTS as f32);
@@ -210,18 +210,23 @@ fn gen_vertex_coords(centroid: &V2D, radius: f32) -> [V2D; NVERTS] {
 
 impl World {
     pub fn new(experiment: Experiment, output_dir: PathBuf) -> World {
+        // Unpack relevant info from `Experiment` data structure.
         let Experiment {
-            char_quants: basic_quants,
+            char_quants,
             world_parameters,
             cell_groups,
             mut rng,
             ..
         } = experiment;
+        // Extract the parameters from each `CellGroup` object obtained
+        // from the `Experiment`.
         let group_parameters = cell_groups
             .iter()
             .map(|cg| cg.parameters.clone())
             .collect::<Vec<Parameters>>();
 
+        // Create a list of indices of the groups. and reate a vector
+        // of the cell centroids in each group.
         let mut cell_group_ixs = vec![];
         let mut cell_centroids = vec![];
         cell_groups.iter().enumerate().for_each(|(gix, cg)| {
@@ -230,43 +235,61 @@ impl World {
             cell_centroids
                 .append(&mut gen_cell_centroids(cg).unwrap())
         });
+        // Generate the cell polygons from the cell centroid
+        // information generated in the last step.
         let cell_polys = cell_group_ixs
             .iter()
             .zip(cell_centroids.iter())
             .map(|(&gix, cc)| {
-                gen_vertex_coords(cc, group_parameters[gix].cell_r)
+                gen_poly(cc, group_parameters[gix].cell_r)
             })
             .collect::<Vec<[V2D; NVERTS]>>();
-        let cell_states = cell_group_ixs
+        // Create initial cell states, using the parameters associated
+        // with the cell a cell group is in, and the cell's centroid
+        // location.
+        let cell_core_states = cell_group_ixs
             .iter()
             .zip(cell_polys.iter())
-            .map(|(&gix, vs)| {
+            .map(|(&gix, poly)| {
                 let parameters = &group_parameters[gix];
                 CoreState::new(
-                    *vs,
+                    *poly,
                     parameters.init_rac,
                     parameters.init_rho,
                 )
             })
             .collect::<Vec<CoreState>>();
+        // Create initial Rho GTPase distributions.
         let cell_rgtps = cell_group_ixs
             .iter()
-            .zip(cell_states.iter())
+            .zip(cell_core_states.iter())
             .map(|(&gix, state)| {
                 let parameters = &group_parameters[gix];
                 state.calc_rgtp_state(parameters)
             })
             .collect::<Vec<[RgtpState; NVERTS]>>();
-        let interaction_generator = InteractionGenerator::new(
+        // Create a new `InteractionGenerator`.
+        let interact_gen = InteractionGenerator::new(
             &cell_polys,
             &cell_rgtps,
-            world_parameters.interactions.clone(),
+            world_parameters.interactions,
         );
-        let cell_interactions = interaction_generator.generate();
+        // Generate initial cell interactions.
+        let cell_interactions = interact_gen.generate();
+        // Create `Cell` structures to represent each cell.
         let mut cells = vec![];
         let mut cell_regs = vec![];
-        for (ix, gix) in cell_group_ixs.into_iter().enumerate() {
-            let parameters = &group_parameters[gix];
+        for (cell_ix, group_ix) in
+            cell_group_ixs.into_iter().enumerate()
+        {
+            // Parameters that will be used by this cell. Determined
+            // by figuring out which group it belongs to, as all cells
+            // within a group use the same parameters.
+            let parameters = &group_parameters[group_ix];
+            // Create a function which generates normally distributed
+            // random variables with mean `rand_avg_t` and std
+            // `rand_std_t`. Used to determine time steps between
+            // Rac1 randomization events.
             let normal = Lazy::new(|| {
                 Normal::new(
                     parameters.rand_avg_t,
@@ -274,6 +297,8 @@ impl World {
                 )
                 .unwrap()
             });
+            // Create a random event generator for this cell. Will be
+            // `None` if randomization is turned off.
             let mut creg = if parameters.randomization {
                 Some(RandomEventGenerator {
                     rng: Pcg64::seed_from_u64(rng.next_u64()),
@@ -282,11 +307,12 @@ impl World {
             } else {
                 None
             };
+            // Create a new cell.
             cells.push(CellState::new(
-                ix as u32,
-                gix as u32,
-                cell_states[ix],
-                &cell_interactions[ix],
+                cell_ix as u32,
+                group_ix as u32,
+                cell_core_states[cell_ix],
+                &cell_interactions[cell_ix],
                 parameters,
                 creg.as_mut(),
             ));
@@ -299,13 +325,13 @@ impl World {
         };
         let history = vec![state.clone()];
         World {
-            tstep_length: basic_quants.time(),
+            tstep_length: char_quants.time(),
             global_params: world_parameters,
             cell_group_params: group_parameters,
             cell_regs,
             history,
             cell_states: state,
-            interaction_generator,
+            interaction_generator: interact_gen,
             rng,
             output_dir,
             exp_name: experiment.title,

@@ -19,14 +19,23 @@ use std::fmt;
 use std::fmt::Display;
 use std::ops::{Add, Div, Mul, Sub};
 
+/// `CoreState` contains all the variables that are simulated within
+/// geometric updates. That is, they are modelled using ODEs which
+/// are then integrated using either the Euler method or
+/// Runge-Kutta Dormand-Prince 5 (Matlab's `ode45`).
 #[derive(
     Copy, Clone, Debug, Default, Deserialize, Serialize, Schematize,
 )]
 pub struct CoreState {
-    pub vertex_coords: [V2D; NVERTS],
+    /// Polygon representing cell shape.
+    pub poly: [V2D; NVERTS],
+    /// Fraction of Rac1 active at each vertex.
     rac_acts: [f32; NVERTS],
+    /// Fraction of Rac1 inactive at each vertex.
     rac_inacts: [f32; NVERTS],
+    /// Fraction of RhoA active at each vertex.
     rho_acts: [f32; NVERTS],
+    /// Fraction of RhoA inactive at each vertex.
     rho_inacts: [f32; NVERTS],
 }
 
@@ -41,8 +50,7 @@ impl Add for CoreState {
         let mut rho_inacts = [0.0_f32; NVERTS];
 
         for i in 0..(NVERTS) {
-            vertex_coords[i] =
-                self.vertex_coords[i] + rhs.vertex_coords[i];
+            vertex_coords[i] = self.poly[i] + rhs.poly[i];
             rac_acts[i] = self.rac_acts[i] + rhs.rac_acts[i];
             rac_inacts[i] = self.rac_inacts[i] + rhs.rac_inacts[i];
             rho_acts[i] = self.rho_acts[i] + rhs.rho_acts[i];
@@ -50,7 +58,7 @@ impl Add for CoreState {
         }
 
         Self::Output {
-            vertex_coords,
+            poly: vertex_coords,
             rac_acts,
             rac_inacts,
             rho_acts,
@@ -70,8 +78,7 @@ impl Sub for CoreState {
         let mut rho_inacts = [0.0_f32; NVERTS];
 
         for i in 0..(NVERTS) {
-            vertex_coords[i] =
-                self.vertex_coords[i] - rhs.vertex_coords[i];
+            vertex_coords[i] = self.poly[i] - rhs.poly[i];
             rac_acts[i] = self.rac_acts[i] - rhs.rac_acts[i];
             rac_inacts[i] = self.rac_inacts[i] - rhs.rac_inacts[i];
             rho_acts[i] = self.rho_acts[i] - rhs.rho_acts[i];
@@ -79,7 +86,7 @@ impl Sub for CoreState {
         }
 
         Self::Output {
-            vertex_coords,
+            poly: vertex_coords,
             rac_acts,
             rac_inacts,
             rho_acts,
@@ -99,8 +106,7 @@ impl Div for CoreState {
         let mut rho_inacts = [0.0_f32; NVERTS];
 
         for i in 0..(NVERTS) {
-            vertex_coords[i] =
-                self.vertex_coords[i] / rhs.vertex_coords[i];
+            vertex_coords[i] = self.poly[i] / rhs.poly[i];
             rac_acts[i] = self.rac_acts[i] / rhs.rac_acts[i];
             rac_inacts[i] = self.rac_inacts[i] / rhs.rac_inacts[i];
             rho_acts[i] = self.rho_acts[i] / rhs.rho_acts[i];
@@ -108,7 +114,7 @@ impl Div for CoreState {
         }
 
         Self::Output {
-            vertex_coords,
+            poly: vertex_coords,
             rac_acts,
             rac_inacts,
             rho_acts,
@@ -128,7 +134,7 @@ impl Mul<CoreState> for f32 {
         let mut rho_inacts = [0.0_f32; NVERTS];
 
         for i in 0..(NVERTS) {
-            vertex_coords[i] = self * rhs.vertex_coords[i];
+            vertex_coords[i] = self * rhs.poly[i];
             rac_acts[i] = self * rhs.rac_acts[i];
             rac_inacts[i] = self * rhs.rac_inacts[i];
             rho_acts[i] = self * rhs.rho_acts[i];
@@ -145,18 +151,40 @@ impl Mul<CoreState> for f32 {
     }
 }
 
+/// Records the mechanical state of a cell.
 #[derive(
     Copy, Clone, Debug, Default, Deserialize, Serialize, Schematize,
 )]
 pub struct MechState {
+    /// Strain each edge is under, where resting edge length is
+    /// defined in the cell's parameters.
     pub edge_strains: [f32; NVERTS],
+    /// Forces on each vertex due to Rho GTPase activity.
     pub rgtp_forces: [V2D; NVERTS],
+    /// Forces on each vertex due to cytoplasmic pressure.
     pub cyto_forces: [V2D; NVERTS],
+    /// Forces on each vertex due to edge-edge (elastic) forces.
     pub edge_forces: [V2D; NVERTS],
+    /// Average of the strain in edges which are under tension (i.e.
+    /// they are longer than their initial resting edge length.
     pub avg_tens_strain: f32,
+    /// Sum of all forces that are acting on a vertex, except for
+    /// adhesion, which comes from interaction information.
     pub sum_fs: [V2D; NVERTS],
 }
 
+/// Calculates the various rates necessary to define the ODEs
+/// simulating biochemistry. These are (`X` is either `rac` or `rho`):
+///     * `kdgtp_X`: Rho GTPase inactivation rates
+///     * `kgtp_X`: Rho GTPase activation rates
+///     * `X_act_net_fluxes`: diffusion fluxes between vertices of
+/// active form of Rho GTPases
+///     * `X_inact_net_fluxes`: diffusion fluxes between vertices of
+/// inactive form of Rho GTPases
+///     * `X_cyto`: fraction of Rho GTPase in the cytoplasm
+///     * `x_tens`: "tension" factor that affects Rac1 activation
+/// rate, calculated based on average tensile strain in cell (i.e.
+/// how stretched the cell is).
 #[derive(
     Copy, Clone, Debug, Default, Deserialize, Serialize, Schematize,
 )]
@@ -178,6 +206,7 @@ pub struct ChemState {
     Copy, Clone, Debug, Default, Deserialize, Serialize, Schematize,
 )]
 pub struct GeomState {
+    /// Inward pointing unit vectors
     pub unit_edge_vecs: [V2D; NVERTS],
     pub edge_lens: [f32; NVERTS],
     pub unit_inward_vecs: [V2D; NVERTS],
@@ -206,7 +235,7 @@ pub fn fmt_var_arr<T: fmt::Display>(
 impl Display for CoreState {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // println!("----------");
-        fmt_var_arr(f, "vertex_coords", &self.vertex_coords)?;
+        fmt_var_arr(f, "vertex_coords", &self.poly)?;
         fmt_var_arr(f, "rac_acts", &self.rac_acts)?;
         fmt_var_arr(f, "rac_inacts", &self.rac_inacts)?;
         fmt_var_arr(f, "rho_acts", &self.rho_acts)?;
@@ -257,7 +286,7 @@ impl CoreState {
     }
 
     pub fn calc_geom_state(&self) -> GeomState {
-        let evs = calc_edge_vecs(&self.vertex_coords);
+        let evs = calc_edge_vecs(&self.poly);
         let mut edge_lens = [0.0_f32; NVERTS];
         (0..NVERTS).for_each(|i| edge_lens[i] = (&evs[i]).mag());
         let mut uevs = [V2D::default(); NVERTS];
@@ -295,7 +324,7 @@ impl CoreState {
             parameters.const_retractive,
         );
         let cyto_forces = calc_cyto_forces(
-            &self.vertex_coords,
+            &self.poly,
             &uivs,
             parameters.rest_area,
             parameters.stiffness_ctyo,
@@ -504,8 +533,7 @@ impl CoreState {
             delta.rho_inacts[i] = rho_cyto_exchange
                 + vertex_rho_inact_flux
                 - delta_rho_activated;
-            delta.vertex_coords[i] = (1.0
-                / world_parameters.vertex_eta)
+            delta.poly[i] = (1.0 / world_parameters.vertex_eta)
                 * (mech_state.sum_fs[i] + inter_state.x_adhs[i]);
         }
         delta
@@ -518,7 +546,7 @@ impl CoreState {
     ) -> CoreState {
         // x_cils: [f32; NVERTS], x_coas: [f32; NVERTS], x_chemoas: [f32; NVERTS], x_rands: [f32; NVERTS], x_bdrys: [f32; NVERTS];
         CoreState {
-            vertex_coords,
+            poly: vertex_coords,
             rac_acts: init_rac.active,
             rac_inacts: init_rac.inactive,
             rho_acts: init_rho.active,
@@ -534,7 +562,7 @@ impl CoreState {
         let mut rho_inacts = [0.0_f32; NVERTS];
 
         for i in 0..(NVERTS) {
-            vertex_coords[i] = s * self.vertex_coords[i];
+            vertex_coords[i] = s * self.poly[i];
             rac_acts[i] = self.rac_acts[i] * s;
             rac_inacts[i] = self.rac_inacts[i] * s;
             rho_acts[i] = self.rho_acts[i] * s;
@@ -542,7 +570,7 @@ impl CoreState {
         }
 
         CoreState {
-            vertex_coords,
+            poly: vertex_coords,
             rac_acts,
             rac_inacts,
             rho_acts,
@@ -558,7 +586,7 @@ impl CoreState {
         let mut rho_inacts = [0.0_f32; NVERTS];
 
         for i in 0..(NVERTS) {
-            vertex_coords[i] = s + self.vertex_coords[i];
+            vertex_coords[i] = s + self.poly[i];
             rac_acts[i] = self.rac_acts[i] + s;
             rac_inacts[i] = self.rac_inacts[i] + s;
             rho_acts[i] = self.rho_acts[i] + s;
@@ -566,7 +594,7 @@ impl CoreState {
         }
 
         CoreState {
-            vertex_coords,
+            poly: vertex_coords,
             rac_acts,
             rac_inacts,
             rho_acts,
@@ -590,7 +618,7 @@ impl CoreState {
         }
 
         CoreState {
-            vertex_coords,
+            poly: vertex_coords,
             rac_acts,
             rac_inacts,
             rho_acts,
@@ -614,7 +642,7 @@ impl CoreState {
         }
 
         CoreState {
-            vertex_coords,
+            poly: vertex_coords,
             rac_acts,
             rac_inacts,
             rho_acts,
@@ -630,8 +658,7 @@ impl CoreState {
         let mut rho_inacts = [0.0_f32; NVERTS];
 
         for i in 0..(NVERTS) {
-            vertex_coords[i] =
-                vertex_coords[i].max(&other.vertex_coords[i]);
+            vertex_coords[i] = vertex_coords[i].max(&other.poly[i]);
             rac_acts[i] =
                 max_f32(self.rac_acts[i], other.rac_acts[i]);
             rac_inacts[i] =
@@ -643,7 +670,7 @@ impl CoreState {
         }
 
         CoreState {
-            vertex_coords,
+            poly: vertex_coords,
             rac_acts,
             rac_inacts,
             rho_acts,
@@ -659,8 +686,7 @@ impl CoreState {
         let mut rho_inacts = [0.0_f32; NVERTS];
 
         for i in 0..(NVERTS) {
-            vertex_coords[i] =
-                vertex_coords[i].min(&other.vertex_coords[i]);
+            vertex_coords[i] = vertex_coords[i].min(&other.poly[i]);
             rac_acts[i] =
                 min_f32(self.rac_acts[i], other.rac_acts[i]);
             rac_inacts[i] =
@@ -672,7 +698,7 @@ impl CoreState {
         }
 
         CoreState {
-            vertex_coords,
+            poly: vertex_coords,
             rac_acts,
             rac_inacts,
             rho_acts,
@@ -684,7 +710,7 @@ impl CoreState {
         let mut r: f32 = 0.0;
 
         for i in 0..(NVERTS) {
-            r += self.vertex_coords[i].x + self.vertex_coords[i].y;
+            r += self.poly[i].x + self.poly[i].y;
             r += self.rac_acts[i];
             r += self.rac_inacts[i];
             r += self.rho_acts[i];
