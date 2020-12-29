@@ -7,7 +7,6 @@
 // except according to those terms.
 
 pub mod geometry;
-pub mod matrices;
 pub mod radians;
 pub mod v2d;
 
@@ -17,7 +16,6 @@ pub fn modulo_f32(x: f32, y: f32) -> f32 {
     (x % y) + y
 }
 
-#[allow(unused)]
 /// Returns the minimum of a slice of floats.
 pub fn min_f32s(xs: &[f32]) -> f32 {
     let mut x = std::f32::MAX;
@@ -29,7 +27,6 @@ pub fn min_f32s(xs: &[f32]) -> f32 {
     x
 }
 
-#[allow(unused)]
 /// Returns the maximum of a slice of floats.
 pub fn max_f32s(xs: &[f32]) -> f32 {
     let mut x = std::f32::MIN;
@@ -76,4 +73,10 @@ pub fn capped_linear_function(x: f32, max_x: f32) -> f32 {
     } else {
         x / max_x
     }
+}
+
+#[inline]
+/// Return if the float `x` close to `0.0`.
+pub fn close_to_zero(x: f32) -> bool {
+    x.abs() < f32::EPSILON
 }

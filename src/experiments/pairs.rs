@@ -3,16 +3,17 @@ use crate::cell::chemistry::{
     DistributionScheme, DistributionType, RgtpDistribution,
 };
 use crate::experiments::{
-    gen_default_char_quants, gen_default_phys_contact_dist,
-    gen_default_raw_params, gen_default_viscosity, CellGroup,
-    Experiment, GroupLayout,
+    gen_default_adhesion_mag, gen_default_char_quants,
+    gen_default_phys_contact_dist, gen_default_raw_params,
+    gen_default_viscosity, CellGroup, Experiment, GroupLayout,
 };
 use crate::interactions::dat_sym2d::SymCcDat;
 use crate::math::v2d::V2D;
-use crate::parameters::quantity::Length;
+use crate::parameters::quantity::{Force, Length, Quantity};
 use crate::parameters::{
-    CharQuantities, RawInteractionParams, RawParameters,
-    RawPhysicalContactParams, RawWorldParameters,
+    CharQuantities, CoaParams, PhysicalContactParams, RawCoaParams,
+    RawInteractionParams, RawParameters, RawPhysicalContactParams,
+    RawWorldParameters,
 };
 use crate::NVERTS;
 use rand::SeedableRng;
@@ -30,7 +31,7 @@ fn group_layout(
     };
     let r = GroupLayout {
         width: 1,
-        height: 1,
+        height: 2,
         bottom_left: centroid,
     };
     if r.width * r.height > num_cells {
@@ -47,7 +48,7 @@ fn cell_groups(
     rng: &mut Pcg64,
     cq: &CharQuantities,
 ) -> Vec<CellGroup> {
-    let num_cells = 1;
+    let num_cells = 2;
     vec![CellGroup {
         num_cells,
         layout: group_layout(num_cells, cq).unwrap(),
@@ -58,17 +59,25 @@ fn cell_groups(
 
 /// Generate CAL values between different cells.
 fn gen_cal_mat() -> SymCcDat<f32> {
-    SymCcDat::<f32>::new(2, 60.0)
+    SymCcDat::<f32>::new(2, 0.0)
 }
 
-/// Generate CIL values between different cells.
+/// Generate CIL values between different cells (see SI for
+/// justification).
 fn gen_cil_mat() -> SymCcDat<f32> {
     SymCcDat::<f32>::new(2, 60.0)
 }
 
 /// Generate raw world parameters, in particular, how
 /// cells interact with each other, and any boundaries.
-fn raw_world_parameters() -> RawWorldParameters {
+fn raw_world_parameters(
+    char_quants: &CharQuantities,
+) -> RawWorldParameters {
+    // Some(RawCoaParams {
+    //     los_penalty: 2.0,
+    //     range: Length(100.0).micro(),
+    //     mag: 100.0,
+    // })
     RawWorldParameters {
         vertex_eta: gen_default_viscosity(),
         interactions: RawInteractionParams {
@@ -77,9 +86,9 @@ fn raw_world_parameters() -> RawWorldParameters {
             bdry: None,
             phys_contact: RawPhysicalContactParams {
                 range: gen_default_phys_contact_dist(),
-                adh_mag: None,
-                cal_mag: None,
-                cil_mag: 0.0,
+                adh_mag: Some(gen_default_adhesion_mag(char_quants)),
+                cal_mag: Some(0.0),
+                cil_mag: 60.0,
             },
         },
     }
@@ -93,10 +102,10 @@ pub fn generate(seed: Option<u64>) -> Experiment {
     };
     let char_quants = gen_default_char_quants();
     let world_parameters =
-        raw_world_parameters().refine(&char_quants);
+        raw_world_parameters(&char_quants).refine(&char_quants);
     let cell_groups = cell_groups(&mut rng, &char_quants);
     Experiment {
-        title: "single cell".to_string(),
+        title: "a pair of cells".to_string(),
         char_quants,
         world_parameters,
         cell_groups,

@@ -1,8 +1,13 @@
 #![allow(unused)]
-use crate::cell::{chemistry::RacRandState, core_state::CoreState};
+use crate::cell::{
+    chemistry::RacRandState,
+    core_state::CoreState,
+};
 use crate::interactions::CellInteractions;
 use crate::math::{max_f32, min_f32};
-use crate::parameters::{Parameters, WorldParameters};
+use crate::parameters::{
+    Parameters, WorldParameters,
+};
 
 type CellDynamicsFn = fn(
     state: &CoreState,
@@ -12,11 +17,24 @@ type CellDynamicsFn = fn(
     parameters: &Parameters,
 ) -> CoreState;
 
-const C: [f32; 7] = [0.0, 1.0 / 5.0, 3.0 / 10.0, 4.0 / 5.0, 8.0 / 9.0, 1.0, 1.0];
+const C: [f32; 7] = [
+    0.0,
+    1.0 / 5.0,
+    3.0 / 10.0,
+    4.0 / 5.0,
+    8.0 / 9.0,
+    1.0,
+    1.0,
+];
 // A0s are all zeros
 const A1: f32 = 1.0 / 5.0;
-const A2: [f32; 2] = [3.0 / 40.0, 9.0 / 40.0];
-const A3: [f32; 3] = [44.0 / 45.0, -56.0 / 15.0, 32.0 / 9.0];
+const A2: [f32; 2] =
+    [3.0 / 40.0, 9.0 / 40.0];
+const A3: [f32; 3] = [
+    44.0 / 45.0,
+    -56.0 / 15.0,
+    32.0 / 9.0,
+];
 const A4: [f32; 4] = [
     19372.0 / 6561.0,
     -25360.0 / 2187.0,
@@ -68,7 +86,11 @@ pub struct AuxArgs {
 }
 
 pub struct SolverArgs {
-    f: fn(dt: f32, state: &CoreState, parameters: &Parameters) -> CoreState,
+    f: fn(
+        dt: f32,
+        state: &CoreState,
+        parameters: &Parameters,
+    ) -> CoreState,
     init_state: CoreState,
     t0: f32,
     t1: f32,
@@ -110,35 +132,90 @@ impl Ks {
         );
 
         let k1 = {
-            let kp = init_state + h * A1 * k0;
-            f(&kp, rand_state, inter_state, world_parameters, parameters)
+            let kp = init_state
+                + h * A1 * k0;
+            f(
+                &kp,
+                rand_state,
+                inter_state,
+                world_parameters,
+                parameters,
+            )
         };
 
         let k2 = {
-            let kp = init_state + h * (A2[0] * k0 + A2[1] * k1);
-            f(&kp, rand_state, inter_state, world_parameters, parameters)
+            let kp = init_state
+                + h * (A2[0] * k0
+                    + A2[1] * k1);
+            f(
+                &kp,
+                rand_state,
+                inter_state,
+                world_parameters,
+                parameters,
+            )
         };
 
         let k3 = {
-            let kp = init_state + h * (A3[0] * k0 + A3[1] * k1 + A3[2] * k2);
-            f(&kp, rand_state, inter_state, world_parameters, parameters)
+            let kp = init_state
+                + h * (A3[0] * k0
+                    + A3[1] * k1
+                    + A3[2] * k2);
+            f(
+                &kp,
+                rand_state,
+                inter_state,
+                world_parameters,
+                parameters,
+            )
         };
 
         let k4 = {
-            let kp = init_state + h * (A4[0] * k0 + A4[1] * k1 + A4[2] * k2 + A4[3] * k3);
-            f(&kp, rand_state, inter_state, world_parameters, parameters)
+            let kp = init_state
+                + h * (A4[0] * k0
+                    + A4[1] * k1
+                    + A4[2] * k2
+                    + A4[3] * k3);
+            f(
+                &kp,
+                rand_state,
+                inter_state,
+                world_parameters,
+                parameters,
+            )
         };
 
         let k5 = {
-            let kp =
-                init_state + h * (A5[0] * k0 + A5[1] * k1 + A5[2] * k2 + A5[3] * k3 + A5[4] * k4);
-            f(&kp, rand_state, inter_state, world_parameters, parameters)
+            let kp = init_state
+                + h * (A5[0] * k0
+                    + A5[1] * k1
+                    + A5[2] * k2
+                    + A5[3] * k3
+                    + A5[4] * k4);
+            f(
+                &kp,
+                rand_state,
+                inter_state,
+                world_parameters,
+                parameters,
+            )
         };
 
         let k6 = {
             let kp = init_state
-                + h * (A6[0] * k0 + A6[1] * k1 + A6[2] * k2 + A6[3] * k3 + A6[4] * k4 + A6[5] * k5);
-            f(&kp, rand_state, inter_state, world_parameters, parameters)
+                + h * (A6[0] * k0
+                    + A6[1] * k1
+                    + A6[2] * k2
+                    + A6[3] * k3
+                    + A6[4] * k4
+                    + A6[5] * k5);
+            f(
+                &kp,
+                rand_state,
+                inter_state,
+                world_parameters,
+                parameters,
+            )
         };
 
         Ks {
@@ -172,7 +249,9 @@ pub fn integrator(
         init_h_factor,
     } = aux_args;
 
-    let mut h = if let Some(h_factor) = init_h_factor {
+    let mut h = if let Some(h_factor) =
+        init_h_factor
+    {
         h_factor * dt
     } else {
         0.1 * dt
@@ -212,7 +291,10 @@ pub fn integrator(
                 + B[6] * k6);
 
         if last_iter {
-            assert!((h - dt).abs() < f32::EPSILON);
+            assert!(
+                (h - dt).abs()
+                    < f32::EPSILON
+            );
             return Solution {
                 y: Ok(y1),
                 num_rejections,
@@ -230,9 +312,21 @@ pub fn integrator(
                 + B_HAT[6] * k6);
 
         // Equations 4.10, 4.11, Hairer,Wanner&Norsett Solving ODEs Vol. 1
-        let sc = y0.abs().max(&y1.abs()).scalar_mul(rtol).scalar_add(atol);
-        let error = ((y1 - y1_hat).powi(2) / sc).average().sqrt();
-        let mut h_new = h * min_f32(fac_max, FAC * (1.0 / error).powf(INV_QP1));
+        let sc = y0
+            .abs()
+            .max(&y1.abs())
+            .scalar_mul(rtol)
+            .scalar_add(atol);
+        let error = ((y1 - y1_hat)
+            .powi(2)
+            / sc)
+            .average()
+            .sqrt();
+        let mut h_new = h * min_f32(
+            fac_max,
+            FAC * (1.0 / error)
+                .powf(INV_QP1),
+        );
 
         // see explanation for equation 4.13 in HNW vol1
         if error <= 1.0 {
@@ -256,6 +350,7 @@ pub fn integrator(
     Solution {
         num_rejections,
         num_iters,
-        y: Err("Too many iterations!".to_string()),
+        y: Err("Too many iterations!"
+            .to_string()),
     }
 }

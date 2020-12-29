@@ -6,13 +6,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use crate::math::v2d::V2d;
-use crate::math::{max_f32s, min_f32s};
+use crate::math::v2d::V2D;
+use crate::math::{close_to_zero, max_f32s, min_f32s};
 use crate::utils::{circ_ix_minus, circ_ix_plus};
+use crate::NVERTS;
 use std::cmp::Ordering;
 
 /// Calculate the area of a polygon with vertices positioned at `xys`. [ref](http://geomalgorithms.com/a01-_area.html)
-pub fn calc_poly_area(xys: &[V2d]) -> f32 {
+pub fn calc_poly_area(xys: &[V2D]) -> f32 {
     let nvs = xys.len();
 
     let mut area = 0.0_f32;
@@ -34,7 +35,7 @@ pub struct BBox {
 }
 
 impl BBox {
-    pub fn from_points(xys: &[V2d]) -> BBox {
+    pub fn from_points(xys: &[V2D]) -> BBox {
         let xs: Vec<f32> = xys.iter().map(|v| v.x).collect();
         let ys: Vec<f32> = xys.iter().map(|v| v.y).collect();
         BBox {
@@ -59,14 +60,24 @@ impl BBox {
             || (self.ymin > other.ymax || self.ymax < other.ymin))
     }
 
-    pub fn contains(&self, point: &V2d) -> bool {
-        !(point.x < self.xmin || point.x > self.xmax || point.y < self.ymin || point.y > self.ymax)
+    pub fn contains(&self, point: &V2D) -> bool {
+        !(point.x < self.xmin
+            || point.x > self.xmax
+            || point.y < self.ymin
+            || point.y > self.ymax)
     }
 }
 
-#[allow(unused)]
+#[inline]
 fn in_unit_interval(x: f32) -> bool {
-    (x.abs() < f32::EPSILON || (x - 1.0).abs() < f32::EPSILON) || (0.0 < x && x < 1.0)
+    // Suppose `x` is a real number, then we can easily write
+    // `x == 1` and have it make sense to us. However, if `x` is an
+    // `f32`, we must test if it is sufficiently close to `0.0`, that is
+    // within `f32::EPSILON` of `0.0`.
+    // x.abs() < f32::EPSILON
+    //     || (x - 1.0).abs() < f32::EPSILON
+    //     || !(x < 0.0 || x > 1.0)
+    x < 0.0 || x > 1.0
 }
 
 pub enum PointSegRelation {
@@ -75,8 +86,9 @@ pub enum PointSegRelation {
     On,
 }
 
-pub fn is_left(p: &V2d, p0: &V2d, p1: &V2d) -> PointSegRelation {
-    let r = (p1.x - p0.x) * (p.y - p0.y) - (p.x - p0.x) * (p1.y - p0.y);
+pub fn is_left(p: &V2D, p0: &V2D, p1: &V2D) -> PointSegRelation {
+    let r =
+        (p1.x - p0.x) * (p.y - p0.y) - (p.x - p0.x) * (p1.y - p0.y);
     match 0.0.partial_cmp(&r) {
         Some(Ordering::Less) => PointSegRelation::Left,
         Some(Ordering::Greater) => PointSegRelation::Right,
@@ -88,7 +100,11 @@ pub fn is_left(p: &V2d, p0: &V2d, p1: &V2d) -> PointSegRelation {
     }
 }
 
-pub fn is_point_in_poly(p: &V2d, poly_bbox: &BBox, poly: &[V2d]) -> bool {
+pub fn is_point_in_poly(
+    p: &V2D,
+    poly_bbox: &BBox,
+    poly: &[V2D],
+) -> bool {
     if poly_bbox.contains(p) {
         is_point_in_poly_no_bb_check(p, poly)
     } else {
@@ -96,7 +112,7 @@ pub fn is_point_in_poly(p: &V2d, poly_bbox: &BBox, poly: &[V2d]) -> bool {
     }
 }
 
-pub fn is_point_in_poly_no_bb_check(p: &V2d, poly: &[V2d]) -> bool {
+pub fn is_point_in_poly_no_bb_check(p: &V2D, poly: &[V2D]) -> bool {
     let mut wn: isize = 0;
     let nverts = poly.len();
     for vi in 0..nverts {
@@ -119,10 +135,15 @@ pub fn is_point_in_poly_no_bb_check(p: &V2d, poly: &[V2d]) -> bool {
 }
 
 /// Returns (t, d), where `k = (s1 - s0)*t + s1` is the point on `s0` to `s1` closest to `point`.
-pub fn calc_dist_point_to_seg(point: &V2d, s0: &V2d, s1: &V2d) -> (f32, f32) {
+pub fn seg_to_point_dist(
+    point: &V2D,
+    s0: &V2D,
+    s1: &V2D,
+) -> (f32, f32) {
     let seg = s1 - s0;
     let rel_pt = point - s0;
-    let t = (seg.x * rel_pt.x + seg.y * rel_pt.y) / (seg.x * seg.x + seg.y * seg.y);
+    let t = (seg.x * rel_pt.x + seg.y * rel_pt.y)
+        / (seg.x * seg.x + seg.y * seg.y);
 
     if t < 0.0 || t > 1.0 {
         (f32::INFINITY, f32::INFINITY)
@@ -133,63 +154,317 @@ pub fn calc_dist_point_to_seg(point: &V2d, s0: &V2d, s1: &V2d) -> (f32, f32) {
     }
 }
 
-pub struct LineSeg {
-    p0: V2d,
-    p1: V2d,
-    p: V2d,
+/// A line segment from p0 to p1 is the set of points `q = tp + p0`,
+/// where `p = (p1 - p0)`, and `0 <= t <= 1`.
+pub struct LineSeg2D {
+    /// First point defining line segment.
+    p0: V2D,
+    /// Second point defining line segment.
+    p1: V2D,
+    /// `(p1 - p0)`
+    p: V2D,
 }
 
-impl LineSeg {
-    pub fn new(p0: &V2d, p1: &V2d) -> LineSeg {
+impl LineSeg2D {
+    /// Create new line segment from two given points.
+    pub fn new(p0: &V2D, p1: &V2D) -> LineSeg2D {
         let p = p1 - p0;
-        LineSeg {
+        LineSeg2D {
             p0: *p0,
             p1: *p1,
             p,
         }
     }
 
-    pub fn check_intersection(&self, p0: &V2d, p1: &V2d) -> Option<f32> {
-        // TODO: make sure this is correct!
-        let p = p0 - p1;
-        let alpha = self.p0.x - p0.x;
-        let beta = self.p1.y - p1.y;
-        let gamma = self.p.y * p.x - self.p.x * p.y;
-        let t = -1.0 * (p.y * alpha - p.x * beta) / gamma;
-        let u = self.p.y * alpha - self.p.x * beta / gamma;
+    /// Create new line segment from four coordinate points
+    /// `(a, b, x, y)` of type `(f32; 4)`, assuming that `p0`
+    /// is `V2d::new(a, b)` and `p1` is `V2d::new(x, y)`.
+    pub fn from_coordinates(
+        a: f32,
+        b: f32,
+        x: f32,
+        y: f32,
+    ) -> LineSeg2D {
+        LineSeg2D::new(&V2D::new(a, b), &V2D::new(x, y))
+    }
 
-        match in_unit_interval(t) && in_unit_interval(u) {
-            true => Some(t),
-            false => None,
+    /// Let this segment `self` be parametrized so that a point
+    /// `p` lies on `self` if `p = t * self.p + self.p0` for
+    /// `0 <= t <= 1`. Similarly, the `other` line segment be
+    /// parametrized so that a point `q` lies on `other` if  
+    /// `p = u * self.p + self.p0` for `0 <= u <= 1`.
+    ///
+    /// This function calculates `(t, u)`, if an intersection exists.
+    pub fn intersects_lseg(
+        &self,
+        other: &LineSeg2D,
+    ) -> Option<(f32, f32)> {
+        // Let `s` be a point on this ("self") line segment, and let
+        // `o` be a point on the "other" line segment, such that:
+        // `s = t * self.p + self.p0`
+        // `o = u * self.p + self.p0`
+        // where `t: f32`, and `u: f32`.
+
+        // Let `dx_s = p.x = self.p1.x - self.p0.x`; similarly, let
+        // `dy_s = p.y`, `dx_o` and `dy_o` be defined analogously.
+        // Also introduce `dx0_so = self.p0.x - other.p0.x` and let
+        // `dy0_so` be defined analgoously.
+
+        let dx_s = self.p.x;
+        let dx_o = other.p.x;
+        let dy_s = self.p.y;
+        let dy_o = other.p.y;
+
+        // Let us quickly rule out some simple cases.
+        let self_is_vertical = close_to_zero(dx_s);
+        let self_is_horizontal = close_to_zero(dy_s);
+        let other_is_vertical = close_to_zero(dx_o);
+        let other_is_horizontal = close_to_zero(dy_o);
+        match (
+            self_is_vertical,
+            self_is_horizontal,
+            other_is_vertical,
+            other_is_horizontal,
+        ) {
+            (true, true, true, true) => {
+                // Both line segments are generated by a zero vector. In other words,
+                // they are indistinguishable from points. So, just check if points
+                // are the same.
+                if (self.p0 - self.p1).close_to_zero() {
+                    Some((0.0, 0.0))
+                } else {
+                    None
+                }
+            }
+            (true, true, _, _) => {
+                // `self` is a point, so just check if it lies
+                // `other`.
+                let ux = (self.p0.x - other.p0.x) / dx_o;
+                let uy = (self.p0.y - other.p0.y) / dy_o;
+                if in_unit_interval(ux)
+                    && in_unit_interval(uy)
+                    && close_to_zero(ux - uy)
+                {
+                    Some((0.0, ux))
+                } else {
+                    None
+                }
+            }
+            (_, _, true, true) => {
+                // `other` is a point, so just check if it lies
+                // `self`.
+                let tx = (other.p0.x - self.p0.x) / dx_o;
+                let ty = (other.p0.y - self.p0.y) / dy_o;
+                if in_unit_interval(tx)
+                    && in_unit_interval(ty)
+                    && close_to_zero(tx - ty)
+                {
+                    Some((0.0, tx))
+                } else {
+                    None
+                }
+            }
+            (_, _, _, _) => {
+                // Note that `s.x = t * dx_s + self.p0.x`
+                //           `s.y = t * dy_s + self.p0.y`
+                // Similarly `o.x = u * dx_o + other.p0.x`
+                //           `o.y = u * dy_o + other.p0.y`
+                // At intersection, we have `s = o`, that is, `s.x = o.x` and
+                // `s.y = o.y`. So:
+                //      `t * dx_s + self.p0.x = u * dx_o + other.p0.x`
+                //      { `let dx0_so = self.p0.x - other.p0.x` }
+                // <=>  `t * (dx_s / dx_o) + (dx0_so / dx_o) =  u`
+                // <=>  `t * (dx_s / dx_o) + (dx0_so / dx_o) =  u`
+                // And similarly we have:
+                //      `t * (dy_s / dy_o) + (dy0_so / dy_o) = u`
+                // Therefore:
+                //      `t * (dx_s / dx_o) + (dx0_so / dx_o) = t * (dy_s / dy_o) + (dy0_so / dy_o)`
+                //      { re-arrange terms with `t` onto one side, and terms without on the other }
+                // <=>  `t * (dx_s / dx_o) - t * (dy_s / dy_o) = (dy0_so / dy_o) - (dx0_so / dx_o)`
+                //      { factor out `t`, add the fractions on both sides }
+                // <=>  `t * (dx_s * dy_o - dy_s * dx_o)/ (dx_o * dy_o) = (dy0_so * dx_o - dx0_so * dy_o)/ (dx_o * dy_o)`
+                //      { cancel out `(dx_o * dy_o)` on both sides, and isolate `t` }
+                // <=>  `t = (dy0_so * dx_o - dx0_so * dy_o)/(dx_s * dy_o - dy_s * dx_o)`
+                //
+                // Notice that the denominator is the cross-product of the
+                // two vectors. This product is zero precisely when generating
+                // vectors of both line segments are parallel. Therefore,
+                // let us check to see if that is the case.
+                let denominator = dx_s * dy_o - dy_s * dx_o;
+                if close_to_zero(denominator) {
+                    return None;
+                }
+                let dx0_so = self.p0.x - other.p0.x;
+                let dy0_so = self.p0.y - other.p0.y;
+                let t = (dy0_so * dx_o - dx0_so * dy_o) / denominator;
+                if !in_unit_interval(t) {
+                    return None;
+                }
+                // Recalling that `u = t * (dx_s / dx_o) + (dx0_so / dx_o)`
+                // and `t * (dy_s / dy_o) + (dy0_so / dy_o)`. Which formula
+                // we use to determine `u` depends on whether or not `other`
+                // is vertical.
+                let u = match (other_is_vertical, other_is_horizontal)
+                {
+                    (false, _) => t * (dx_s / dx_o) + (dx0_so / dx_o),
+                    (_, false) => t * (dy_s / dy_o) + (dy0_so / dy_o),
+                    (true, true) => {
+                        panic!(
+                            "Did not expect to reach case where\
+                         `other` is a point. It should have been\
+                          handled by earlier match cases"
+                        );
+                    }
+                };
+                if !in_unit_interval(u) {
+                    return None;
+                }
+                Some((t, u))
+            }
         }
     }
 
-    #[allow(unused)]
-    pub fn calc_intersection(&self, p0: &V2d, p1: &V2d) -> Option<V2d> {
-        match self.check_intersection(p0, p1) {
-            Some(t) => Some(self.p0 + t * self.p),
-            None => None,
+    // pub fn calc_intersect_point(
+    //     &self,
+    //     p0: &V2D,
+    //     p1: &V2D,
+    // ) -> Option<V2D> {
+    //     let other = LineSeg2D::new(p0, p1);
+    //     self.intersects_lseg(&other)
+    //         .map(|(t, _)| t * self.p + self.p0)
+    // }
+
+    pub fn intersects_bbox(&self, bbox: &BBox) -> bool {
+        let BBox {
+            xmin,
+            xmax,
+            ymin,
+            ymax,
+        } = *bbox;
+        let a = LineSeg2D::from_coordinates(xmin, ymin, xmax, ymin);
+        let b = LineSeg2D::from_coordinates(xmin, ymin, xmin, ymax);
+        let c = LineSeg2D::from_coordinates(xmin, ymax, xmax, ymax);
+        let d = LineSeg2D::from_coordinates(xmax, ymax, xmin, ymin);
+        for x in [a, b, c, d].iter() {
+            if self.intersects_lseg(x).is_some() {
+                return true;
+            }
         }
+        false
+    }
+
+    pub fn intersects_poly(
+        &self,
+        bbox: Option<&BBox>,
+        poly: &[V2D; NVERTS],
+    ) -> bool {
+        if let Some(bb) = bbox {
+            if !self.intersects_bbox(bb) {
+                return false;
+            }
+        }
+
+        for vi in 0..NVERTS {
+            let vi1 = circ_ix_plus(vi, NVERTS);
+            if self
+                .intersects_lseg(&LineSeg2D::new(
+                    &poly[vi], &poly[vi1],
+                ))
+                .is_some()
+            {
+                return true;
+            }
+        }
+
+        false
     }
 }
 
-pub fn ls_self_intersects_poly(vi: usize, poly: &[V2d], lseg: &LineSeg) -> bool {
-    let nverts = poly.len();
-    poly.iter().enumerate().any(|(i, vc)| {
-        let j = circ_ix_plus(i, nverts);
-        if i != vi && j != vi {
-            let vc1 = &poly[j];
-            lseg.check_intersection(vc, vc1).is_some()
-        } else {
-            false
-        }
-    })
-}
-
-pub fn ls_intersects_poly(lseg: &LineSeg, poly: &[V2d]) -> bool {
-    let nverts = poly.len();
-    poly.iter().enumerate().any(|(vi, vc)| {
-        let vc1 = &poly[circ_ix_plus(vi, nverts)];
-        lseg.check_intersection(vc, vc1).is_some()
-    })
-}
+// pub fn refine_raw_poly(raw_poly: [[f32; 2]; 16]) -> [V2d; 16] {
+//     let mut r = [V2d::default(); 16];
+//     for (q, p) in r.iter_mut().zip(raw_poly.iter()) {
+//         q.x = p[0];
+//         q.y = p[1];
+//     }
+//     r
+// }
+//
+// pub fn are_polys_equal(poly0: &[V2d; 16], poly1: &[V2d; 16]) -> bool {
+//     for (p, q) in poly0.iter().zip(poly1.iter()) {
+//         if p.x != q.x || p.y != q.y {
+//             return false;
+//         }
+//     }
+//     true
+// }
+//
+// pub fn debug_point_in_poly() {
+//     let c0_347 = refine_raw_poly([
+//         [40.927586, 17.505148],
+//         [38.242447, 24.997238],
+//         [32.53913, 30.540205],
+//         [26.321924, 35.535126],
+//         [19.893433, 40.224964],
+//         [15.902101, 36.503548],
+//         [9.020461, 31.977158],
+//         [3.0782228, 26.634775],
+//         [-0.060920116, 19.310455],
+//         [0.8173119, 11.377405],
+//         [5.091162, 4.621307],
+//         [11.693666, 0.09866802],
+//         [19.504337, -1.6616803],
+//         [27.426825, -0.5139225],
+//         [34.400642, 3.4034972],
+//         [39.32033, 9.69614],
+//     ]);
+//     let c1_348: [V2d; 16] = refine_raw_poly([
+//         [40.00125, 61.21729],
+//         [39.038857, 69.13645],
+//         [34.721806, 75.863235],
+//         [28.110025, 80.3738],
+//         [20.295544, 82.1296],
+//         [12.370754, 80.97098],
+//         [5.389173, 77.058975],
+//         [0.44813222, 70.77858],
+//         [-1.1411942, 62.963577],
+//         [1.6184937, 55.497562],
+//         [7.390409, 50.025238],
+//         [13.649933, 45.080173],
+//         [17.333612, 37.841843],
+//         [24.296999, 43.844837],
+//         [31.142982, 48.41107],
+//         [36.987385, 53.847706],
+//     ]);
+//     let c1_348_in_c0_check: [V2d; 16] = refine_raw_poly([
+//         [40.00125, 61.21729],
+//         [39.038857, 69.13645],
+//         [34.721806, 75.863235],
+//         [28.110025, 80.3738],
+//         [20.295544, 82.1296],
+//         [12.370754, 80.97098],
+//         [5.389173, 77.058975],
+//         [0.44813222, 70.77858],
+//         [-1.1411942, 62.963577],
+//         [1.6184937, 55.497562],
+//         [7.390409, 50.025238],
+//         [13.649933, 45.080173],
+//         [17.333612, 37.841843],
+//         [24.296999, 43.844837],
+//         [31.142982, 48.41107],
+//         [36.987385, 53.847706],
+//     ]);
+//     let c1_348_is_ok = are_polys_equal(&c1_348, &c1_348_in_c0_check);
+//     let any_c1_348_in_c0_347 = c1_348
+//         .iter()
+//         .any(|p| is_point_in_poly_no_bb_check(p, &c0_347));
+//     let c0v4_in_c1 =
+//         is_point_in_poly_no_bb_check(&c0_347[4], &c1_348);
+//     let c0v4_in_c1ve =
+//         is_point_in_poly_no_bb_check(&c0_347[4], &c1_348_in_c0_check);
+//     println!("is c1_348 okay: {}", c1_348_is_ok);
+//     println!(
+//         "any vertex of c1_348 in c0_347: {}",
+//         any_c1_348_in_c0_347
+//     );
+//     println!("is c0_347_v4 in c1_348: {}", c0v4_in_c1);
+// }

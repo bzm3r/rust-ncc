@@ -11,7 +11,7 @@ pub mod quantity;
 use crate::cell::calc_init_cell_area;
 use crate::cell::chemistry::RgtpDistribution;
 use crate::math::geometry::BBox;
-use crate::math::v2d::V2d;
+use crate::math::v2d::V2D;
 use crate::parameters::quantity::{
     Diffusion, Force, Length, Quantity, Stress, Time, Tinv, Viscosity,
 };
@@ -36,7 +36,10 @@ impl CharQuantities {
     pub fn normalize<T: Quantity>(&self, q: &T) -> f32 {
         let q = q.g();
         let u = q.units();
-        (q * self.f.pow(-1.0 * u.f) * self.l.pow(-1.0 * u.l) * self.t.pow(-1.0 * u.t)).value()
+        (q * self.f.pow(-1.0 * u.f)
+            * self.l.pow(-1.0 * u.l)
+            * self.t.pow(-1.0 * u.t))
+        .number()
     }
 
     pub fn time(&self) -> f32 {
@@ -47,16 +50,21 @@ impl CharQuantities {
 #[derive(Clone)]
 pub struct RawPhysicalContactParams {
     pub range: Length,
-    pub adh_mag: Force,
-    pub cal_mag: f32,
+    pub adh_mag: Option<Force>,
+    pub cal_mag: Option<f32>,
     pub cil_mag: f32,
 }
 
 impl RawPhysicalContactParams {
-    pub fn refine(&self, bq: &CharQuantities) -> PhysicalContactParams {
+    pub fn refine(
+        &self,
+        bq: &CharQuantities,
+    ) -> PhysicalContactParams {
         PhysicalContactParams {
             range: bq.normalize(&self.range),
-            adh_mag: bq.normalize(&self.adh_mag),
+            adh_mag: self
+                .adh_mag
+                .map(|adh_mag| bq.normalize(&adh_mag)),
             cal_mag: self.cal_mag,
             cil_mag: self.cil_mag,
         }
@@ -94,7 +102,7 @@ pub struct RawChemAttrParams {
 impl RawChemAttrParams {
     pub fn refine(&self, bq: &CharQuantities) -> ChemAttrParams {
         ChemAttrParams {
-            center: V2d {
+            center: V2D {
                 x: bq.normalize(&self.center[0]),
                 y: bq.normalize(&self.center[1]),
             },
@@ -116,11 +124,11 @@ impl RawBdryParams {
         let shape = self
             .shape
             .iter()
-            .map(|p| V2d {
+            .map(|p| V2D {
                 x: bq.normalize(&p[0]),
                 y: bq.normalize(&p[1]),
             })
-            .collect::<Vec<V2d>>();
+            .collect::<Vec<V2D>>();
         let bbox = BBox::from_points(&shape);
         BdryParams {
             shape,
@@ -136,7 +144,7 @@ pub struct RawInteractionParams {
     pub coa: Option<RawCoaParams>,
     pub chem_attr: Option<RawChemAttrParams>,
     pub bdry: Option<RawBdryParams>,
-    pub phys_contact: Option<RawPhysicalContactParams>,
+    pub phys_contact: RawPhysicalContactParams,
 }
 
 impl RawInteractionParams {
@@ -148,10 +156,7 @@ impl RawInteractionParams {
                 .as_ref()
                 .map(|chem_attr| chem_attr.refine(bq)),
             bdry: self.bdry.as_ref().map(|bdry| bdry.refine(bq)),
-            phys_contact: self
-                .phys_contact
-                .as_ref()
-                .map(|phys_contact| phys_contact.refine(bq)),
+            phys_contact: self.phys_contact.refine(bq),
         }
     }
 }
@@ -165,8 +170,8 @@ pub struct RawWorldParameters {
 #[derive(Clone)]
 pub struct PhysicalContactParams {
     pub range: f32,
-    pub adh_mag: f32,
-    pub cal_mag: f32,
+    pub adh_mag: Option<f32>,
+    pub cal_mag: Option<f32>,
     pub cil_mag: f32,
 }
 
@@ -182,14 +187,14 @@ pub struct CoaParams {
 
 #[derive(Clone)]
 pub struct ChemAttrParams {
-    pub center: V2d,
+    pub center: V2D,
     pub center_mag: f32,
     pub slope: f32,
 }
 
 #[derive(Clone)]
 pub struct BdryParams {
-    pub shape: Vec<V2d>,
+    pub shape: Vec<V2D>,
     pub bbox: BBox,
     pub skip_bb_check: bool,
     pub mag: f32,
@@ -197,7 +202,7 @@ pub struct BdryParams {
 
 #[derive(Clone)]
 pub struct InteractionParams {
-    pub phys_contact: Option<PhysicalContactParams>,
+    pub phys_contact: PhysicalContactParams,
     pub coa: Option<CoaParams>,
     pub chem_attr: Option<ChemAttrParams>,
     pub bdry: Option<BdryParams>,
@@ -364,18 +369,24 @@ pub struct Parameters {
 
 impl RawParameters {
     pub fn gen_parameters(&self, bq: &CharQuantities) -> Parameters {
-        let cell_r = self.cell_diam.mul_const(0.5);
-        let rel = self.cell_diam.mul_const((PI / (NVERTS as f32)).sin());
+        let cell_r = self.cell_diam.mul_number(0.5);
+        let rel =
+            self.cell_diam.mul_number((PI / (NVERTS as f32)).sin());
         let ra = Length(1.0)
             .pow(2.0)
-            .mul_const(calc_init_cell_area(cell_r.value(), NVERTS));
+            .mul_number(calc_init_cell_area(cell_r.number(), NVERTS));
         let const_protrusive =
-            (self.lm_h.g() * self.lm_ss.g() * rel.g()).mul_const(self.halfmax_rgtp_max_f_frac);
-        let const_retractive = const_protrusive.mul_const(self.rho_friction);
-        let halfmax_vertex_rgtp_act = (self.halfmax_rgtp_frac / bq.frac_rgtp) / NVERTS as f32;
-        let halfmax_vertex_rgtp_conc = rel.pow(-1.0).mul_const(halfmax_vertex_rgtp_act);
+            (self.lm_h.g() * self.lm_ss.g() * rel.g())
+                .mul_number(self.halfmax_rgtp_max_f_frac);
+        let const_retractive =
+            const_protrusive.mul_number(self.rho_friction);
+        let halfmax_vertex_rgtp_act =
+            (self.halfmax_rgtp_frac / bq.frac_rgtp) / NVERTS as f32;
+        let halfmax_vertex_rgtp_conc =
+            rel.pow(-1.0).mul_number(halfmax_vertex_rgtp_act);
         let stiffness_edge = self.stiffness_cortex.g() * bq.l3d.g();
-        let stiffness_cyto = self.stiffness_ctyo.g().mul_const(1.0 / NVERTS as f32);
+        let stiffness_cyto =
+            self.stiffness_ctyo.g().mul_number(1.0 / NVERTS as f32);
 
         Parameters {
             cell_r: bq.normalize(&cell_r),
@@ -385,25 +396,37 @@ impl RawParameters {
             const_protrusive: bq.normalize(&const_protrusive),
             const_retractive: bq.normalize(&const_retractive),
             stiffness_ctyo: bq.normalize(&stiffness_cyto),
-            k_mem_on_vertex: bq.normalize(&bq.k_mem_on) / NVERTS as f32,
+            k_mem_on_vertex: bq.normalize(&bq.k_mem_on)
+                / NVERTS as f32,
             k_mem_off: bq.normalize(&bq.k_mem_off),
             diffusion_rgtp: bq.normalize(&self.diffusion_rgtp),
             init_rac: self.init_rac,
             init_rho: self.init_rho,
             halfmax_vertex_rgtp_act,
-            halfmax_vertex_rgtp_conc: bq.normalize(&halfmax_vertex_rgtp_conc),
+            halfmax_vertex_rgtp_conc: bq
+                .normalize(&halfmax_vertex_rgtp_conc),
             tot_rac: self.tot_rac,
             tot_rho: self.tot_rho,
-            kgtp_rac: bq.normalize(&bq.kgtp.mul_const(self.kgtp_rac)),
-            kgtp_rac_auto: bq.normalize(&bq.kgtp.mul_const(self.kgtp_rac_auto)),
-            kdgtp_rac: bq.normalize(&bq.kdgtp.mul_const(self.kdgtp_rac)),
-            kdgtp_rho_on_rac: bq.normalize(&bq.kdgtp.mul_const(self.kdgtp_rho_on_rac)),
+            kgtp_rac: bq
+                .normalize(&bq.kgtp.mul_number(self.kgtp_rac)),
+            kgtp_rac_auto: bq
+                .normalize(&bq.kgtp.mul_number(self.kgtp_rac_auto)),
+            kdgtp_rac: bq
+                .normalize(&bq.kdgtp.mul_number(self.kdgtp_rac)),
+            kdgtp_rho_on_rac: bq.normalize(
+                &bq.kdgtp.mul_number(self.kdgtp_rho_on_rac),
+            ),
             halfmax_tension_inhib: self.halfmax_tension_inhib,
             tension_inhib: self.tension_inhib,
-            kgtp_rho: bq.normalize(&bq.kgtp.mul_const(self.kgtp_rho)),
-            kgtp_rho_auto: bq.normalize(&bq.kgtp.mul_const(self.kgtp_auto_rho)),
-            kdgtp_rho: bq.normalize(&bq.kdgtp.mul_const(self.kdgtp_rho)),
-            kdgtp_rac_on_rho: bq.normalize(&bq.kdgtp.mul_const(self.kdgtp_rac_on_rho)),
+            kgtp_rho: bq
+                .normalize(&bq.kgtp.mul_number(self.kgtp_rho)),
+            kgtp_rho_auto: bq
+                .normalize(&bq.kgtp.mul_number(self.kgtp_auto_rho)),
+            kdgtp_rho: bq
+                .normalize(&bq.kdgtp.mul_number(self.kdgtp_rho)),
+            kdgtp_rac_on_rho: bq.normalize(
+                &bq.kdgtp.mul_number(self.kdgtp_rac_on_rho),
+            ),
             randomization: self.randomization,
             rand_avg_t: bq.normalize(&self.rand_avg_t).ceil(),
             rand_std_t: bq.normalize(&self.rand_std_t).ceil(),

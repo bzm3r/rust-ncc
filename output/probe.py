@@ -4,9 +4,9 @@ import json
 import numpy as np
 
 state_recs = []
-with open('history_schema.avsc') as sf:
+with open('history_dbg_a pair of cells_schema.avsc') as sf:
     fastavro.parse_schema(json.load(sf))
-    with open('history_dat.avro', 'rb') as df:
+    with open('history_dbg_a pair of cells_dat.avro', 'rb') as df:
         for r in fastavro.reader(df):
             state_recs.append(r)
 
@@ -27,6 +27,7 @@ def extract_p2ds(state_key, dat_key, state_recs):
         dat_per_cell_per_tstep.append(np.array(dat_per_cell))
     return np.array(dat_per_cell_per_tstep)
 
+
 def extract_scalars(state_key, dat_key, state_recs):
     dat_per_cell_per_tstep = []
     for rec in state_recs:
@@ -38,12 +39,15 @@ def extract_scalars(state_key, dat_key, state_recs):
 
 
 poly_per_cell_per_tstep = extract_p2ds('state', 'vertex_coords', state_recs)
-uivs_per_cell_per_tstep = extract_p2ds('geom_state', 'unit_inward_vecs', state_recs)
+uivs_per_cell_per_tstep = extract_p2ds('geom_state', 'unit_inward_vecs',
+                                       state_recs)
 uovs_per_cell_per_tstep = -1 * uivs_per_cell_per_tstep
 rac_acts_per_cell_per_tstep = extract_scalars('state', 'rac_acts', state_recs)
-rac_act_arrows_per_cell_per_tstep = 50*rac_acts_per_cell_per_tstep[:, :, :, np.newaxis] * uovs_per_cell_per_tstep
+rac_act_arrows_per_cell_per_tstep = 50 * rac_acts_per_cell_per_tstep[:, :, :,
+                                         np.newaxis] * uovs_per_cell_per_tstep
 rho_acts_per_cell_per_tstep = extract_scalars('state', 'rho_acts', state_recs)
-rho_act_arrows_per_cell_per_tstep = 50*rho_acts_per_cell_per_tstep[:, :, :, np.newaxis] * uivs_per_cell_per_tstep
+rho_act_arrows_per_cell_per_tstep = 50 * rho_acts_per_cell_per_tstep[:, :, :,
+                                         np.newaxis] * uivs_per_cell_per_tstep
 
 #
 # rho_acts_arrows_per_tstep = []
@@ -109,6 +113,8 @@ rho_act_arrows_per_cell_per_tstep = 50*rho_acts_per_cell_per_tstep[:, :, :, np.n
 # rgtp_forces_per_tstep = np.array(rgtp_forces_per_tstep)
 
 circ_vixs = np.take(np.arange(16), np.arange(17), mode='wrap')
+
+
 def paint(delta):
     global fig
     global ax
@@ -116,20 +122,33 @@ def paint(delta):
     global num_tsteps
     ax.cla()
     ax.set_aspect('equal')
-    ax.set_xlim([20.0 - 75.0, 20.0 + 25.0])
-    ax.set_ylim([20.0 - 75.0, 20.0 + 25.0])
-    for poly in poly_per_cell_per_tstep[tstep]:
+    ax.set_xlim([-25, 50])
+    ax.set_ylim([-25, 100])
+    for (ci, poly) in enumerate(poly_per_cell_per_tstep[tstep]):
+        if ci == 0:
+            poly_color = "k"
+        else:
+            poly_color = "g"
+
         for vix in range(16):
             ax.plot([poly[vix, 0], poly[(vix + 1) % 16, 0]],
-                    [poly[vix, 1], poly[(vix + 1) % 16, 1]], color='k')
+                    [poly[vix, 1], poly[(vix + 1) % 16, 1]],
+                    color=poly_color, marker=".")
+            ax.annotate(str(vix), (poly[vix, 0], poly[vix, 1]))
 
-    for poly, rac_act_arrows in zip(poly_per_cell_per_tstep[tstep], rac_act_arrows_per_cell_per_tstep[tstep]):
+    for poly, rac_act_arrows in zip(
+            poly_per_cell_per_tstep[tstep],
+            rac_act_arrows_per_cell_per_tstep[tstep]
+    ):
         for p, rac_arrow in zip(poly, rac_act_arrows):
-            ax.arrow(p[0], p[1], rac_arrow[0], rac_arrow[1], color="b", length_includes_head=True, head_width=0.0)
+            ax.arrow(p[0], p[1], rac_arrow[0], rac_arrow[1], color="b",
+                     length_includes_head=True, head_width=0.0)
 
-    for poly, rho_act_arrows in zip(poly_per_cell_per_tstep[tstep], rho_act_arrows_per_cell_per_tstep[tstep]):
+    for poly, rho_act_arrows in zip(poly_per_cell_per_tstep[tstep],
+                                    rho_act_arrows_per_cell_per_tstep[tstep]):
         for p, rho_arrow in zip(poly, rho_act_arrows):
-            ax.arrow(p[0], p[1], rho_arrow[0], rho_arrow[1], color="r", length_includes_head=True, head_width=0.0)
+            ax.arrow(p[0], p[1], rho_arrow[0], rho_arrow[1], color="r",
+                     length_includes_head=True, head_width=0.0)
 
     # for rac_act in rac_acts_arrows_per_tstep[tstep]:
     #     ax.arrow(rac_act[0], rac_act[1], rac_act[2], rac_act[3], color="b", length_includes_head=True, head_width=0.0)
