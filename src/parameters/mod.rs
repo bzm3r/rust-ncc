@@ -47,7 +47,7 @@ impl CharQuantities {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub struct RawPhysicalContactParams {
     pub range: Length,
     pub adh_mag: Option<Force>,
@@ -71,7 +71,7 @@ impl RawPhysicalContactParams {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub struct RawCoaParams {
     /// Factor controlling to what extent line-of-sight blockage should be penalized.
     pub los_penalty: f32,
@@ -93,7 +93,7 @@ impl RawCoaParams {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub struct RawChemAttrParams {
     center: [Length; 2],
     center_mag: f32,
@@ -114,7 +114,7 @@ impl RawChemAttrParams {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub struct RawBdryParams {
     shape: Vec<[Length; 2]>,
     skip_bb_check: bool,
@@ -141,7 +141,7 @@ impl RawBdryParams {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub struct RawInteractionParams {
     pub coa: Option<RawCoaParams>,
     pub chem_attr: Option<RawChemAttrParams>,
@@ -163,7 +163,7 @@ impl RawInteractionParams {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub struct RawWorldParameters {
     pub vertex_eta: Viscosity,
     pub interactions: RawInteractionParams,
@@ -220,10 +220,10 @@ pub struct ChemAttrParams {
     pub slope: f32,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub struct BdryParams {
     /// Shape of the boundary.
-    pub shape: [V2D; 4],
+    pub shape: Vec<V2D>,
     /// Bounding box of the boundary.
     pub bbox: BBox,
     /// Should boundary bounding box be checked to see if cell is
@@ -233,7 +233,7 @@ pub struct BdryParams {
     pub mag: f32,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub struct InteractionParams {
     pub phys_contact: PhysicalContactParams,
     pub coa: Option<CoaParams>,
@@ -241,7 +241,7 @@ pub struct InteractionParams {
     pub bdry: Option<BdryParams>,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub struct WorldParameters {
     /// Viscosity value used to calculate change in position of a
     /// vertex due to calculated forces on it.

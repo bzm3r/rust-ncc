@@ -14,7 +14,31 @@ use crate::utils::{circ_ix_minus, circ_ix_plus};
 use crate::NVERTS;
 use std::cmp::Ordering;
 
-/// Calculate the area of a polygon with vertices positioned at `xys`. [ref](http://geomalgorithms.com/a01-_area.html)
+#[derive(Clone, Copy)]
+pub struct Poly {
+    pub verts: [V2D; NVERTS],
+    pub edges: [LineSeg2D; NVERTS],
+    pub bbox: BBox,
+}
+
+impl Poly {
+    pub fn from_points(ps: &[V2D; NVERTS]) -> Poly {
+        let bbox = BBox::from_points(ps);
+        let mut edges =
+            [LineSeg2D::new(&V2D::zeros(), &V2D::zeros()); NVERTS];
+        (0..NVERTS).for_each(|vi| {
+            edges[vi].refresh(&ps[vi], &ps[circ_ix_plus(vi, NVERTS)])
+        });
+        Poly {
+            verts: *ps,
+            edges,
+            bbox,
+        }
+    }
+}
+
+/// Calculate the area of a polygon with vertices positioned at `xys`.
+/// [ref](http://geomalgorithms.com/a01-_area.html)
 pub fn calc_poly_area(xys: &[V2D]) -> f32 {
     let nvs = xys.len();
 
@@ -37,9 +61,18 @@ pub struct BBox {
 }
 
 impl BBox {
-    pub fn from_points(xys: &[V2D]) -> BBox {
-        let xs: Vec<f32> = xys.iter().map(|v| v.x).collect();
-        let ys: Vec<f32> = xys.iter().map(|v| v.y).collect();
+    pub fn from_point_pair(a: &V2D, b: &V2D) -> BBox {
+        BBox {
+            xmin: a.x.min(b.x),
+            ymin: a.y.min(b.y),
+            xmax: a.x.max(b.x),
+            ymax: a.y.max(b.y),
+        }
+    }
+
+    pub fn from_points(ps: &[V2D]) -> BBox {
+        let xs: Vec<f32> = ps.iter().map(|v| v.x).collect();
+        let ys: Vec<f32> = ps.iter().map(|v| v.y).collect();
         BBox {
             xmin: min_f32s(&xs),
             ymin: min_f32s(&ys),
@@ -123,13 +156,16 @@ pub fn is_point_in_poly(
 
 /// A line segment from p0 to p1 is the set of points `q = tp + p0`,
 /// where `p = (p1 - p0)`, and `0 <= t <= 1`.
+#[derive(Clone, Copy)]
 pub struct LineSeg2D {
     /// First point defining line segment.
     p0: V2D,
     /// Second point defining line segment.
     p1: V2D,
-    /// `(p1 - p0)`
+    /// `(p1 - p0)`, the vector generator of the line segment.
     p: V2D,
+    /// Bounding box of the segment.
+    bbox: BBox,
 }
 
 impl LineSeg2D {
@@ -140,7 +176,16 @@ impl LineSeg2D {
             p0: *p0,
             p1: *p1,
             p,
+            bbox: BBox::from_point_pair(p0, p1),
         }
+    }
+
+    /// Refresh data in LineSeg2D points defining new line segment.
+    pub fn refresh(&mut self, p0: &V2D, p1: &V2D) {
+        self.p0 = *p0;
+        self.p1 = *p1;
+        self.p = p1 - p0;
+        self.bbox = BBox::from_point_pair(p0, p1);
     }
 
     /// Create new line segment from four coordinate points
@@ -166,6 +211,10 @@ impl LineSeg2D {
         &self,
         other: &LineSeg2D,
     ) -> Option<(f32, f32)> {
+        // First check to make sure that the bounding boxes intersect.
+        if !self.bbox.intersects(&other.bbox) {
+            return None;
+        }
         // Let `s` be a point on this ("self") line segment, and let
         // `o` be a point on the "other" line segment, such that:
         // `s = t * self.p + self.p0`
@@ -302,47 +351,37 @@ impl LineSeg2D {
     // }
 
     pub fn intersects_bbox(&self, bbox: &BBox) -> bool {
-        let BBox {
-            xmin,
-            xmax,
-            ymin,
-            ymax,
-        } = *bbox;
-        let a = LineSeg2D::from_coordinates(xmin, ymin, xmax, ymin);
-        let b = LineSeg2D::from_coordinates(xmin, ymin, xmin, ymax);
-        let c = LineSeg2D::from_coordinates(xmin, ymax, xmax, ymax);
-        let d = LineSeg2D::from_coordinates(xmax, ymax, xmin, ymin);
-        for x in [a, b, c, d].iter() {
-            if self.intersects_lseg(x).is_some() {
-                return true;
+        self.bbox.intersects(bbox)
+    }
+
+    pub fn intersects_poly(&self, poly: &Poly) -> bool {
+        if !self.intersects_bbox(&poly.bbox) {
+            return false;
+        }
+
+        for edge in poly.edges.iter() {
+            match self.intersects_lseg(&edge) {
+                Some((t, u)) => {
+                    match (t > 0.0, t < 1.0, u > 0.0, u < 1.0) {
+                        (true, true, true, true) => {
+                            return true;
+                        }
+                        _ => {
+                            continue;
+                        }
+                    }
+                }
+                None => {
+                    continue;
+                }
             }
         }
         false
     }
 
-    pub fn intersects_poly(
-        &self,
-        bbox: Option<&BBox>,
-        poly: &[V2D; NVERTS],
-    ) -> bool {
-        if let Some(bb) = bbox {
-            if !self.intersects_bbox(bb) {
-                return false;
-            }
-        }
-
-        for vi in 0..NVERTS {
-            let vi1 = circ_ix_plus(vi, NVERTS);
-            if self
-                .intersects_lseg(&LineSeg2D::new(
-                    &poly[vi], &poly[vi1],
-                ))
-                .is_some()
-            {
-                return true;
-            }
-        }
-        false
+    #[inline]
+    pub fn mag(&self) -> f32 {
+        self.p.mag()
     }
 }
 
