@@ -8,7 +8,7 @@
 
 mod gen_coa;
 // pub mod dat2d;
-pub mod dat4d;
+pub mod dat_4d;
 pub mod dat_sym2d;
 pub mod dat_sym4d;
 mod dat_utils;
@@ -21,16 +21,16 @@ use crate::interactions::gen_bdry::BdryEffectGenerator;
 use crate::interactions::gen_chemoa::ChemAttrGenerator;
 use crate::interactions::gen_coa::CoaGenerator;
 use crate::interactions::gen_phys::{
-    ClosePoint, PhysContactFactors, PhysicalContactGenerator,
+    PhysContactFactors, PhysicalContactGenerator,
 };
-use crate::math::geometry::BBox;
+use crate::math::geometry::{BBox, Poly};
 use crate::math::v2d::V2D;
 use crate::parameters::InteractionParams;
 use crate::NVERTS;
 use avro_schema_derive::Schematize;
 use serde::{Deserialize, Serialize};
 
-pub type RgtpState = f32;
+pub type DiffRgtpAct = f32;
 
 #[derive(
     Copy, Clone, Debug, Default, Deserialize, Schematize, Serialize,
@@ -48,10 +48,11 @@ pub struct CellInteractions {
 #[derive(Clone)]
 pub struct InteractionGenerator {
     /// Vertex coordinates, per cell, for all cells in the simulation.
-    cell_polys: Vec<[V2D; NVERTS]>,
-    all_rgtps: Vec<[RgtpState; NVERTS]>,
-    /// Generates CIL/CAL related interaction information. In other words,
-    /// interactions that require cells to engage in physical contact.
+    cell_polys: Vec<Poly>,
+    all_rgtps: Vec<[DiffRgtpAct; NVERTS]>,
+    /// Generates CIL/CAL related interaction information. In other
+    /// words, interactions that require cells to engage in physical
+    /// contact.
     phys_contact_generator: PhysicalContactGenerator,
     coa_generator: Option<CoaGenerator>,
     chem_attr_generator: Option<ChemAttrGenerator>,
@@ -60,29 +61,26 @@ pub struct InteractionGenerator {
 
 pub struct ContactData {
     pub oci: usize,
-    pub close_verts: Vec<usize>,
-    pub poly: [V2D; NVERTS],
-    pub poly_bb: BBox,
+    pub poly: Poly,
 }
 
 impl InteractionGenerator {
     pub fn new(
-        cell_polys: &[[V2D; NVERTS]],
-        cell_rgtps: &[[RgtpState; NVERTS]],
+        cell_verts: &[[V2D; NVERTS]],
+        cell_rgtps: &[[DiffRgtpAct; NVERTS]],
         params: InteractionParams,
     ) -> InteractionGenerator {
-        let cell_bbs = cell_polys
+        let cell_polys = cell_verts
             .iter()
-            .map(|vs| BBox::from_points(vs))
-            .collect::<Vec<BBox>>();
+            .map(|vs| Poly::from_points(vs))
+            .collect::<Vec<Poly>>();
         let phys_contact_generator = PhysicalContactGenerator::new(
-            &cell_bbs,
-            cell_polys,
+            &cell_polys,
             params.phys_contact,
         );
-        let coa_generator = params
-            .coa
-            .map(|p| CoaGenerator::new(&cell_bbs, cell_polys, p));
+        let coa_generator = params.coa.map(|coa_params| {
+            CoaGenerator::new(&cell_polys, coa_params)
+        });
         let chem_attr_generator =
             params.chem_attr.map(ChemAttrGenerator::new);
         let bdry_generator =
@@ -98,10 +96,9 @@ impl InteractionGenerator {
     }
 
     pub fn update(&mut self, cell_ix: usize, vs: &[V2D; NVERTS]) {
-        self.cell_polys[cell_ix] = *vs;
-        let bb = BBox::from_points(vs);
+        self.cell_polys[cell_ix] = Poly::from_points(vs);
         if let Some(coa_gen) = self.coa_generator.as_mut() {
-            coa_gen.update(cell_ix, &bb, vs, &self.cell_polys)
+            coa_gen.update(cell_ix, &self.cell_polys)
         }
         if let Some(_chema_gen) = self.chem_attr_generator.as_mut() {
             unimplemented!()
@@ -109,18 +106,15 @@ impl InteractionGenerator {
         if let Some(_bdry_gen) = self.bdry_generator.as_mut() {
             unimplemented!()
         }
-        self.phys_contact_generator.update(
-            cell_ix,
-            &bb,
-            vs,
-            &self.cell_polys,
-        );
+        self.phys_contact_generator
+            .update(cell_ix, &self.cell_polys);
     }
 
     pub fn generate(&self) -> Vec<CellInteractions> {
         let num_cells = self.cell_polys.len();
-        let PhysContactFactors { adh, cil, cal } =
-            self.phys_contact_generator.generate(&self.all_rgtps);
+        let PhysContactFactors { adh, cil, cal } = self
+            .phys_contact_generator
+            .generate(self.all_rgtps.as_slice());
         let r_coas = self
             .coa_generator
             .as_ref()
@@ -165,11 +159,7 @@ impl InteractionGenerator {
             .into_iter()
             .map(|oci| ContactData {
                 oci,
-                close_verts: self
-                    .phys_contact_generator
-                    .get_close_verts(ci, oci),
                 poly: self.cell_polys[oci],
-                poly_bb: self.phys_contact_generator.contact_bbs[oci],
             })
             .collect()
     }

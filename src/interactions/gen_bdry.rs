@@ -1,4 +1,4 @@
-use crate::math::geometry::{is_point_in_poly, BBox};
+use crate::math::geometry::{is_point_in_poly, BBox, Poly};
 use crate::math::v2d::V2D;
 use crate::parameters::BdryParams;
 use crate::NVERTS;
@@ -29,13 +29,13 @@ impl BdryEffectGenerator {
 
     pub fn generate(
         &self,
-        cell_polys: &[[V2D; NVERTS]],
+        cell_polys: &[Poly],
     ) -> Vec<[f32; NVERTS]> {
         cell_polys
             .iter()
-            .map(|vs| {
+            .map(|poly| {
                 let mut x_bdrys = [0.0f32; NVERTS];
-                vs.iter().zip(x_bdrys.iter_mut()).for_each(
+                poly.verts.iter().zip(x_bdrys.iter_mut()).for_each(
                     |(v, x)| {
                         let in_bdry = if self.skip_bb_check {
                             is_point_in_poly(v, None, &self.shape)

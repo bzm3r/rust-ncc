@@ -38,7 +38,7 @@ def extract_scalars(state_key, dat_key, state_recs):
     return np.array(dat_per_cell_per_tstep)
 
 
-poly_per_cell_per_tstep = extract_p2ds('core', 'vertex_coords', state_recs)
+poly_per_cell_per_tstep = extract_p2ds('core', 'poly', state_recs)
 uivs_per_cell_per_tstep = extract_p2ds('geom', 'unit_inward_vecs',
                                        state_recs)
 uovs_per_cell_per_tstep = -1 * uivs_per_cell_per_tstep

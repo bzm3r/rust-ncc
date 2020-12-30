@@ -1,19 +1,20 @@
 use crate::cell::chemistry::{
     calc_conc_rgtps, calc_kdgtps_rac, calc_kdgtps_rho,
-    calc_kgtps_rac, calc_kgtps_rho, calc_net_fluxes, calc_rgtp_state,
-    RacRandState, RgtpDistribution,
+    calc_kgtps_rac, calc_kgtps_rho, calc_net_fluxes, RacRandState,
+    RgtpDistribution,
 };
 use crate::cell::mechanics::{
     calc_cyto_forces, calc_edge_forces, calc_edge_vecs,
     calc_rgtp_forces,
 };
-use crate::interactions::{CellInteractions, RgtpState};
+use crate::interactions::{CellInteractions, DiffRgtpAct};
 use crate::math::v2d::V2D;
-use crate::math::{hill_function3, max_f32, min_f32};
+use crate::math::{close_to_zero, hill_function3, max_f32, min_f32};
 use crate::parameters::{Parameters, WorldParameters};
 use crate::utils::circ_ix_minus;
 use crate::NVERTS;
 use avro_schema_derive::Schematize;
+use cairo::Operator::Difference;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::fmt::Display;
@@ -127,14 +128,14 @@ impl Mul<CoreState> for f32 {
     type Output = CoreState;
 
     fn mul(self, rhs: CoreState) -> CoreState {
-        let mut vertex_coords = [V2D::default(); NVERTS];
+        let mut poly = [V2D::default(); NVERTS];
         let mut rac_acts = [0.0_f32; NVERTS];
         let mut rac_inacts = [0.0_f32; NVERTS];
         let mut rho_acts = [0.0_f32; NVERTS];
         let mut rho_inacts = [0.0_f32; NVERTS];
 
         for i in 0..(NVERTS) {
-            vertex_coords[i] = self * rhs.poly[i];
+            poly[i] = self * rhs.poly[i];
             rac_acts[i] = self * rhs.rac_acts[i];
             rac_inacts[i] = self * rhs.rac_inacts[i];
             rho_acts[i] = self * rhs.rho_acts[i];
@@ -142,7 +143,7 @@ impl Mul<CoreState> for f32 {
         }
 
         Self::Output {
-            vertex_coords,
+            poly,
             rac_acts,
             rac_inacts,
             rho_acts,
@@ -206,9 +207,19 @@ pub struct ChemState {
     Copy, Clone, Debug, Default, Deserialize, Serialize, Schematize,
 )]
 pub struct GeomState {
-    /// Inward pointing unit vectors
+    /// Unit edge vectors which point from position of vertex `vi`
+    /// to position of vertex `vi + 1`, where `vi + 1` is calculated
+    /// modulo `NVERTS`. Note that an edge is defined by its "lower"
+    /// index, modulo `NVERTS`. That is, the edge `(0, 1)`, is
+    /// different from the edge `(1, 2)`, and `(0, 1)` is also
+    /// different from `(15, 0)` (assuming that `NVERTS == 16` in
+    /// this example).
     pub unit_edge_vecs: [V2D; NVERTS],
+    /// Length of edges. Each edge is defined by its smallest vertex.
     pub edge_lens: [f32; NVERTS],
+    /// Inward pointing unit vectors at each vertex. These are
+    /// calculated so that they bisect the angle between the two
+    /// edges which meet at a vertex.
     pub unit_inward_vecs: [V2D; NVERTS],
 }
 
@@ -281,16 +292,26 @@ impl Display for ChemState {
 // }
 
 impl CoreState {
+    //TODO(BM): automate generation of `num_vars` using proc macro.
+    /// Calculate the total number of variables that `CoreState`
+    /// holds. That is: the number of variables per vertex, times the
+    /// number of all the vertices in a cell.
     pub fn num_vars() -> usize {
         (NVERTS * 6) as usize
     }
 
     pub fn calc_geom_state(&self) -> GeomState {
+        // Calculate edge vectors of a polygon.
         let evs = calc_edge_vecs(&self.poly);
+        // Calculate magnitude of each edge vec, to get its length.
         let mut edge_lens = [0.0_f32; NVERTS];
         (0..NVERTS).for_each(|i| edge_lens[i] = (&evs[i]).mag());
+        // Divide each edge vector by its magnitude to get the
+        // corresponding unit vector.
         let mut uevs = [V2D::default(); NVERTS];
         (0..NVERTS).for_each(|i| uevs[i] = (&evs[i]).unitize());
+        // Given two unit edge vectors, find the vector which points
+        // into the polygon and bisects the angle
         let mut uivs = [V2D::default(); NVERTS];
         (0..NVERTS).for_each(|i| {
             let im1 = circ_ix_minus(i as usize, NVERTS);
@@ -329,6 +350,7 @@ impl CoreState {
             parameters.rest_area,
             parameters.stiffness_ctyo,
         );
+        // Calculate strain in each edge.
         let mut edge_strains = [0.0_f32; NVERTS];
         (0..NVERTS).for_each(|i| {
             edge_strains[i] =
@@ -339,11 +361,19 @@ impl CoreState {
             uevs,
             parameters.stiffness_edge,
         );
+        // If strain is positive (tensile), then consider it in this
+        // averaging, otherwise don't. This is because I'm assuming
+        // that compression does not have an effect on Rac1 activity.
+        // Only tension is considered to have an effect (see refs. in
+        // SI.
+        //TODO(BM): what is the latest on this front? Recent paper
+        // (Elife?) which suggests not true for migrating cells.
         let avg_tens_strain = edge_strains
             .iter()
             .map(|&es| if es < 0.0 { 0.0 } else { es })
             .sum::<f32>()
             / NVERTS as f32;
+        // Sum of all the non-adhesive forces acting on the cell.
         let mut sum_fs = [V2D::default(); NVERTS];
         (0..NVERTS).for_each(|i| {
             sum_fs[i] =
@@ -369,12 +399,19 @@ impl CoreState {
         parameters: &Parameters,
     ) -> ChemState {
         let GeomState { edge_lens, .. } = geom_state;
+        // Need to calculate average length of edges meeting at
+        // a vertex in order to roughly approximate diffusion related
+        // flux of Rho GTPases from neighbouring vertices. Provides
+        // an approximation for the length of the membrane abstracted
+        // by the edges that meet at that vertex.
         let mut avg_edge_lens: [f32; NVERTS] = [0.0_f32; NVERTS];
         (0..NVERTS).for_each(|i| {
             let im1 = circ_ix_minus(i as usize, NVERTS);
             avg_edge_lens[i] = (edge_lens[i] + edge_lens[im1]) / 2.0;
         });
 
+        // Concentration of Rho GTPase (active/inactive), used to
+        // calculate diffusive flux between vertices.
         let conc_rac_acts =
             calc_conc_rgtps(&avg_edge_lens, &self.rac_acts);
         let conc_rac_inacts =
@@ -470,6 +507,14 @@ impl CoreState {
         }
     }
 
+    /// Calculate the right hand side of the ODEs simulating cell
+    /// vertex motion and biochemistry. In particular, calculate
+    /// `(delta(state)/delta(t))`. Note that `delta(state)` should have
+    /// "units" of `[CoreState]` (the units of the result of
+    /// addition/subtraction of two quanties with units X, is X), so
+    /// this function should be returning a quantity with units
+    /// `[CoreState]/[Time]`, but since time is normalized, this is
+    /// the same as having units of `[CoreState]`.
     pub fn dynamics_f(
         state: &CoreState,
         rac_rand_state: &RacRandState,
@@ -490,6 +535,7 @@ impl CoreState {
         );
         let mut delta = CoreState::default();
         for i in 0..NVERTS {
+            // rate of rac deactivation * current fraction of rac active
             let inactivated_rac =
                 chem_state.kdgtps_rac[i] * state.rac_acts[i];
             let activated_rac =
@@ -724,15 +770,27 @@ impl CoreState {
         self.sum() / (Self::num_vars() as f32)
     }
 
-    pub fn calc_rgtp_state(
+    /// Calculate which Rho GTPase has dominates in terms of effect
+    /// at this vertex.
+    pub fn calc_crl_rgtp_state(
         &self,
         parameters: &Parameters,
-    ) -> [RgtpState; NVERTS] {
-        calc_rgtp_state(
-            &self.rac_acts,
-            &self.rho_acts,
-            parameters.halfmax_vertex_rgtp_act,
-        )
+    ) -> [DiffRgtpAct; NVERTS] {
+        let mut r = [0.0; NVERTS];
+        self.rac_acts
+            .iter()
+            .zip(self.rho_acts.iter())
+            .enumerate()
+            .for_each(|(ix, (&rac, &rho))| {
+                r[ix] = hill_function3(
+                    parameters.halfmax_vertex_rgtp_act,
+                    rac,
+                ) - hill_function3(
+                    parameters.halfmax_vertex_rgtp_act,
+                    rho,
+                );
+            });
+        r
     }
 
     #[cfg(feature = "custom_debug")]

@@ -1,7 +1,7 @@
 use crate::interactions::dat_sym2d::SymCcDat;
 use crate::interactions::dat_sym4d::SymCcVvDat;
 use crate::interactions::generate_contacts;
-use crate::math::geometry::{BBox, LineSeg2D};
+use crate::math::geometry::{BBox, LineSeg2D, Poly};
 use crate::math::v2d::V2D;
 use crate::parameters::CoaParams;
 use crate::utils::{circ_ix_minus, circ_ix_plus};
@@ -53,36 +53,26 @@ pub fn self_intersects(
 
 pub struct VertexInfo {
     ci: usize,
-    vi: usize,
     v: V2D,
 }
 
 /// Calculate clearance and distance.
 pub fn calc_pair_info(
-    vert: VertexInfo,
-    poly: &[V2D; NVERTS],
-    overt: VertexInfo,
-    opoly: &[V2D; NVERTS],
-    cell_polys: &[[V2D; NVERTS]],
+    ci: usize,
+    oci: usize,
+    lseg: LineSeg2D,
+    poly_a: &Poly,
+    poly_b: &Poly,
+    cell_polys: &[Poly],
 ) -> VertexPairInfo {
-    let VertexInfo { ci, vi, v } = vert;
-    let VertexInfo {
-        ci: oci,
-        vi: ovi,
-        v: ov,
-    } = overt;
-    let lseg = LineSeg2D::new(&v, &ov);
-    if !(self_intersects(vi, poly, &lseg)
-        || self_intersects(ovi, opoly, &lseg))
+    if !(lseg.intersects_poly(poly_a) || lseg.intersects_poly(poly_b))
     {
-        let dist = (v - ov).mag();
+        let dist = lseg.mag();
         let clearance = cell_polys
             .iter()
             .enumerate()
             .map(|(pi, poly)| {
-                if pi != ci
-                    && pi != oci
-                    && lseg.intersects_poly(None, poly)
+                if pi != ci && pi != oci && lseg.intersects_poly(poly)
                 {
                     1.0
                 } else {
@@ -101,14 +91,13 @@ pub fn calc_pair_info(
 impl CoaGenerator {
     /// Calculates a matrix storing whether two vertices have clear line of sight if in contact range.
     pub fn new(
-        cell_bbs: &[BBox],
-        cell_polys: &[[V2D; NVERTS]],
+        cell_polys: &[Poly],
         params: CoaParams,
     ) -> CoaGenerator {
-        let num_cells = cell_bbs.len();
-        let contact_bbs = cell_bbs
+        let num_cells = cell_polys.len();
+        let contact_bbs = cell_polys
             .iter()
-            .map(|bb| bb.expand_by(params.range))
+            .map(|cp| cp.bbox.expand_by(params.range))
             .collect::<Vec<BBox>>();
         let contacts = generate_contacts(&contact_bbs);
         let mut dat =
@@ -119,21 +108,18 @@ impl CoaGenerator {
                 cell_polys[(ci + 1)..].iter().enumerate()
             {
                 let oci = (ci + 1) + ocj;
-                for (vi, v) in poly.iter().enumerate() {
-                    for (ovi, ov) in opoly.iter().enumerate() {
+                for (vi, v) in poly.verts.iter().enumerate() {
+                    for (ovi, ov) in opoly.verts.iter().enumerate() {
                         dat.set(
                             ci,
                             vi,
                             oci,
                             ovi,
                             calc_pair_info(
-                                VertexInfo { ci, vi, v: *v },
+                                ci,
+                                oci,
+                                LineSeg2D::new(v, ov),
                                 poly,
-                                VertexInfo {
-                                    ci: oci,
-                                    vi: ovi,
-                                    v: *ov,
-                                },
                                 opoly,
                                 cell_polys,
                             ),
@@ -150,14 +136,9 @@ impl CoaGenerator {
         }
     }
 
-    pub fn update(
-        &mut self,
-        ci: usize,
-        bb: &BBox,
-        poly: &[V2D; NVERTS],
-        cell_polys: &[[V2D; NVERTS]],
-    ) {
-        let bb = bb.expand_by(self.params.range);
+    pub fn update(&mut self, ci: usize, cell_polys: &[Poly]) {
+        let this_poly = cell_polys[ci];
+        let bb = this_poly.bbox.expand_by(self.params.range);
         self.contact_bbs[ci] = bb;
         // Update contacts.
         for (oci, obb) in self.contact_bbs.iter().enumerate() {
@@ -165,26 +146,23 @@ impl CoaGenerator {
                 self.contacts.set(ci, oci, obb.intersects(&bb))
             }
         }
-        for (oci, opoly) in cell_polys.iter().enumerate() {
+        for (oci, other_poly) in cell_polys.iter().enumerate() {
             if oci == ci || !self.contacts.get(ci, oci) {
                 continue;
             }
-            for (vi, v) in poly.iter().enumerate() {
-                for (ovi, ov) in opoly.iter().enumerate() {
+            for (vi, v) in this_poly.verts.iter().enumerate() {
+                for (ovi, ov) in other_poly.verts.iter().enumerate() {
                     self.dat.set(
                         ci,
                         vi,
                         oci,
                         ovi,
                         calc_pair_info(
-                            VertexInfo { ci, vi, v: *v },
-                            poly,
-                            VertexInfo {
-                                ci: oci,
-                                vi: ovi,
-                                v: *ov,
-                            },
-                            opoly,
+                            ci,
+                            oci,
+                            LineSeg2D::new(v, ov),
+                            &this_poly,
+                            other_poly,
                             cell_polys,
                         ),
                     );

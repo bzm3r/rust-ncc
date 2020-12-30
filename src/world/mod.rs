@@ -12,7 +12,7 @@ use crate::cell::core_state::CoreState;
 use crate::cell::CellState;
 use crate::experiments::{CellGroup, Experiment};
 use crate::interactions::{
-    CellInteractions, InteractionGenerator, RgtpState,
+    CellInteractions, DiffRgtpAct, InteractionGenerator,
 };
 use crate::math::v2d::{poly_to_string, V2D};
 use crate::parameters::{Parameters, WorldParameters};
@@ -265,14 +265,14 @@ impl World {
             .zip(cell_core_states.iter())
             .map(|(&gix, state)| {
                 let parameters = &group_parameters[gix];
-                state.calc_rgtp_state(parameters)
+                state.calc_crl_rgtp_state(parameters)
             })
-            .collect::<Vec<[RgtpState; NVERTS]>>();
+            .collect::<Vec<[DiffRgtpAct; NVERTS]>>();
         // Create a new `InteractionGenerator`.
         let interact_gen = InteractionGenerator::new(
             &cell_polys,
             &cell_rgtps,
-            world_parameters.interactions,
+            world_parameters.interactions.clone(),
         );
         // Generate initial cell interactions.
         let cell_interactions = interact_gen.generate();
@@ -326,7 +326,7 @@ impl World {
         let history = vec![state.clone()];
         World {
             tstep_length: char_quants.time(),
-            global_params: world_parameters,
+            global_params: world_parameters.clone(),
             cell_group_params: group_parameters,
             cell_regs,
             history,

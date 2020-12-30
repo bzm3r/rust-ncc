@@ -1,3 +1,4 @@
+use crate::math::geometry::Poly;
 use crate::math::v2d::V2D;
 use crate::parameters::ChemAttrParams;
 use crate::NVERTS;
@@ -25,13 +26,13 @@ impl ChemAttrGenerator {
 
     pub fn generate(
         &self,
-        cell_polys: &[[V2D; NVERTS]],
+        cell_polys: &[Poly],
     ) -> Vec<[f32; NVERTS]> {
         cell_polys
             .iter()
             .map(|poly| {
                 let mut x_chemoas = [0.0f32; NVERTS];
-                poly.iter().zip(x_chemoas.iter_mut()).for_each(
+                poly.verts.iter().zip(x_chemoas.iter_mut()).for_each(
                     |(&v, x)| {
                         let r = self.center_mag
                             * self.slope
