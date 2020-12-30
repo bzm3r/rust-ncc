@@ -19,3 +19,5 @@ out.txt
 out_*.txt
 
 *.mp4
+
+# macos files to ignore**/.DS_Store 
