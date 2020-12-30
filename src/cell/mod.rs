@@ -17,9 +17,7 @@ use crate::cell::core_state::{
 };
 use crate::cell::rkdp5::AuxArgs;
 use crate::interactions::{CellInteractions, ContactData};
-use crate::math::geometry::{
-    calc_poly_area, is_point_in_poly, BBox, LineSeg2D,
-};
+use crate::math::geometry::{calc_poly_area, LineSeg2D};
 use crate::math::v2d::{poly_to_string, V2D};
 use crate::parameters::{Parameters, WorldParameters};
 use crate::utils::{circ_ix_minus, circ_ix_plus};
@@ -32,9 +30,9 @@ use std::f32::consts::PI;
 /// Cell state structure.
 #[derive(Copy, Clone, Deserialize, Serialize, Schematize)]
 pub struct CellState {
-    /// Cell index.
+    /// Index of cell within world.
     pub ix: u32,
-    /// Index of cell type.
+    /// Index of group that cell belongs to.
     pub group_ix: u32,
     pub core: CoreState,
     pub rac_rand: RacRandState,
@@ -43,51 +41,40 @@ pub struct CellState {
     pub chem: ChemState,
 }
 
-pub fn check_poly_intersect(
-    u: &V2D,
-    v: &V2D,
-    w: &V2D,
-    poly_bbox: &BBox,
-    poly: &[V2D; NVERTS],
+pub fn violates_volume_exclusion(
+    test_v: &V2D,
+    test_u: &V2D,
+    test_w: &V2D,
+    contacts: &[ContactData],
 ) -> bool {
-    let ls_uv = LineSeg2D::new(u, v);
-    let ls_vw = LineSeg2D::new(v, w);
-    let opt_bb = Some(poly_bbox);
-    let uv_intersects = ls_uv.intersects_poly(opt_bb, poly);
-    let vw_intersects = ls_vw.intersects_poly(opt_bb, poly);
-    let is_v_in_poly = is_point_in_poly(v, Some(poly_bbox), poly);
-
-    uv_intersects || vw_intersects || is_v_in_poly
+    let lsegs = [
+        LineSeg2D::new(test_u, test_v),
+        LineSeg2D::new(test_v, test_w),
+    ];
+    for lseg in lsegs.iter() {
+        for cd in contacts.iter() {
+            if lseg.intersects_poly(&cd.poly) {
+                return true;
+            }
+        }
+    }
+    false
 }
 
 fn move_point_out(
-    bad_vi: usize,
-    good_vs: &[V2D; NVERTS],
-    mut bad_vs: [V2D; NVERTS],
-    // new_u: V2D,
-    // new_w: V2D,
-    close_verts: &[usize],
-    poly_bbox: &BBox,
-    poly: &[V2D; NVERTS],
+    new_u: &V2D,
+    mut new_v: V2D,
+    new_w: &V2D,
+    mut good_v: V2D,
+    contacts: &[ContactData],
     num_iters: usize,
 ) -> V2D {
-    let mut good_v = good_vs[bad_vi];
     let mut n = 0;
     while n < num_iters {
-        let test_v = 0.5 * (good_v + bad_vs[bad_vi]);
-        // check_poly_intersect(
-        //     &new_u, &test_v, &new_w, poly_bbox, poly,
-        // )
-        if is_point_in_poly(&test_v, Some(poly_bbox), poly)
-            || close_verts.iter().any(|&ovi| {
-                is_point_in_poly(
-                    &poly[ovi],
-                    Some(&BBox::from_points(&bad_vs)),
-                    &bad_vs,
-                )
-            })
+        let test_v = 0.5 * (good_v + new_v);
+        if violates_volume_exclusion(&test_v, new_u, new_w, contacts)
         {
-            bad_vs[bad_vi] = test_v;
+            new_v = test_v;
         } else {
             good_v = test_v;
         }
@@ -99,12 +86,14 @@ fn move_point_out(
 #[cfg(feature = "custom_debug")]
 pub fn confirm_volume_exclusion(
     vs: &[V2D; NVERTS],
-    contact_data: &[ContactData],
+    contacts: &[ContactData],
     msg: &str,
 ) -> Result<(), String> {
     for (vi, v) in vs.iter().enumerate() {
-        for ContactData { poly, poly_bb, .. } in contact_data {
-            if is_point_in_poly(v, Some(poly_bb), poly) {
+        let u = &vs[circ_ix_minus(vi, NVERTS)];
+        let w = &vs[circ_ix_plus(vi, NVERTS)];
+        for ContactData { poly, .. } in contacts {
+            if violates_volume_exclusion(v, u, w, contacts) {
                 return Err(format!(
                     "{} violates volume exclusion.\n\
                     vs[{}] = {}, \n\
@@ -112,7 +101,7 @@ pub fn confirm_volume_exclusion(
                     msg,
                     vi,
                     v,
-                    &poly_to_string(poly)
+                    &poly_to_string(&poly.verts)
                 ));
             }
         }
@@ -124,35 +113,19 @@ pub fn confirm_volume_exclusion(
 pub fn enforce_volume_exclusion(
     old_vs: &[V2D; NVERTS],
     mut new_vs: [V2D; NVERTS],
-    contact_data: Vec<ContactData>,
+    contacts: Vec<ContactData>,
 ) -> Result<[V2D; NVERTS], String> {
-    confirm_volume_exclusion(&old_vs, &contact_data, "old_vs")?;
+    confirm_volume_exclusion(&old_vs, &contacts, "old_vs")?;
     for vi in 0..NVERTS {
-        let nv = new_vs[vi];
-        // let nw = new_vs[circ_ix_plus(vi, NVERTS)];
-        // let nu = new_vs[circ_ix_minus(vi, NVERTS)];
-        for ContactData {
-            oci,
-            close_verts,
-            poly,
-            poly_bb,
-        } in contact_data.iter()
-        {
-            // check_poly_intersect(&nu, &nv, &nw, obb, opoly)
-            if is_point_in_poly(&nv, Some(poly_bb), poly) {
-                new_vs[vi] = move_point_out(
-                    vi,
-                    old_vs,
-                    new_vs,
-                    close_verts,
-                    poly_bb,
-                    poly,
-                    5,
-                );
-            }
-        }
+        let old_v = old_vs[vi];
+        let new_v = new_vs[vi];
+        let new_u = new_vs[circ_ix_minus(vi, NVERTS)];
+        let new_w = new_vs[circ_ix_plus(vi, NVERTS)];
+        new_vs[vi] = move_point_out(
+            &new_u, new_v, &new_w, old_v, &contacts, 5,
+        );
     }
-    confirm_volume_exclusion(&new_vs, &contact_data, "new_vs")?;
+    confirm_volume_exclusion(&new_vs, &contacts, "new_vs")?;
     Ok(new_vs)
 }
 
@@ -211,6 +184,9 @@ impl CellState {
 
     #[allow(unused)]
     #[cfg(feature = "custom_debug")]
+    /// Suppose our current state is `state`. We want to determine
+    /// the next state after a time period `dt` has elapsed. We
+    /// assume `(next_state - state)/delta(t) = delta(state)`.
     pub fn simulate_euler(
         &self,
         tstep: u32,
@@ -222,8 +198,12 @@ impl CellState {
     ) -> Result<CellState, String> {
         let mut state = self.core;
         let nsteps: u32 = 10;
+        // Assumed normalized time by time provided in CharQuant.
+        // Therefore, we can take the time period to integrate over
+        // as 1.0.
         let dt = 1.0 / (nsteps as f32);
         for _ in 0..nsteps {
+            // d(state)/dt = dynamics_f(state) <- calculate RHS of ODE
             let delta = CoreState::dynamics_f(
                 &state,
                 &self.rac_rand,
@@ -243,9 +223,10 @@ impl CellState {
             &interactions,
             parameters,
         );
-        state.vertex_coords = enforce_volume_exclusion(
-            &self.core.vertex_coords,
-            state.vertex_coords,
+        // Enforcing volume exclusion! Tricky!
+        state.poly = enforce_volume_exclusion(
+            &self.core.poly,
+            state.poly,
             contact_data,
         )?;
         let geom_state = state.calc_geom_state();
@@ -303,9 +284,9 @@ impl CellState {
             &interactions,
             parameters,
         );
-        state.vertex_coords = enforce_volume_exclusion(
-            &self.core.vertex_coords,
-            state.vertex_coords,
+        state.poly = enforce_volume_exclusion(
+            &self.core.poly,
+            state.poly,
             contact_polys,
         );
         let geom_state = state.calc_geom_state();
@@ -372,9 +353,9 @@ impl CellState {
             &interactions,
             parameters,
         );
-        state.vertex_coords = enforce_volume_exclusion(
-            &self.core.vertex_coords,
-            state.vertex_coords,
+        state.poly = enforce_volume_exclusion(
+            &self.core.poly,
+            state.poly,
             contact_data,
         )
         .map_err(|e| format!("ci={}\n{}", self.ix, e))?;
@@ -449,9 +430,9 @@ impl CellState {
             .iter()
             .map(|sf| -1.0 * sf.unitize())
             .collect::<Vec<V2D>>();
-        state.vertex_coords = enforce_volume_exclusion(
-            &self.core.vertex_coords,
-            state.vertex_coords,
+        state.poly = enforce_volume_exclusion(
+            &self.core.poly,
+            state.poly,
             contact_polys,
         );
         let geom_state = state.calc_geom_state();

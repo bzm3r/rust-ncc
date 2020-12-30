@@ -86,6 +86,8 @@ impl RawCoaParams {
             los_penalty: self.los_penalty,
             range,
             mag: self.mag,
+            // self.mag * exp(distrib_exp * x), where x is distance
+            // between points.
             distrib_exp: 0.5f32.ln() / (0.5 * range),
         }
     }
@@ -167,36 +169,67 @@ pub struct RawWorldParameters {
     pub interactions: RawInteractionParams,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 pub struct PhysicalContactParams {
+    /// Maximum distance between two points, for them to be considered
+    /// in contact. This is usually set to 0.5 micrometers.
     pub range: f32,
+    /// Optional adhesion magnitude. If it is `None`, no adhesion
+    /// will be calculated.
     pub adh_mag: Option<f32>,
+    /// Optional CAL magnitude. If it is `None`, simulation will
+    /// always execute CIL upon contact.
     pub cal_mag: Option<f32>,
+    /// Magnitude of CIL that acts on Rho GTPase activation/
+    /// inactivation rates.
     pub cil_mag: f32,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 pub struct CoaParams {
-    /// Factor controlling to what extent line-of-sight blockage should be penalized.
+    //TODO: Expand upon LOS system.
+    /// Factor controlling to what extent line-of-sight blockage
+    /// should be penalized. See SI for further information.
     pub los_penalty: f32,
-    /// Factor controlling shape of the exponential modelling COA interaction,
+    //TODO: Expand upon the exponential curve used to mdoel COA
+    // (see SI). Confirm whether it is half-max, or full-max range.
+    /// Factor controlling shape of the exponential modelling COA
+    /// interaction. It captures the (half?)-maximum distance between
+    /// two points still able to undergo COA.
     pub range: f32,
+    /// Magnitude of COA that acts on Rac1 activation rates.
     pub mag: f32,
+    //TODO: look up exactly what is being done for this (see where
+    // parameter is being generated for hint).
+    /// Factor controlling the shape of the exponential modelling
+    /// COA interaction (a function shaping parameter). It determines
+    /// the distance at which two points would sense COA at half-max
+    /// magnitude.
     pub distrib_exp: f32,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 pub struct ChemAttrParams {
+    /// Location of the chemoattractant center.
     pub center: V2D,
+    /// Magnitude of chemoattractant a cell would sense if it were
+    /// right on top of the chemoattractant source.
     pub center_mag: f32,
+    /// Assuming shallow chemoattractant gradient, which can be
+    /// modelled using a linear function with slope `slope`.
     pub slope: f32,
 }
 
 #[derive(Clone)]
 pub struct BdryParams {
+    /// Shape of the boundary.
     pub shape: Vec<V2D>,
+    /// Bounding box of the boundary.
     pub bbox: BBox,
+    /// Should boundary bounding box be checked to see if cell is
+    /// within the boundary?
     pub skip_bb_check: bool,
+    /// Magnitude of CIL-type interaction.
     pub mag: f32,
 }
 
@@ -210,6 +243,8 @@ pub struct InteractionParams {
 
 #[derive(Clone)]
 pub struct WorldParameters {
+    /// Viscosity value used to calculate change in position of a
+    /// vertex due to calculated forces on it.
     pub vertex_eta: f32,
     pub interactions: InteractionParams,
 }

@@ -7,7 +7,7 @@
 // except according to those terms.
 
 use crate::cell::core_state::fmt_var_arr;
-use crate::interactions::RgtpState;
+use crate::interactions::DiffRgtpAct;
 use crate::math::hill_function3;
 use crate::parameters::Parameters;
 use crate::utils::{circ_ix_minus, circ_ix_plus};
@@ -131,6 +131,7 @@ pub fn calc_net_fluxes(
     r
 }
 
+/// Calculate approximate concentration of a Rho GTPase at a vertex.
 pub fn calc_conc_rgtps(
     avg_edge_lens: &[f32; NVERTS],
     rgtps: &[f32; NVERTS],
@@ -140,7 +141,8 @@ pub fn calc_conc_rgtps(
     r
 }
 
-#[allow(clippy::too_many_arguments)]
+//TODO(ES): make this better.
+/// Calculates Rac1 activation rates, as discussed in SI.
 pub fn calc_kgtps_rac(
     rac_acts: &[f32; NVERTS],
     conc_rac_acts: &[f32; NVERTS],
@@ -156,12 +158,22 @@ pub fn calc_kgtps_rac(
     let mut kgtps_rac = [0.0_f32; NVERTS];
 
     for i in 0..nvs {
+        // Base activation rate of Rac1 is increased (not multiplied!)
+        // by: CAL, randomization, and co-attraction.
         let base = (x_cals[i] + x_rands[i] + x_coas[i] + 1.0)
             * kgtp_rac_base;
+        // Auto activation rate of Rac1 is increased by
+        // chemoattraction only. This is because we assume that Sdf1
+        // only stabilizes existing Rac1 activity. It does not
+        // generate new Rac1 activity. See SI in Merchant(2020)?
         let auto_factor = {
             let af =
                 hill_function3(halfmax_rac_conc, conc_rac_acts[i])
                     * (1.0 + x_chemoas[i]);
+            // This comes from the Python code. It's necessary for
+            // auto-activation to not blow up, but it also kind of
+            // changes the shape of the sigmoid. Is this recorded
+            // SI?
             if af > 1.25 {
                 1.25
             } else {
@@ -171,10 +183,10 @@ pub fn calc_kgtps_rac(
         let auto = auto_factor * kgtp_rac_auto;
         kgtps_rac[i] = base + auto;
     }
-
     kgtps_rac
 }
 
+/// Calculates Rac1 inactivation rates, as discussed in SI.
 pub fn calc_kdgtps_rac(
     rac_acts: &[f32; NVERTS],
     conc_rho_acts: &[f32; NVERTS],
@@ -188,9 +200,10 @@ pub fn calc_kdgtps_rac(
     let mut kdgtps_rac = [0.0_f32; NVERTS];
 
     for i in 0..nvs {
-        // let x_cil =
-        //     (x_cils[circ_ix_minus(i, NVERTS)] + x_cils[i] + x_cils[circ_ix_plus(i, NVERTS)]) / 3.0;
+        // Baseline is affected by tension inhibition, and CIL.
         let base = (1.0 + x_tens + x_cils[i]) * kdgtp_rac_base;
+        // Effect of RhoA on Rac1, related to activity of RhoA at a
+        // vertex.
         let mutual =
             hill_function3(halfmax_conc_rho, conc_rho_acts[i])
                 * kdgtp_rho_on_rac;
@@ -200,6 +213,7 @@ pub fn calc_kdgtps_rac(
     kdgtps_rac
 }
 
+/// Calculates RhoA activation rates, as discussed in SI.
 pub fn calc_kgtps_rho(
     rho_acts: &[f32; NVERTS],
     conc_rho_acts: &[f32; NVERTS],
@@ -212,8 +226,6 @@ pub fn calc_kgtps_rho(
     let mut kgtps_rho = [0.0_f32; NVERTS];
 
     for i in 0..nvs {
-        // let x_cil =
-        //     (x_cils[circ_ix_minus(i, NVERTS)] + x_cils[i] + x_cils[circ_ix_plus(i, NVERTS)]) / 3.0;
         let base = (1.0 + x_cils[i]) * kgtp_rho_base;
         let auto =
             hill_function3(halfmax_rho_thresh, conc_rho_acts[i])
@@ -224,6 +236,7 @@ pub fn calc_kgtps_rho(
     kgtps_rho
 }
 
+/// Calculates RhoA inactivation rates, as discussed in SI.
 pub fn calc_kdgtps_rho(
     rho_acts: &[f32; NVERTS],
     conc_rac_acts: &[f32; NVERTS],
@@ -247,7 +260,9 @@ pub fn calc_kdgtps_rho(
 
 #[derive(Copy, Clone, Default, Deserialize, Serialize, Schematize)]
 pub struct RacRandState {
+    /// When does the next update occur?
     pub next_update: u32,
+    /// Rac1 randomization factors per vertex.
     pub x_rands: [f32; NVERTS],
 }
 
@@ -313,19 +328,4 @@ impl Display for RacRandState {
         fmt_var_arr(f, "rfs", &self.x_rands)?;
         writeln!(f, "next_update: {}", self.next_update)
     }
-}
-
-pub fn calc_rgtp_state(
-    rac_acts: &[f32; NVERTS],
-    rho_acts: &[f32; NVERTS],
-    halfmax_rgtp_act: f32,
-) -> [RgtpState; NVERTS] {
-    let mut r: [RgtpState; NVERTS] = [0.0; NVERTS];
-    r.iter_mut()
-        .zip(rac_acts.iter().zip(rho_acts.iter()))
-        .for_each(|(x, (&rac, &rho))| {
-            *x = hill_function3(halfmax_rgtp_act, rac)
-                - hill_function3(halfmax_rgtp_act, rho)
-        });
-    r
 }

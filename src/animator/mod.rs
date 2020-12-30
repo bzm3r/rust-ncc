@@ -96,7 +96,7 @@ impl DrawingData {
                 let mut transformed_vs = [V2D::default(); NVERTS];
                 transformed_vs
                     .iter_mut()
-                    .zip(cell.core.vertex_coords.iter())
+                    .zip(cell.core.poly.iter())
                     .for_each(|(new_v, old_v)| {
                         *new_v =
                             old_v.scale(px_per_micron).translate(
