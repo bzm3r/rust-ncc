@@ -86,7 +86,10 @@ fn raw_world_parameters(
             bdry: None,
             phys_contact: RawPhysicalContactParams {
                 range: gen_default_phys_contact_dist(),
-                adh_mag: Some(gen_default_adhesion_mag(char_quants)),
+                adh_mag: Some(gen_default_adhesion_mag(
+                    char_quants,
+                    10.0,
+                )),
                 cal_mag: Some(0.0),
                 cil_mag: 60.0,
             },

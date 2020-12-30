@@ -163,19 +163,27 @@ fn gen_default_phys_contact_dist() -> Length {
     Length(0.5).micro()
 }
 
-fn gen_default_adhesion_mag(char_quants: &CharQuantities) -> Force {
+fn gen_default_adhesion_mag(
+    char_quants: &CharQuantities,
+    multiplier: f32,
+) -> Force {
     // Warning: going above this value may result in weirdness!
     // Danger zone: (Length(1.0).micro().g() * Tinv(1.0).g()).mul_number(0.1)
 
 
-    // Seed: 3,(Length(1.0).micro().g() * Tinv(1.0).g()).mul_number(0.09)
-    // (v * char_quants.eta.g())
-    let v = (Length(3.0 / 60.0).micro().g() * Tinv(1.0).g())
-        .mul_number(1.0);
-    (v * char_quants.eta.g().mul_number(1.0 / (NVERTS as f32)))
-        .to_force()
-        .expect(
-            "Procedure for generating default force does \
-             not produce a force. Check units!",
-        )
+    let v =
+        (Length(1.0).micro().g() * Tinv(1.0).g()).mul_number(0.09);
+    (v * char_quants.eta.g()).to_force().expect("Need a force!")
+
+    // let max_cell_v = Length(3.0).micro().g() * Tinv(1.0 / 60.0).g();
+    // let eta = char_quants.eta.g();
+    // let f_adh = (eta * max_cell_v)
+    //     .mul_number(1.0 / (NVERTS as f32))
+    //     .to_force()
+    //     .expect(
+    //         "Procedure for generating default force does \
+    //          not produce a force. Check units!",
+    //     );
+    // f_adh.mul_number(multiplier)
+
 }

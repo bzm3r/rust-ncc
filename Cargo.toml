@@ -21,4 +21,4 @@ cairo-rs = "0.9.1"
 
 [features]
 custom_debug = []
-#animate = []
+animate = []
