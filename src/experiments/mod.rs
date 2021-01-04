@@ -19,8 +19,8 @@ use crate::parameters::quantity::{
 use crate::parameters::{
     CharQuantities, Parameters, RawParameters, WorldParameters,
 };
+use crate::utils::pcg32::Pcg32;
 use crate::NVERTS;
-use rand_pcg::Pcg64;
 
 /// Specifies initial placement of the group.
 pub struct GroupLayout {
@@ -52,7 +52,7 @@ pub struct Experiment {
     pub cell_groups: Vec<CellGroup>,
     /// Random number generator to be used for various purposes.
     /// Initialized from a seed, otherwise from "entropy".
-    pub rng: Pcg64,
+    pub rng: Pcg32,
     /// Seed that was used to initialize rng, if it generated from a
     /// seed.
     pub seed: Option<u64>,
@@ -98,7 +98,7 @@ fn gen_default_char_quants() -> CharQuantities {
 /// particular experiment file. You can use this function
 /// as a template.
 fn gen_default_raw_params(
-    rng: &mut Pcg64,
+    rng: &mut Pcg32,
     randomization: bool,
 ) -> RawParameters {
     let rgtp_d = (Length(0.1_f32.sqrt()).micro().pow(2.0).g()
@@ -170,7 +170,6 @@ fn gen_default_adhesion_mag(
     // Warning: going above this value may result in weirdness!
     // Danger zone: (Length(1.0).micro().g() * Tinv(1.0).g()).mul_number(0.1)
 
-
     let v =
         (Length(1.0).micro().g() * Tinv(1.0).g()).mul_number(0.09);
     (v * char_quants.eta.g()).to_force().expect("Need a force!")
@@ -185,5 +184,4 @@ fn gen_default_adhesion_mag(
     //          not produce a force. Check units!",
     //     );
     // f_adh.mul_number(multiplier)
-
 }

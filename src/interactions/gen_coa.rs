@@ -6,8 +6,10 @@ use crate::math::v2d::V2D;
 use crate::parameters::CoaParams;
 use crate::utils::{circ_ix_minus, circ_ix_plus};
 use crate::NVERTS;
+use avro_schema_derive::Schematize;
+use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Deserialize, Serialize, Schematize)]
 pub struct VertexPairInfo {
     dist: f32,
     num_intersects: f32,
@@ -22,7 +24,7 @@ impl VertexPairInfo {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Deserialize, Serialize, Schematize)]
 pub struct CoaGenerator {
     dat: SymCcVvDat<VertexPairInfo>,
     contact_bbs: Vec<BBox>,

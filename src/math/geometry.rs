@@ -12,9 +12,11 @@ use crate::math::{
 };
 use crate::utils::{circ_ix_minus, circ_ix_plus};
 use crate::NVERTS;
+use avro_schema_derive::Schematize;
+use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Deserialize, Serialize, Schematize)]
 pub struct Poly {
     pub verts: [V2D; NVERTS],
     pub edges: [LineSeg2D; NVERTS],
@@ -52,7 +54,7 @@ pub fn calc_poly_area(xys: &[V2D]) -> f32 {
     area * 0.5
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Deserialize, Serialize, Schematize)]
 pub struct BBox {
     pub xmin: f32,
     pub ymin: f32,

@@ -1,14 +1,17 @@
 use crate::interactions::dat_utils::{sort_ixs, sym_sum};
+use crate::utils::avro::Schematized;
+use avro_schema_derive::Schematize;
+use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Default)]
-pub struct SymCcDat<T: Copy + Default> {
+#[derive(Clone, Default, Deserialize, Serialize, Schematize)]
+pub struct SymCcDat<T: Copy + Default + Schematized> {
     pub num_cells: usize,
     sym_sum_nc: usize,
     dat: Vec<T>,
     undefined: T,
 }
 
-impl<T: Copy + Default> SymCcDat<T> {
+impl<T: Copy + Default + Schematized> SymCcDat<T> {
     pub fn new(num_cells: usize, undefined: T) -> SymCcDat<T> {
         let sym_sum_nc = sym_sum(num_cells);
         SymCcDat {

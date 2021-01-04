@@ -14,9 +14,9 @@ use crate::parameters::{
     CharQuantities, RawInteractionParams, RawParameters,
     RawPhysicalContactParams, RawWorldParameters,
 };
+use crate::utils::pcg32::Pcg32;
 use crate::NVERTS;
 use rand::SeedableRng;
-use rand_pcg::Pcg64;
 
 /// Generate the group layout to use for this experiment.
 fn group_layout(
@@ -44,7 +44,7 @@ fn group_layout(
 
 /// Define the cell groups that will exist in this experiment.
 fn cell_groups(
-    rng: &mut Pcg64,
+    rng: &mut Pcg32,
     cq: &CharQuantities,
 ) -> Vec<CellGroup> {
     let num_cells = 1;
@@ -88,8 +88,8 @@ fn raw_world_parameters() -> RawWorldParameters {
 /// Generate the experiment, so that it can be run.
 pub fn generate(seed: Option<u64>) -> Experiment {
     let mut rng = match seed {
-        Some(s) => Pcg64::seed_from_u64(s),
-        None => Pcg64::from_entropy(),
+        Some(s) => Pcg32::seed_from_u64(s),
+        None => Pcg32::from_entropy(),
     };
     let char_quants = gen_default_char_quants();
     let world_parameters =

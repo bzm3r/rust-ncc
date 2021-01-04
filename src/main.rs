@@ -1,7 +1,7 @@
 #![allow(clippy::too_many_arguments)]
 //! The entry point.
-#[cfg(feature = "animate")]
-mod animator;
+// #[cfg(feature = "animate")]
+// mod animator;
 mod cell;
 mod experiments;
 mod interactions;
@@ -10,7 +10,7 @@ mod parameters;
 mod utils;
 mod world;
 
-//#[cfg(feature = "animate")]
+#[cfg(feature = "animate")]
 use crate::animator::create_animation;
 // use crate::math::geometry::debug_2516;
 // use crate::math::geometry::debug_point_in_poly;

@@ -16,6 +16,8 @@ use crate::parameters::quantity::{
     Diffusion, Force, Length, Quantity, Stress, Time, Tinv, Viscosity,
 };
 use crate::NVERTS;
+use avro_schema_derive::Schematize;
+use serde::{Deserialize, Serialize};
 use std::f32::consts::PI;
 
 /// Characteristic quantities used for normalization.
@@ -169,7 +171,7 @@ pub struct RawWorldParameters {
     pub interactions: RawInteractionParams,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Deserialize, Serialize, Schematize)]
 pub struct PhysicalContactParams {
     /// Maximum distance between two points, for them to be considered
     /// in contact. This is usually set to 0.5 micrometers.
@@ -185,7 +187,7 @@ pub struct PhysicalContactParams {
     pub cil_mag: f32,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Deserialize, Serialize, Schematize)]
 pub struct CoaParams {
     //TODO: Expand upon LOS system.
     /// Factor controlling to what extent line-of-sight blockage
@@ -208,7 +210,7 @@ pub struct CoaParams {
     pub distrib_exp: f32,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Deserialize, Serialize, Schematize)]
 pub struct ChemAttrParams {
     /// Location of the chemoattractant center.
     pub center: V2D,
@@ -220,7 +222,7 @@ pub struct ChemAttrParams {
     pub slope: f32,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Deserialize, Serialize, Schematize)]
 pub struct BdryParams {
     /// Shape of the boundary.
     pub shape: Vec<V2D>,
@@ -233,7 +235,7 @@ pub struct BdryParams {
     pub mag: f32,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Deserialize, Serialize, Schematize)]
 pub struct InteractionParams {
     pub phys_contact: PhysicalContactParams,
     pub coa: Option<CoaParams>,
@@ -241,7 +243,7 @@ pub struct InteractionParams {
     pub bdry: Option<BdryParams>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Deserialize, Serialize, Schematize)]
 pub struct WorldParameters {
     /// Viscosity value used to calculate change in position of a
     /// vertex due to calculated forces on it.
@@ -323,7 +325,7 @@ pub struct RawParameters {
 }
 
 /// Parameters necessary for simulation of a cell.
-#[derive(Clone)]
+#[derive(Clone, Deserialize, Serialize, Schematize)]
 pub struct Parameters {
     /// Resting cell radius.
     pub cell_r: f32,

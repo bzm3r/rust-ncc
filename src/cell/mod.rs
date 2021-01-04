@@ -21,7 +21,6 @@ use crate::math::geometry::{calc_poly_area, LineSeg2D};
 use crate::math::v2d::{poly_to_string, V2D};
 use crate::parameters::{Parameters, WorldParameters};
 use crate::utils::{circ_ix_minus, circ_ix_plus};
-use crate::world::RandomEventGenerator;
 use crate::NVERTS;
 use avro_schema_derive::Schematize;
 use serde::{Deserialize, Serialize};
@@ -83,7 +82,7 @@ fn move_point_out(
     good_v
 }
 
-#[cfg(feature = "custom_debug")]
+#[cfg(feature = "debug_mode")]
 pub fn confirm_volume_exclusion(
     vs: &[V2D; NVERTS],
     contacts: &[ContactData],
@@ -109,7 +108,7 @@ pub fn confirm_volume_exclusion(
     Ok(())
 }
 
-#[cfg(feature = "custom_debug")]
+#[cfg(feature = "debug_mode")]
 pub fn enforce_volume_exclusion(
     old_vs: &[V2D; NVERTS],
     mut new_vs: [V2D; NVERTS],
@@ -129,7 +128,7 @@ pub fn enforce_volume_exclusion(
     Ok(new_vs)
 }
 
-#[cfg(not(feature = "custom_debug"))]
+#[cfg(not(feature = "debug_mode"))]
 pub fn enforce_volume_exclusion(
     old_vs: &[V2D; NVERTS],
     mut new_vs: [V2D; NVERTS],
@@ -152,15 +151,8 @@ impl CellState {
         state: CoreState,
         interactions: &CellInteractions,
         parameters: &Parameters,
-        reg: Option<&mut RandomEventGenerator>,
+        rac_rand_state: RacRandState,
     ) -> CellState {
-        let rac_rand_state = RacRandState::init(
-            match reg {
-                Some(cr) => Some(&mut cr.rng),
-                None => None,
-            },
-            parameters,
-        );
         let geom_state = state.calc_geom_state();
         let mech_state =
             state.calc_mech_state(&geom_state, parameters);
@@ -183,16 +175,15 @@ impl CellState {
     }
 
     #[allow(unused)]
-    #[cfg(feature = "custom_debug")]
+    #[cfg(feature = "debug_mode")]
     /// Suppose our current state is `state`. We want to determine
     /// the next state after a time period `dt` has elapsed. We
     /// assume `(next_state - state)/delta(t) = delta(state)`.
     pub fn simulate_euler(
-        &self,
+        &mut self,
         tstep: u32,
         interactions: &CellInteractions,
         contact_data: Vec<ContactData>,
-        rng: Option<&mut RandomEventGenerator>,
         world_parameters: &WorldParameters,
         parameters: &Parameters,
     ) -> Result<CellState, String> {
@@ -232,18 +223,11 @@ impl CellState {
         let geom_state = state.calc_geom_state();
         // println!("++++++++++++");
         state.validate("euler", &parameters)?;
-        let rac_rand_state =
-            match (tstep == self.rac_rand.next_update, rng) {
-                (true, Some(cr)) => {
-                    self.rac_rand.update(cr, tstep, parameters)
-                }
-                _ => self.rac_rand,
-            };
         Ok(CellState {
             ix: self.ix,
             group_ix: self.group_ix,
             core: state,
-            rac_rand: rac_rand_state,
+            rac_rand: self.rac_rand.update(tstep, parameters),
             geom: geom_state,
             chem: chem_state,
             mech: mech_state,
@@ -251,7 +235,7 @@ impl CellState {
     }
 
     #[allow(unused)]
-    #[cfg(not(feature = "custom_debug"))]
+    #[cfg(not(feature = "debug_mode"))]
     pub fn simulate_euler(
         &self,
         tstep: u32,
@@ -309,13 +293,12 @@ impl CellState {
         }
     }
 
-    #[cfg(feature = "custom_debug")]
+    #[cfg(feature = "debug_mode")]
     pub fn simulate_rkdp5(
-        &self,
+        &mut self,
         tstep: u32,
         interactions: &CellInteractions,
         contact_data: Vec<ContactData>,
-        rng: Option<&mut RandomEventGenerator>,
         world_parameters: &WorldParameters,
         parameters: &Parameters,
     ) -> Result<CellState, String> {
@@ -364,25 +347,18 @@ impl CellState {
         // println!("{}", state);
         //let dep_vars = CoreState::calc_dep_vars(&state, &self.rac_rand_state, interactions, parameters);
         // println!("{}", dep_vars);
-        let rac_rand_state =
-            match (tstep == self.rac_rand.next_update, rng) {
-                (true, Some(cr)) => {
-                    self.rac_rand.update(cr, tstep, parameters)
-                }
-                _ => self.rac_rand,
-            };
         Ok(CellState {
             ix: self.ix,
             group_ix: self.group_ix,
             core: state,
-            rac_rand: rac_rand_state,
+            rac_rand: self.rac_rand.update(tstep, parameters),
             geom: geom_state,
             chem: chem_state,
             mech: mech_state,
         })
     }
 
-    #[cfg(not(feature = "custom_debug"))]
+    #[cfg(not(feature = "debug_mode"))]
     pub fn simulate_rkdp5(
         &self,
         tstep: u32,
@@ -436,7 +412,7 @@ impl CellState {
             contact_polys,
         );
         let geom_state = state.calc_geom_state();
-        #[cfg(feature = "custom_debug")]
+        #[cfg(feature = "debug_mode")]
         state.validate("rkdp5", parameters);
         // println!("{}", state);
         //let dep_vars = CoreState::calc_dep_vars(&state, &self.rac_rand_state, interactions, parameters);

@@ -2,8 +2,10 @@ use crate::math::geometry::Poly;
 use crate::math::v2d::V2D;
 use crate::parameters::ChemAttrParams;
 use crate::NVERTS;
+use avro_schema_derive::Schematize;
+use serde::{Deserialize, Serialize};
 
-#[derive(Clone)]
+#[derive(Clone, Deserialize, Serialize, Schematize)]
 pub struct ChemAttrGenerator {
     center_mag: f32,
     slope: f32,

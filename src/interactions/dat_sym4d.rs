@@ -1,9 +1,12 @@
 use crate::interactions::dat_utils::{sort_ixs4d, sym_sum};
+use crate::utils::avro::Schematized;
 use crate::NVERTS;
+use avro_schema_derive::Schematize;
+use serde::{Deserialize, Serialize};
 
 /// Matrix to store inter-vertex data.
-#[derive(Clone)]
-pub struct SymCcVvDat<T: Copy> {
+#[derive(Clone, Deserialize, Serialize, Schematize)]
+pub struct SymCcVvDat<T: Copy + Schematized> {
     num_cells: usize,
     sym_sum_n: usize,
     vv_stride: usize,

@@ -6,26 +6,25 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 pub mod hardio;
-#[cfg(feature = "custom_debug")]
+#[cfg(feature = "debug_mode")]
 use crate::cell::confirm_volume_exclusion;
 use crate::cell::core_state::CoreState;
 use crate::cell::CellState;
 use crate::experiments::{CellGroup, Experiment};
 use crate::interactions::{
-    CellInteractions, DiffRgtpAct, InteractionGenerator,
+    CellInteractions, InteractionGenerator, RgtpActivityDiff,
 };
-use crate::math::v2d::{poly_to_string, V2D};
+use crate::math::v2d::V2D;
 use crate::parameters::{Parameters, WorldParameters};
 use crate::world::hardio::{save_data, save_schema};
 use crate::NVERTS;
 use avro_rs::Writer;
 use avro_schema_derive::Schematize;
-use once_cell::unsync::Lazy;
 //use rand_core::SeedableRng;
+use crate::cell::chemistry::RacRandState;
+use crate::utils::pcg32::Pcg32;
 use rand::seq::SliceRandom;
-use rand::{RngCore, SeedableRng};
-use rand_distr::{Distribution, Normal};
-use rand_pcg::Pcg64;
+use rand::RngCore;
 use serde::{Deserialize, Serialize};
 use std::f32::consts::PI;
 use std::path::PathBuf;
@@ -38,10 +37,10 @@ pub struct Cells {
 }
 
 impl Cells {
-    #[cfg(not(feature = "custom_debug"))]
+    #[cfg(not(feature = "debug_mode"))]
     fn simulate(
         &self,
-        rng: &mut Pcg64,
+        rng: &mut Pcg32,
         cell_regs: &mut [Option<RandomEventGenerator>],
         world_parameters: &WorldParameters,
         group_parameters: &[Parameters],
@@ -85,12 +84,11 @@ impl Cells {
         }
     }
 
-    #[cfg(feature = "custom_debug")]
+    #[cfg(feature = "debug_mode")]
     fn simulate(
         &self,
         tstep: u32,
-        rng: &mut Pcg64,
-        cell_regs: &mut [Option<RandomEventGenerator>],
+        rng: &mut Pcg32,
         world_parameters: &WorldParameters,
         group_parameters: &[Parameters],
         interaction_generator: &mut InteractionGenerator,
@@ -128,7 +126,6 @@ impl Cells {
                 self.tstep,
                 &self.interactions[ci],
                 contact_data,
-                cell_regs[ci].as_mut(),
                 world_parameters,
                 &group_parameters[cell_state.group_ix as usize],
             )?;
@@ -173,26 +170,15 @@ impl Cells {
     }
 }
 
-pub struct RandomEventGenerator {
-    pub(crate) rng: Pcg64,
-    distrib: Normal<f32>,
-}
-
-impl RandomEventGenerator {
-    pub fn sample(&mut self) -> f32 {
-        self.distrib.sample(&mut self.rng)
-    }
-}
-
+#[derive(Deserialize, Serialize, Schematize)]
 pub struct World {
     tstep_length: f32,
     global_params: WorldParameters,
     cell_group_params: Vec<Parameters>,
     pub history: Vec<Cells>,
-    cell_regs: Vec<Option<RandomEventGenerator>>,
     cell_states: Cells,
     interaction_generator: InteractionGenerator,
-    pub rng: Pcg64,
+    pub rng: Pcg32,
     output_dir: PathBuf,
     exp_name: String,
 }
@@ -269,7 +255,7 @@ impl World {
                 let parameters = &group_parameters[gix];
                 state.calc_crl_rgtp_state(parameters)
             })
-            .collect::<Vec<[DiffRgtpAct; NVERTS]>>();
+            .collect::<Vec<[RgtpActivityDiff; NVERTS]>>();
         // Create a new `InteractionGenerator`.
         let interact_gen = InteractionGenerator::new(
             &cell_polys,
@@ -280,7 +266,6 @@ impl World {
         let cell_interactions = interact_gen.generate();
         // Create `Cell` structures to represent each cell.
         let mut cells = vec![];
-        let mut cell_regs = vec![];
         for (cell_ix, group_ix) in
             cell_group_ixs.into_iter().enumerate()
         {
@@ -288,26 +273,13 @@ impl World {
             // by figuring out which group it belongs to, as all cells
             // within a group use the same parameters.
             let parameters = &group_parameters[group_ix];
-            // Create a function which generates normally distributed
-            // random variables with mean `rand_avg_t` and std
-            // `rand_std_t`. Used to determine time steps between
-            // Rac1 randomization events.
-            let normal = Lazy::new(|| {
-                Normal::new(
-                    parameters.rand_avg_t,
-                    parameters.rand_std_t,
+            let rac_rand_state = if parameters.randomization {
+                RacRandState::from_seed_u64(
+                    rng.next_u64(),
+                    &parameters,
                 )
-                .unwrap()
-            });
-            // Create a random event generator for this cell. Will be
-            // `None` if randomization is turned off.
-            let mut creg = if parameters.randomization {
-                Some(RandomEventGenerator {
-                    rng: Pcg64::seed_from_u64(rng.next_u64()),
-                    distrib: *normal,
-                })
             } else {
-                None
+                RacRandState::default()
             };
             // Create a new cell.
             cells.push(CellState::new(
@@ -316,9 +288,8 @@ impl World {
                 cell_core_states[cell_ix],
                 &cell_interactions[cell_ix],
                 parameters,
-                creg.as_mut(),
+                rac_rand_state,
             ));
-            cell_regs.push(creg);
         }
         let state = Cells {
             tstep: 0,
@@ -330,7 +301,6 @@ impl World {
             tstep_length: char_quants.time(),
             global_params: world_parameters.clone(),
             cell_group_params: group_parameters,
-            cell_regs,
             history,
             cell_states: state,
             interaction_generator: interact_gen,
@@ -349,13 +319,12 @@ impl World {
             //     self.cell_states.tstep, num_tsteps
             // );
             let tstep = self.cell_states.tstep;
-            #[cfg(feature = "custom_debug")]
+            #[cfg(feature = "debug_mode")]
             let new_state: Cells = self
                 .cell_states
                 .simulate(
                     tstep,
                     &mut self.rng,
-                    self.cell_regs.as_mut_slice(),
                     &self.global_params,
                     &self.cell_group_params,
                     &mut self.interaction_generator,
@@ -368,10 +337,10 @@ impl World {
                     );
                 });
 
-            #[cfg(not(feature = "custom_debug"))]
+            #[cfg(not(feature = "debug_mode"))]
             let new_state = self.cell_states.simulate(
                 &mut self.rng,
-                self.cell_regs.as_mut_slice(),
+                self.cell_rngs.as_mut_slice(),
                 &self.global_params,
                 &self.cell_group_params,
                 &mut self.interaction_generator,
@@ -383,9 +352,9 @@ impl World {
     }
 
     pub fn save_history(&self) {
-        #[cfg(feature = "custom_debug")]
+        #[cfg(feature = "debug_mode")]
         let name = format!("history_dbg_{}", &self.exp_name);
-        #[cfg(not(feature = "custom_debug"))]
+        #[cfg(not(feature = "debug_mode"))]
         let name = format!("history_{}", &self.exp_name);
 
         let schema = Cells::schematize(None);

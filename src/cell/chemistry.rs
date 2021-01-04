@@ -7,17 +7,16 @@
 // except according to those terms.
 
 use crate::cell::core_state::fmt_var_arr;
-use crate::interactions::DiffRgtpAct;
 use crate::math::hill_function3;
 use crate::parameters::Parameters;
+use crate::utils::normal::NormalDistrib;
+use crate::utils::pcg32::Pcg32;
 use crate::utils::{circ_ix_minus, circ_ix_plus};
-use crate::world::RandomEventGenerator;
 use crate::NVERTS;
 use avro_schema_derive::Schematize;
 use rand::seq::SliceRandom;
-use rand::Rng;
+use rand::{Rng, SeedableRng};
 use rand_distr::{Distribution, Uniform};
-use rand_pcg::Pcg64;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::fmt::Display;
@@ -43,7 +42,7 @@ impl DistributionScheme {
     }
 
     fn gen_random(
-        rng: &mut Pcg64,
+        rng: &mut Pcg32,
         frac: f32,
     ) -> [f32; NVERTS as usize] {
         let mut r = [0.0; NVERTS as usize];
@@ -69,7 +68,7 @@ impl DistributionScheme {
         Self::scaled_unitize(frac, r)
     }
 
-    pub fn generate(&self, rng: &mut Pcg64) -> [f32; NVERTS] {
+    pub fn generate(&self, rng: &mut Pcg32) -> [f32; NVERTS] {
         match &self.ty {
             DistributionType::Random => {
                 Self::gen_random(rng, self.frac)
@@ -81,7 +80,7 @@ impl DistributionScheme {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Deserialize, Serialize, Schematize)]
 pub struct RgtpDistribution {
     pub active: [f32; NVERTS as usize],
     pub inactive: [f32; NVERTS as usize],
@@ -91,7 +90,7 @@ impl RgtpDistribution {
     pub fn generate(
         act_distrib: DistributionScheme,
         inact_distrib: DistributionScheme,
-        rng: &mut Pcg64,
+        rng: &mut Pcg32,
     ) -> Result<RgtpDistribution, String> {
         if act_distrib.frac + inact_distrib.frac > 1.0 {
             Err("active + inactive > 1.0".to_string())
@@ -260,17 +259,20 @@ pub fn calc_kdgtps_rho(
     kdgtps_rho
 }
 
-#[derive(Copy, Clone, Default, Deserialize, Serialize, Schematize)]
+#[derive(Copy, Clone, Deserialize, Serialize, Schematize)]
 pub struct RacRandState {
+    enabled: bool,
     /// When does the next update occur?
     pub next_update: u32,
     /// Rac1 randomization factors per vertex.
     pub x_rands: [f32; NVERTS],
+    distrib: NormalDistrib,
+    rng: Pcg32,
 }
 
 impl RacRandState {
     pub fn gen_rand_factors(
-        rng: &mut Pcg64,
+        rng: &mut Pcg32,
         num_rand_verts: usize,
         rand_mag: f32,
     ) -> [f32; NVERTS] {
@@ -281,46 +283,52 @@ impl RacRandState {
         r
     }
 
-    pub fn init(
-        rng: Option<&mut Pcg64>,
+    pub fn from_seed_u64(
+        seed: u64,
         parameters: &Parameters,
     ) -> RacRandState {
-        match rng {
-            Some(r) => {
-                let ut = Uniform::from(0.0..parameters.rand_avg_t);
-                RacRandState {
-                    next_update: ut.sample(r).floor() as u32,
-                    x_rands: Self::gen_rand_factors(
-                        r,
-                        parameters.num_rand_vs as usize,
-                        parameters.rand_mag,
-                    ),
-                }
-            }
-            None => RacRandState {
-                next_update: 0,
-                x_rands: [0.0; NVERTS],
-            },
+        let mut rng = Pcg32::seed_from_u64(seed);
+        let ut = Uniform::from(0.0..parameters.rand_avg_t);
+        RacRandState {
+            enabled: true,
+            next_update: ut.sample(&mut rng).floor() as u32,
+            x_rands: Self::gen_rand_factors(
+                &mut rng,
+                parameters.num_rand_vs as usize,
+                parameters.rand_mag,
+            ),
+            distrib: NormalDistrib::new(
+                parameters.rand_avg_t,
+                parameters.rand_std_t,
+            ),
+            rng,
         }
     }
 
     pub fn update(
-        &self,
-        cr: &mut RandomEventGenerator,
+        &mut self,
         tstep: u32,
         parameters: &Parameters,
     ) -> RacRandState {
-        let next_update = tstep + cr.sample().floor() as u32;
-        // println!("random update from {} to {}", tstep, next_update);
-        let x_rands = Self::gen_rand_factors(
-            &mut cr.rng,
-            parameters.num_rand_vs,
-            parameters.rand_mag,
-        );
-        // println!("{:?}", x_rands);
-        RacRandState {
-            next_update,
-            x_rands,
+        if self.enabled && tstep == self.next_update {
+            let next_update = tstep
+                + self.distrib.sample(&mut self.rng).floor() as u32;
+            // println!("random update from {} to {}", tstep, next_update);
+            let x_rands = Self::gen_rand_factors(
+                &mut self.rng,
+                parameters.num_rand_vs,
+                parameters.rand_mag,
+            );
+            // println!("{:?}", x_rands);
+            RacRandState {
+                enabled: self.enabled,
+                next_update,
+                x_rands,
+                distrib: self.distrib,
+                rng: self.rng,
+            }
+        } else {
+            *self
         }
     }
 }
@@ -329,5 +337,17 @@ impl Display for RacRandState {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt_var_arr(f, "rfs", &self.x_rands)?;
         writeln!(f, "next_update: {}", self.next_update)
+    }
+}
+
+impl Default for RacRandState {
+    fn default() -> Self {
+        RacRandState {
+            enabled: false,
+            next_update: 0,
+            x_rands: [0.0; NVERTS],
+            distrib: NormalDistrib::new(0.0, 1.0),
+            rng: Pcg32::from_entropy(),
+        }
     }
 }

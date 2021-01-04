@@ -30,7 +30,7 @@ use crate::NVERTS;
 use avro_schema_derive::Schematize;
 use serde::{Deserialize, Serialize};
 
-pub type DiffRgtpAct = f32;
+pub type RgtpActivityDiff = f32;
 
 #[derive(
     Copy, Clone, Debug, Default, Deserialize, Schematize, Serialize,
@@ -45,11 +45,11 @@ pub struct CellInteractions {
 }
 
 /// Generates interaction related factors.
-#[derive(Clone)]
+#[derive(Clone, Deserialize, Serialize, Schematize)]
 pub struct InteractionGenerator {
     /// Vertex coordinates, per cell, for all cells in the simulation.
     cell_polys: Vec<Poly>,
-    all_rgtps: Vec<[DiffRgtpAct; NVERTS]>,
+    all_rgtps: Vec<[RgtpActivityDiff; NVERTS]>,
     /// Generates CIL/CAL related interaction information. In other
     /// words, interactions that require cells to engage in physical
     /// contact.
@@ -67,7 +67,7 @@ pub struct ContactData {
 impl InteractionGenerator {
     pub fn new(
         cell_verts: &[[V2D; NVERTS]],
-        cell_rgtps: &[[DiffRgtpAct; NVERTS]],
+        cell_rgtps: &[[RgtpActivityDiff; NVERTS]],
         params: InteractionParams,
     ) -> InteractionGenerator {
         let cell_polys = cell_verts

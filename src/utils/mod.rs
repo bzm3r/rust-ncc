@@ -6,6 +6,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+pub mod avro;
+pub mod normal;
+pub mod pcg32;
+
 pub fn circ_ix_minus(ix: usize, num_items: usize) -> usize {
     if ix == 0 {
         num_items - 1

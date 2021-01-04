@@ -1,14 +1,14 @@
 [package]
 name = "playground"
 version = "0.1.0"
-authors = ["Brian Merchant <bhmerchant@gmail.com>"]
+authors = ["bhmerchant@gmail.com <bhmerchant@gmail.com>"]
 edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-rand = "0.7.3"
-avro-rs = "0.10.0"
+avro-rs = "0.12.0"
 avro-schema-derive = { path = "../avro-schema-derive" }
-serde = "1.0.114"
-serde_json = "1.0.56"
+serde = { version = "1.0.118", features = ["derive"] }
+serde_json = { version = "1.0.61", features = ["preserve_order"]}
+

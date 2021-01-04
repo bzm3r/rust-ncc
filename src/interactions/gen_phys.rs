@@ -1,12 +1,14 @@
 use crate::interactions::dat_4d::CvCvDat;
 use crate::interactions::dat_sym2d::SymCcDat;
-use crate::interactions::{generate_contacts, DiffRgtpAct};
+use crate::interactions::{generate_contacts, RgtpActivityDiff};
 use crate::math::close_to_zero;
 use crate::math::geometry::{BBox, Poly};
 use crate::math::v2d::V2D;
 use crate::parameters::PhysicalContactParams;
 use crate::utils::circ_ix_plus;
 use crate::NVERTS;
+use avro_schema_derive::Schematize;
+use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
 
 #[derive(Clone, Copy)]
@@ -14,7 +16,7 @@ pub struct Dist(f32);
 #[derive(Clone, Copy)]
 pub struct LineSegParam(f32);
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Serialize, Deserialize, Schematize)]
 pub enum ClosePoint {
     Vertex(V2D),
     OnEdge(LineSegParam, V2D),
@@ -63,7 +65,7 @@ impl ClosePoint {
 /// Generates CIL/CAL/adhesion related interaction information. These
 /// are the interactions that require cells to engage in
 /// physical contact.
-#[derive(Clone)]
+#[derive(Clone, Deserialize, Serialize, Schematize)]
 pub struct PhysicalContactGenerator {
     dat: CvCvDat<ClosePoint>,
     pub contact_bbs: Vec<BBox>,
@@ -130,7 +132,7 @@ impl PhysicalContactGenerator {
         ci: usize,
         vi: usize,
         oci: usize,
-        cell_rgtps: &[[DiffRgtpAct; NVERTS]],
+        cell_rgtps: &[[RgtpActivityDiff; NVERTS]],
     ) -> Vec<CloseEdge> {
         let v_rgtp = cell_rgtps[ci][vi];
         (0..NVERTS)
@@ -171,7 +173,7 @@ impl PhysicalContactGenerator {
         &self,
         ci: usize,
         vi: usize,
-        cell_rgtps: &[[DiffRgtpAct; NVERTS]],
+        cell_rgtps: &[[RgtpActivityDiff; NVERTS]],
     ) -> Vec<CloseEdge> {
         let mut r = vec![];
         for oci in 0..self.dat.num_cells {
@@ -244,7 +246,7 @@ impl PhysicalContactGenerator {
 
     pub fn generate(
         &self,
-        cell_rgtps: &[[DiffRgtpAct; NVERTS]],
+        cell_rgtps: &[[RgtpActivityDiff; NVERTS]],
     ) -> PhysContactFactors {
         let num_cells = self.contacts.num_cells;
         let mut adh = vec![[V2D::default(); NVERTS]; num_cells];
@@ -302,7 +304,10 @@ pub enum CrlEffect {
 }
 
 impl CrlEffect {
-    pub fn calc(a: DiffRgtpAct, b: DiffRgtpAct) -> CrlEffect {
+    pub fn calc(
+        a: RgtpActivityDiff,
+        b: RgtpActivityDiff,
+    ) -> CrlEffect {
         match (a > 0.0, b > 0.0) {
             (true, true) => CrlEffect::Cal,
             (_, _) => CrlEffect::Cil,

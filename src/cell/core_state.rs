@@ -7,14 +7,13 @@ use crate::cell::mechanics::{
     calc_cyto_forces, calc_edge_forces, calc_edge_vecs,
     calc_rgtp_forces,
 };
-use crate::interactions::{CellInteractions, DiffRgtpAct};
+use crate::interactions::{CellInteractions, RgtpActivityDiff};
 use crate::math::v2d::V2D;
-use crate::math::{close_to_zero, hill_function3, max_f32, min_f32};
+use crate::math::{hill_function3, max_f32, min_f32};
 use crate::parameters::{Parameters, WorldParameters};
 use crate::utils::circ_ix_minus;
 use crate::NVERTS;
 use avro_schema_derive::Schematize;
-use cairo::Operator::Difference;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::fmt::Display;
@@ -775,7 +774,7 @@ impl CoreState {
     pub fn calc_crl_rgtp_state(
         &self,
         parameters: &Parameters,
-    ) -> [DiffRgtpAct; NVERTS] {
+    ) -> [RgtpActivityDiff; NVERTS] {
         let mut r = [0.0; NVERTS];
         self.rac_acts
             .iter()
@@ -793,7 +792,7 @@ impl CoreState {
         r
     }
 
-    #[cfg(feature = "custom_debug")]
+    #[cfg(feature = "debug_mode")]
     pub fn validate(
         &self,
         loc_str: &str,
