@@ -21,7 +21,7 @@ use std::time::Instant;
 pub const NVERTS: usize = 16;
 
 fn main() {
-    let exp = experiments::pairs::generate(Some(3));
+    let exp = experiments::separeted_pair::generate(Some(3));
     #[cfg(target_os = "windows")]
     let output_dir = PathBuf::from(format!(
         "{}\\output",

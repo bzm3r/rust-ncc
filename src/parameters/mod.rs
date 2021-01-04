@@ -32,7 +32,10 @@ pub struct CharQuantities {
     pub frac_rgtp: f32,
 }
 
+
 impl CharQuantities {
+    /// Given a quantity `q`, normalize its units using the primary units `f` (Force),
+    /// `l` (`Length`) and `t` (`Time`) provided in `CharQuants`.
     pub fn normalize<T: Quantity>(&self, q: &T) -> f32 {
         let q = q.g();
         let u = q.units();
@@ -323,7 +326,7 @@ pub struct RawParameters {
 }
 
 /// Parameters necessary for simulation of a cell.
-#[derive(Clone)]
+#[derive(Clone,Copy)]
 pub struct Parameters {
     /// Resting cell radius.
     pub cell_r: f32,

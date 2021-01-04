@@ -123,7 +123,7 @@ def paint(delta):
     ax.cla()
     ax.set_aspect('equal')
     ax.set_xlim([0, 40])
-    ax.set_ylim([0, 80])
+    ax.set_ylim([0, 160])
     for (ci, poly) in enumerate(poly_per_cell_per_tstep[tstep]):
         if ci == 0:
             poly_color = "k"

@@ -56,10 +56,10 @@ impl DistributionScheme {
 
     fn gen_specific(
         frac: f32,
-        verts: &[bool; NVERTS as usize],
+        marked_verts: &[bool; NVERTS as usize],
     ) -> [f32; NVERTS as usize] {
         let mut r = [0.0; NVERTS as usize];
-        verts.iter().zip(r.iter_mut()).for_each(|(&marked, e)| {
+        marked_verts.iter().zip(r.iter_mut()).for_each(|(&marked, e)| {
             if marked {
                 *e = 1.0;
             }
