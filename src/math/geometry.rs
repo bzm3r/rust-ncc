@@ -12,11 +12,10 @@ use crate::math::{
 };
 use crate::utils::{circ_ix_minus, circ_ix_plus};
 use crate::NVERTS;
-use avro_schema_derive::Schematize;
 use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
 
-#[derive(Clone, Copy, Deserialize, Serialize, Schematize)]
+#[derive(Clone, Copy, Deserialize, Serialize)]
 pub struct Poly {
     pub verts: [V2D; NVERTS],
     pub edges: [LineSeg2D; NVERTS],
@@ -54,7 +53,7 @@ pub fn calc_poly_area(xys: &[V2D]) -> f32 {
     area * 0.5
 }
 
-#[derive(Copy, Clone, Deserialize, Serialize, Schematize)]
+#[derive(Copy, Clone, Deserialize, Serialize)]
 pub struct BBox {
     pub xmin: f32,
     pub ymin: f32,
@@ -158,7 +157,7 @@ pub fn is_point_in_poly(
 
 /// A line segment from p0 to p1 is the set of points `q = tp + p0`,
 /// where `p = (p1 - p0)`, and `0 <= t <= 1`.
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Serialize, Deserialize)]
 pub struct LineSeg2D {
     /// First point defining line segment.
     p0: V2D,
@@ -190,17 +189,17 @@ impl LineSeg2D {
         self.bbox = BBox::from_point_pair(p0, p1);
     }
 
-    /// Create new line segment from four coordinate points
-    /// `(a, b, x, y)` of type `(f32; 4)`, assuming that `p0`
-    /// is `V2d::new(a, b)` and `p1` is `V2d::new(x, y)`.
-    pub fn from_coordinates(
-        a: f32,
-        b: f32,
-        x: f32,
-        y: f32,
-    ) -> LineSeg2D {
-        LineSeg2D::new(&V2D::new(a, b), &V2D::new(x, y))
-    }
+    // /// Create new line segment from four coordinate points
+    // /// `(a, b, x, y)` of type `(f32; 4)`, assuming that `p0`
+    // /// is `V2d::new(a, b)` and `p1` is `V2d::new(x, y)`.
+    // pub fn from_coordinates(
+    //     a: f32,
+    //     b: f32,
+    //     x: f32,
+    //     y: f32,
+    // ) -> LineSeg2D {
+    //     LineSeg2D::new(&V2D::new(a, b), &V2D::new(x, y))
+    // }
 
     /// Let this segment `self` be parametrized so that a point
     /// `p` lies on `self` if `p = t * self.p + self.p0` for

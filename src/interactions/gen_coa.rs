@@ -2,14 +2,11 @@ use crate::interactions::dat_sym2d::SymCcDat;
 use crate::interactions::dat_sym4d::SymCcVvDat;
 use crate::interactions::generate_contacts;
 use crate::math::geometry::{BBox, LineSeg2D, Poly};
-use crate::math::v2d::V2D;
 use crate::parameters::CoaParams;
-use crate::utils::{circ_ix_minus, circ_ix_plus};
 use crate::NVERTS;
-use avro_schema_derive::Schematize;
 use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Copy, Deserialize, Serialize, Schematize)]
+#[derive(Clone, Copy, Deserialize, Serialize)]
 pub struct VertexPairInfo {
     dist: f32,
     num_intersects: f32,
@@ -24,7 +21,7 @@ impl VertexPairInfo {
     }
 }
 
-#[derive(Clone, Deserialize, Serialize, Schematize)]
+#[derive(Clone, Deserialize, Serialize)]
 pub struct CoaGenerator {
     dat: SymCcVvDat<VertexPairInfo>,
     contact_bbs: Vec<BBox>,
@@ -32,31 +29,31 @@ pub struct CoaGenerator {
     params: CoaParams,
 }
 
-pub fn self_intersects(
-    vi: usize,
-    poly: &[V2D; NVERTS],
-    lseg: &LineSeg2D,
-) -> bool {
-    let ui = circ_ix_minus(vi, NVERTS);
-    for i in 0..NVERTS {
-        if !(i == vi || i == ui)
-            && lseg
-                .intersects_lseg(&LineSeg2D::new(
-                    &poly[i],
-                    &poly[circ_ix_plus(i, NVERTS)],
-                ))
-                .is_some()
-        {
-            return true;
-        }
-    }
-    false
-}
+// pub fn self_intersects(
+//     vi: usize,
+//     poly: &[V2D; NVERTS],
+//     lseg: &LineSeg2D,
+// ) -> bool {
+//     let ui = circ_ix_minus(vi, NVERTS);
+//     for i in 0..NVERTS {
+//         if !(i == vi || i == ui)
+//             && lseg
+//                 .intersects_lseg(&LineSeg2D::new(
+//                     &poly[i],
+//                     &poly[circ_ix_plus(i, NVERTS)],
+//                 ))
+//                 .is_some()
+//         {
+//             return true;
+//         }
+//     }
+//     false
+// }
 
-pub struct VertexInfo {
-    ci: usize,
-    v: V2D,
-}
+// pub struct VertexInfo {
+//     ci: usize,
+//     v: V2D,
+// }
 
 /// Calculate clearance and distance.
 pub fn calc_pair_info(

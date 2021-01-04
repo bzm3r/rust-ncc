@@ -1,4 +1,5 @@
 use crate::NVERTS;
+use serde::{Deserialize, Serialize};
 
 // /// `CcVvDat` allows storage of (cell, vertex)-(cell, vertex) data
 // /// indexed by `(ci, vi, oci, ovi)`, (`ci` for "cell index", `oci` for
@@ -101,7 +102,7 @@ use crate::NVERTS;
 /// a particular vertex on it. All data stored must have
 /// the same type. However, the structure is generic over different
 /// data types as long as they implement `Copy` and `Default`.
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct CvCvDat<T: Copy> {
     pub num_cells: usize,
     c_stride: usize,
@@ -135,18 +136,18 @@ impl<T: Copy> CvCvDat<T> {
         ci * self.c_stride + vi * self.cv_stride + oci * NVERTS + ovi
     }
 
-    pub fn calc_ix_range(
-        &self,
-        ci: usize,
-        vi: usize,
-        oci: usize,
-    ) -> (usize, usize) {
-        let oci = if ci < oci { oci - 1 } else { oci };
-        let begin =
-            ci * self.c_stride + vi * self.cv_stride + oci * NVERTS;
-        (begin, begin + NVERTS)
-    }
-
+    // pub fn calc_ix_range(
+    //     &self,
+    //     ci: usize,
+    //     vi: usize,
+    //     oci: usize,
+    // ) -> (usize, usize) {
+    //     let oci = if ci < oci { oci - 1 } else { oci };
+    //     let begin =
+    //         ci * self.c_stride + vi * self.cv_stride + oci * NVERTS;
+    //     (begin, begin + NVERTS)
+    // }
+    //
     pub fn set(
         &mut self,
         ci: usize,
@@ -189,17 +190,17 @@ impl<T: Copy> CvCvDat<T> {
         }
     }
 
-    pub fn get_per_other_vertex(
-        &self,
-        ci: usize,
-        vi: usize,
-        oci: usize,
-    ) -> [T; NVERTS] {
-        let mut r = [self.undefined; NVERTS];
-        if ci != oci {
-            let (begin, end) = self.calc_ix_range(ci, vi, oci);
-            r.copy_from_slice(&self.dat[begin..end]);
-        }
-        r
-    }
+    // pub fn get_per_other_vertex(
+    //     &self,
+    //     ci: usize,
+    //     vi: usize,
+    //     oci: usize,
+    // ) -> [T; NVERTS] {
+    //     let mut r = [self.undefined; NVERTS];
+    //     if ci != oci {
+    //         let (begin, end) = self.calc_ix_range(ci, vi, oci);
+    //         r.copy_from_slice(&self.dat[begin..end]);
+    //     }
+    //     r
+    // }
 }

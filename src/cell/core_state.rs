@@ -13,7 +13,6 @@ use crate::math::{hill_function3, max_f32, min_f32};
 use crate::parameters::{Parameters, WorldParameters};
 use crate::utils::circ_ix_minus;
 use crate::NVERTS;
-use avro_schema_derive::Schematize;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::fmt::Display;
@@ -23,9 +22,7 @@ use std::ops::{Add, Div, Mul, Sub};
 /// geometric updates. That is, they are modelled using ODEs which
 /// are then integrated using either the Euler method or
 /// Runge-Kutta Dormand-Prince 5 (Matlab's `ode45`).
-#[derive(
-    Copy, Clone, Debug, Default, Deserialize, Serialize, Schematize,
-)]
+#[derive(Copy, Clone, Debug, Default, Deserialize, Serialize)]
 pub struct CoreState {
     /// Polygon representing cell shape.
     pub poly: [V2D; NVERTS],
@@ -152,9 +149,7 @@ impl Mul<CoreState> for f32 {
 }
 
 /// Records the mechanical state of a cell.
-#[derive(
-    Copy, Clone, Debug, Default, Deserialize, Serialize, Schematize,
-)]
+#[derive(Copy, Clone, Debug, Default, Deserialize, Serialize)]
 pub struct MechState {
     /// Strain each edge is under, where resting edge length is
     /// defined in the cell's parameters.
@@ -185,9 +180,7 @@ pub struct MechState {
 ///     * `x_tens`: "tension" factor that affects Rac1 activation
 /// rate, calculated based on average tensile strain in cell (i.e.
 /// how stretched the cell is).
-#[derive(
-    Copy, Clone, Debug, Default, Deserialize, Serialize, Schematize,
-)]
+#[derive(Copy, Clone, Debug, Default, Deserialize, Serialize)]
 pub struct ChemState {
     pub kdgtps_rac: [f32; NVERTS],
     pub kgtps_rac: [f32; NVERTS],
@@ -202,9 +195,7 @@ pub struct ChemState {
     pub x_tens: f32,
 }
 
-#[derive(
-    Copy, Clone, Debug, Default, Deserialize, Serialize, Schematize,
-)]
+#[derive(Copy, Clone, Debug, Default, Deserialize, Serialize)]
 pub struct GeomState {
     /// Unit edge vectors which point from position of vertex `vi`
     /// to position of vertex `vi + 1`, where `vi + 1` is calculated
@@ -222,7 +213,7 @@ pub struct GeomState {
     pub unit_inward_vecs: [V2D; NVERTS],
 }
 
-// #[derive(Copy, Clone, Debug, Default, Deserialize, Serialize, Schematize)]
+// #[derive(Copy, Clone, Debug, Default, Deserialize, Serialize)]
 // pub struct DepStates {
 //     pub geom_state: GeomState,
 //     pub chem_state: ChemState,

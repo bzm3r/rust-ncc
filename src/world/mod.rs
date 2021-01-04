@@ -16,22 +16,18 @@ use crate::interactions::{
 };
 use crate::math::v2d::V2D;
 use crate::parameters::{Parameters, WorldParameters};
-use crate::world::hardio::{save_data, save_schema};
 use crate::NVERTS;
-use avro_rs::Writer;
-use avro_schema_derive::Schematize;
 //use rand_core::SeedableRng;
-use crate::cell::chemistry::RacRandState;
 use crate::utils::pcg32::Pcg32;
 use rand::seq::SliceRandom;
-use rand::RngCore;
+use rand::{RngCore, SeedableRng};
 use serde::{Deserialize, Serialize};
 use std::f32::consts::PI;
+use std::fs::OpenOptions;
 use std::path::PathBuf;
 
-#[derive(Clone, Deserialize, Serialize, Schematize)]
+#[derive(Clone, Deserialize, Serialize)]
 pub struct Cells {
-    pub tstep: u32,
     pub cell_states: Vec<CellState>,
     pub interactions: Vec<CellInteractions>,
 }
@@ -93,6 +89,7 @@ impl Cells {
         group_parameters: &[Parameters],
         interaction_generator: &mut InteractionGenerator,
     ) -> Result<Cells, String> {
+        dbg!("simulating cells...");
         let mut new_cell_states =
             vec![self.cell_states[0]; self.cell_states.len()];
         let shuffled_cells = {
@@ -113,7 +110,6 @@ impl Cells {
             //     interaction_generator.get_physical_contacts(ci);
             let contact_data =
                 interaction_generator.get_contact_data(ci);
-            let vi: usize = if ci == 0 { 4 } else { 12 };
             // println!("----------------------------");
             // println!(
             //     "    ci = {}; vi = {}; x_adh = {}; f_tot: {}",
@@ -123,11 +119,12 @@ impl Cells {
             //     cell_state.mech.sum_fs[vi].mag(),
             // );
             let new_cell_state = cell_state.simulate_rkdp5(
-                self.tstep,
+                tstep,
                 &self.interactions[ci],
                 contact_data,
                 world_parameters,
                 &group_parameters[cell_state.group_ix as usize],
+                rng,
             )?;
             // println!(
             //     "                      old_v = {},\n                      new_v = {}, \n                      delta_mag: {}",
@@ -163,24 +160,31 @@ impl Cells {
             new_cell_states[ci] = new_cell_state;
         }
         Ok(Cells {
-            tstep: self.tstep + 1,
             cell_states: new_cell_states,
             interactions: interaction_generator.generate(),
         })
     }
 }
 
-#[derive(Deserialize, Serialize, Schematize)]
+#[derive(Deserialize, Serialize)]
+pub struct WorldHistory {
+    tstep: u32,
+    interaction_generator: InteractionGenerator,
+    rng: Pcg32,
+    cells: Cells,
+}
+
 pub struct World {
     tstep_length: f32,
-    global_params: WorldParameters,
-    cell_group_params: Vec<Parameters>,
-    pub history: Vec<Cells>,
-    cell_states: Cells,
+    tstep: u32,
+    world_params: WorldParameters,
+    group_params: Vec<Parameters>,
+    pub history: Vec<WorldHistory>,
+    cells: Cells,
     interaction_generator: InteractionGenerator,
     pub rng: Pcg32,
     output_dir: PathBuf,
-    exp_name: String,
+    title: String,
 }
 
 fn gen_poly(centroid: &V2D, radius: f32) -> [V2D; NVERTS] {
@@ -201,14 +205,14 @@ impl World {
         // Unpack relevant info from `Experiment` data structure.
         let Experiment {
             char_quants,
-            world_parameters,
+            world_parameters: world_params,
             cell_groups,
             mut rng,
             ..
         } = experiment;
         // Extract the parameters from each `CellGroup` object obtained
         // from the `Experiment`.
-        let group_parameters = cell_groups
+        let group_params = cell_groups
             .iter()
             .map(|cg| cg.parameters.clone())
             .collect::<Vec<Parameters>>();
@@ -228,9 +232,7 @@ impl World {
         let cell_polys = cell_group_ixs
             .iter()
             .zip(cell_centroids.iter())
-            .map(|(&gix, cc)| {
-                gen_poly(cc, group_parameters[gix].cell_r)
-            })
+            .map(|(&gix, cc)| gen_poly(cc, group_params[gix].cell_r))
             .collect::<Vec<[V2D; NVERTS]>>();
         // Create initial cell states, using the parameters associated
         // with the cell a cell group is in, and the cell's centroid
@@ -239,7 +241,7 @@ impl World {
             .iter()
             .zip(cell_polys.iter())
             .map(|(&gix, poly)| {
-                let parameters = &group_parameters[gix];
+                let parameters = &group_params[gix];
                 CoreState::new(
                     *poly,
                     parameters.init_rac,
@@ -252,119 +254,129 @@ impl World {
             .iter()
             .zip(cell_core_states.iter())
             .map(|(&gix, state)| {
-                let parameters = &group_parameters[gix];
+                let parameters = &group_params[gix];
                 state.calc_crl_rgtp_state(parameters)
             })
             .collect::<Vec<[RgtpActivityDiff; NVERTS]>>();
         // Create a new `InteractionGenerator`.
-        let interact_gen = InteractionGenerator::new(
+        let interaction_generator = InteractionGenerator::new(
             &cell_polys,
             &cell_rgtps,
-            world_parameters.interactions.clone(),
+            world_params.interactions.clone(),
         );
         // Generate initial cell interactions.
-        let cell_interactions = interact_gen.generate();
-        // Create `Cell` structures to represent each cell.
-        let mut cells = vec![];
+        let cell_interactions = interaction_generator.generate();
+        // Create `Cell` structures to represent each cell, and the random number generator associated per cell.
+        let mut cell_states = vec![];
         for (cell_ix, group_ix) in
             cell_group_ixs.into_iter().enumerate()
         {
             // Parameters that will be used by this cell. Determined
             // by figuring out which group it belongs to, as all cells
             // within a group use the same parameters.
-            let parameters = &group_parameters[group_ix];
-            let rac_rand_state = if parameters.randomization {
-                RacRandState::from_seed_u64(
-                    rng.next_u64(),
-                    &parameters,
-                )
-            } else {
-                RacRandState::default()
-            };
+            let parameters = &group_params[group_ix];
+            let mut cell_rng = Pcg32::seed_from_u64(rng.next_u64());
             // Create a new cell.
-            cells.push(CellState::new(
+            cell_states.push(CellState::new(
                 cell_ix as u32,
                 group_ix as u32,
                 cell_core_states[cell_ix],
                 &cell_interactions[cell_ix],
                 parameters,
-                rac_rand_state,
+                &mut cell_rng,
             ));
         }
-        let state = Cells {
-            tstep: 0,
-            cell_states: cells,
+        let cells = Cells {
+            cell_states,
             interactions: cell_interactions.clone(),
         };
-        let history = vec![state.clone()];
+        let history = vec![WorldHistory {
+            tstep: 0,
+            interaction_generator: interaction_generator.clone(),
+            rng,
+            cells: cells.clone(),
+        }];
         World {
+            tstep: 0,
             tstep_length: char_quants.time(),
-            global_params: world_parameters.clone(),
-            cell_group_params: group_parameters,
+            world_params,
+            group_params,
             history,
-            cell_states: state,
-            interaction_generator: interact_gen,
+            cells,
+            interaction_generator,
             rng,
             output_dir,
-            exp_name: experiment.title,
+            title: experiment.title,
+        }
+    }
+
+    pub fn as_history(&self) -> WorldHistory {
+        WorldHistory {
+            tstep: self.tstep,
+            interaction_generator: self.interaction_generator.clone(),
+            rng: self.rng,
+            cells: self.cells.clone(),
         }
     }
 
     pub fn simulate(&mut self, final_tpoint: f32) {
         let num_tsteps =
             (final_tpoint / self.tstep_length).ceil() as u32;
-        while self.cell_states.tstep < num_tsteps {
+        while self.tstep < num_tsteps {
             // println!(
             //     "tstep: {}/{}",
-            //     self.cell_states.tstep, num_tsteps
+            //     self.tstep, num_tsteps
             // );
-            let tstep = self.cell_states.tstep;
             #[cfg(feature = "debug_mode")]
-            let new_state: Cells = self
-                .cell_states
+            let new_cells: Cells = self
+                .cells
                 .simulate(
-                    tstep,
+                    self.tstep,
                     &mut self.rng,
-                    &self.global_params,
-                    &self.cell_group_params,
+                    &self.world_params,
+                    &self.group_params,
                     &mut self.interaction_generator,
                 )
                 .unwrap_or_else(|e| {
                     self.save_history();
-                    panic!(
-                        "tstep: {}\n{}",
-                        self.cell_states.tstep, e
-                    );
+                    panic!("tstep: {}\n{}", self.tstep, e);
                 });
 
             #[cfg(not(feature = "debug_mode"))]
-            let new_state = self.cell_states.simulate(
+            let new_cells = self.cells.simulate(
                 &mut self.rng,
                 self.cell_rngs.as_mut_slice(),
-                &self.global_params,
-                &self.cell_group_params,
+                &self.world_params,
+                &self.group_params,
                 &mut self.interaction_generator,
             );
-
-            self.history.push(new_state.clone());
-            self.cell_states = new_state;
+            self.cells = new_cells;
+            if self.tstep % 10 == 0 {
+                self.history.push(self.as_history());
+            }
+            self.tstep += 1;
         }
     }
 
     pub fn save_history(&self) {
+        dbg!("saving history...");
         #[cfg(feature = "debug_mode")]
-        let name = format!("history_dbg_{}", &self.exp_name);
+        let name = format!("history_dbg_{}", &self.title);
         #[cfg(not(feature = "debug_mode"))]
-        let name = format!("history_{}", &self.exp_name);
+        let name = format!("history_{}", &self.title);
+        let mut path = self.output_dir.clone();
+        path.push(format!("{}.json", &name));
 
-        let schema = Cells::schematize(None);
-        save_schema(&name, &schema, &self.output_dir);
-        let mut writer = Writer::new(&schema, Vec::new()); //Writer::with_codec(&self.state_schema, Vec::new(), avro_rs::Codec::Deflate);
-        for ws in self.history.iter() {
-            writer.append_ser(ws).unwrap();
+        let mut f = OpenOptions::new()
+            .write(true)
+            .create(true)
+            .truncate(true)
+            .open(path)
+            .unwrap();
+
+        for wh in self.history.iter() {
+            serde_json::to_writer(&mut f, wh).unwrap();
         }
-        let encoded = writer.into_inner().unwrap();
-        save_data(&name, &encoded, &self.output_dir);
     }
 }
 

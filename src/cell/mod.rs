@@ -20,14 +20,14 @@ use crate::interactions::{CellInteractions, ContactData};
 use crate::math::geometry::{calc_poly_area, LineSeg2D};
 use crate::math::v2d::{poly_to_string, V2D};
 use crate::parameters::{Parameters, WorldParameters};
+use crate::utils::pcg32::Pcg32;
 use crate::utils::{circ_ix_minus, circ_ix_plus};
 use crate::NVERTS;
-use avro_schema_derive::Schematize;
 use serde::{Deserialize, Serialize};
 use std::f32::consts::PI;
 
 /// Cell state structure.
-#[derive(Copy, Clone, Deserialize, Serialize, Schematize)]
+#[derive(Copy, Clone, Deserialize, Serialize)]
 pub struct CellState {
     /// Index of cell within world.
     pub ix: u32,
@@ -148,29 +148,33 @@ impl CellState {
     pub fn new(
         ix: u32,
         group_ix: u32,
-        state: CoreState,
+        core: CoreState,
         interactions: &CellInteractions,
         parameters: &Parameters,
-        rac_rand_state: RacRandState,
+        rng: &mut Pcg32,
     ) -> CellState {
-        let geom_state = state.calc_geom_state();
-        let mech_state =
-            state.calc_mech_state(&geom_state, parameters);
-        let chem_state = state.calc_chem_state(
-            &geom_state,
-            &mech_state,
-            &rac_rand_state,
+        let geom = core.calc_geom_state();
+        let mech = core.calc_mech_state(&geom, parameters);
+        let rac_rand = if parameters.randomization {
+            RacRandState::new(rng, parameters)
+        } else {
+            RacRandState::default()
+        };
+        let chem = core.calc_chem_state(
+            &geom,
+            &mech,
+            &rac_rand,
             &interactions,
             parameters,
         );
         CellState {
             ix,
             group_ix,
-            core: state,
-            rac_rand: rac_rand_state,
-            geom: geom_state,
-            chem: chem_state,
-            mech: mech_state,
+            core,
+            rac_rand,
+            geom,
+            chem,
+            mech,
         }
     }
 
@@ -186,6 +190,7 @@ impl CellState {
         contact_data: Vec<ContactData>,
         world_parameters: &WorldParameters,
         parameters: &Parameters,
+        rng: &mut Pcg32,
     ) -> Result<CellState, String> {
         let mut state = self.core;
         let nsteps: u32 = 10;
@@ -227,7 +232,7 @@ impl CellState {
             ix: self.ix,
             group_ix: self.group_ix,
             core: state,
-            rac_rand: self.rac_rand.update(tstep, parameters),
+            rac_rand: self.rac_rand.update(tstep, rng, parameters),
             geom: geom_state,
             chem: chem_state,
             mech: mech_state,
@@ -295,12 +300,13 @@ impl CellState {
 
     #[cfg(feature = "debug_mode")]
     pub fn simulate_rkdp5(
-        &mut self,
+        &self,
         tstep: u32,
         interactions: &CellInteractions,
         contact_data: Vec<ContactData>,
         world_parameters: &WorldParameters,
         parameters: &Parameters,
+        rng: &mut Pcg32,
     ) -> Result<CellState, String> {
         // println!("using rkdp5...");
         let aux_args = AuxArgs {
@@ -351,7 +357,7 @@ impl CellState {
             ix: self.ix,
             group_ix: self.group_ix,
             core: state,
-            rac_rand: self.rac_rand.update(tstep, parameters),
+            rac_rand: self.rac_rand.update(tstep, rng, parameters),
             geom: geom_state,
             chem: chem_state,
             mech: mech_state,

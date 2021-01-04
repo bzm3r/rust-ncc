@@ -13,9 +13,8 @@ use crate::utils::normal::NormalDistrib;
 use crate::utils::pcg32::Pcg32;
 use crate::utils::{circ_ix_minus, circ_ix_plus};
 use crate::NVERTS;
-use avro_schema_derive::Schematize;
 use rand::seq::SliceRandom;
-use rand::{Rng, SeedableRng};
+use rand::Rng;
 use rand_distr::{Distribution, Uniform};
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -80,7 +79,7 @@ impl DistributionScheme {
     }
 }
 
-#[derive(Clone, Copy, Deserialize, Serialize, Schematize)]
+#[derive(Clone, Copy, Deserialize, Serialize)]
 pub struct RgtpDistribution {
     pub active: [f32; NVERTS as usize],
     pub inactive: [f32; NVERTS as usize],
@@ -259,15 +258,14 @@ pub fn calc_kdgtps_rho(
     kdgtps_rho
 }
 
-#[derive(Copy, Clone, Deserialize, Serialize, Schematize)]
+#[derive(Copy, Clone, Deserialize, Serialize)]
 pub struct RacRandState {
-    enabled: bool,
+    pub enabled: bool,
     /// When does the next update occur?
     pub next_update: u32,
     /// Rac1 randomization factors per vertex.
     pub x_rands: [f32; NVERTS],
     distrib: NormalDistrib,
-    rng: Pcg32,
 }
 
 impl RacRandState {
@@ -283,17 +281,16 @@ impl RacRandState {
         r
     }
 
-    pub fn from_seed_u64(
-        seed: u64,
+    pub fn new(
+        rng: &mut Pcg32,
         parameters: &Parameters,
     ) -> RacRandState {
-        let mut rng = Pcg32::seed_from_u64(seed);
         let ut = Uniform::from(0.0..parameters.rand_avg_t);
         RacRandState {
             enabled: true,
-            next_update: ut.sample(&mut rng).floor() as u32,
+            next_update: ut.sample(rng).floor() as u32,
             x_rands: Self::gen_rand_factors(
-                &mut rng,
+                rng,
                 parameters.num_rand_vs as usize,
                 parameters.rand_mag,
             ),
@@ -301,21 +298,21 @@ impl RacRandState {
                 parameters.rand_avg_t,
                 parameters.rand_std_t,
             ),
-            rng,
         }
     }
 
     pub fn update(
-        &mut self,
+        &self,
         tstep: u32,
+        rng: &mut Pcg32,
         parameters: &Parameters,
     ) -> RacRandState {
-        if self.enabled && tstep == self.next_update {
-            let next_update = tstep
-                + self.distrib.sample(&mut self.rng).floor() as u32;
+        if tstep == self.next_update && self.enabled {
+            let next_update =
+                tstep + self.distrib.sample(rng).floor() as u32;
             // println!("random update from {} to {}", tstep, next_update);
             let x_rands = Self::gen_rand_factors(
-                &mut self.rng,
+                rng,
                 parameters.num_rand_vs,
                 parameters.rand_mag,
             );
@@ -325,7 +322,6 @@ impl RacRandState {
                 next_update,
                 x_rands,
                 distrib: self.distrib,
-                rng: self.rng,
             }
         } else {
             *self
@@ -347,7 +343,6 @@ impl Default for RacRandState {
             next_update: 0,
             x_rands: [0.0; NVERTS],
             distrib: NormalDistrib::new(0.0, 1.0),
-            rng: Pcg32::from_entropy(),
         }
     }
 }

@@ -170,18 +170,18 @@ fn gen_default_adhesion_mag(
     // Warning: going above this value may result in weirdness!
     // Danger zone: (Length(1.0).micro().g() * Tinv(1.0).g()).mul_number(0.1)
 
-    let v =
-        (Length(1.0).micro().g() * Tinv(1.0).g()).mul_number(0.09);
-    (v * char_quants.eta.g()).to_force().expect("Need a force!")
+    // let v =
+    //     (Length(1.0).micro().g() * Tinv(1.0).g()).mul_number(0.09);
+    // (v * char_quants.eta.g()).to_force().expect("Need a force!")
 
-    // let max_cell_v = Length(3.0).micro().g() * Tinv(1.0 / 60.0).g();
-    // let eta = char_quants.eta.g();
-    // let f_adh = (eta * max_cell_v)
-    //     .mul_number(1.0 / (NVERTS as f32))
-    //     .to_force()
-    //     .expect(
-    //         "Procedure for generating default force does \
-    //          not produce a force. Check units!",
-    //     );
-    // f_adh.mul_number(multiplier)
+    let max_cell_v = Length(3.0).micro().g() * Tinv(1.0 / 60.0).g();
+    let eta = char_quants.eta.g();
+    let f_adh = (eta * max_cell_v)
+        .mul_number(1.0 / (NVERTS as f32))
+        .to_force()
+        .expect(
+            "Procedure for generating default force does \
+             not produce a force. Check units!",
+        );
+    f_adh.mul_number(multiplier)
 }

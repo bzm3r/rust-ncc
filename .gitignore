@@ -20,4 +20,12 @@ out_*.txt
 
 *.mp4
 
-# macos files to ignore**/.DS_Store 
+# macos files to ignore
+.DS_Store
+
+# json output
+**/*.json
+
+# bson output
+**/*.bson
+

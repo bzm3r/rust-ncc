@@ -27,14 +27,11 @@ use crate::math::geometry::{BBox, Poly};
 use crate::math::v2d::V2D;
 use crate::parameters::InteractionParams;
 use crate::NVERTS;
-use avro_schema_derive::Schematize;
 use serde::{Deserialize, Serialize};
 
 pub type RgtpActivityDiff = f32;
 
-#[derive(
-    Copy, Clone, Debug, Default, Deserialize, Schematize, Serialize,
-)]
+#[derive(Copy, Clone, Debug, Default, Deserialize, Serialize)]
 pub struct CellInteractions {
     pub x_cals: [f32; NVERTS],
     pub x_cils: [f32; NVERTS],
@@ -45,7 +42,7 @@ pub struct CellInteractions {
 }
 
 /// Generates interaction related factors.
-#[derive(Clone, Deserialize, Serialize, Schematize)]
+#[derive(Clone, Deserialize, Serialize)]
 pub struct InteractionGenerator {
     /// Vertex coordinates, per cell, for all cells in the simulation.
     cell_polys: Vec<Poly>,

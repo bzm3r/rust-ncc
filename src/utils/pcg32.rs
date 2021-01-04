@@ -9,9 +9,8 @@
 // except according to those terms.
 
 //! PCG random number generators, borrowed from the `rand_pcg` crate,
-//! so that `Schematize` can be derived on it.
-
-use avro_schema_derive::Schematize;
+//! so that `Copy` can be derived on it.
+//!
 use core::fmt;
 use rand_core::{impls, le, Error, RngCore, SeedableRng};
 use serde::{Deserialize, Serialize};
@@ -31,9 +30,7 @@ const MULTIPLIER: u64 = 6364136223846793005;
 /// Despite the name, this implementation uses 16 bytes (128 bit) space
 /// comprising 64 bits of state and 64 bits stream selector. These are both set
 /// by `SeedableRng`, using a 128-bit seed.
-#[derive(
-    Copy, Clone, PartialEq, Eq, Deserialize, Serialize, Schematize,
-)]
+#[derive(Copy, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub struct Lcg64Xsh32 {
     state: u64,
     increment: u64,

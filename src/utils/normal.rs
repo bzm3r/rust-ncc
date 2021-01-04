@@ -1,12 +1,11 @@
 use crate::utils::pcg32::Pcg32;
-use avro_schema_derive::Schematize;
 use rand::distributions::Distribution;
 use rand_distr::Normal;
 use serde::de::Visitor;
 use serde::{de, Deserialize, Deserializer, Serialize};
 use std::fmt;
 
-#[derive(Clone, Copy, Serialize, Schematize)]
+#[derive(Clone, Copy, Serialize)]
 pub struct NormalDistrib {
     mean: f32,
     std: f32,

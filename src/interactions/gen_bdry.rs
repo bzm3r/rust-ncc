@@ -2,10 +2,9 @@ use crate::math::geometry::{is_point_in_poly, BBox, Poly};
 use crate::math::v2d::V2D;
 use crate::parameters::BdryParams;
 use crate::NVERTS;
-use avro_schema_derive::Schematize;
 use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Deserialize, Serialize, Schematize)]
+#[derive(Clone, Deserialize, Serialize)]
 pub struct BdryEffectGenerator {
     shape: Vec<V2D>,
     bbox: BBox,

@@ -7,16 +7,15 @@ use crate::math::v2d::V2D;
 use crate::parameters::PhysicalContactParams;
 use crate::utils::circ_ix_plus;
 use crate::NVERTS;
-use avro_schema_derive::Schematize;
 use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
 
 #[derive(Clone, Copy)]
 pub struct Dist(f32);
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Serialize, Deserialize)]
 pub struct LineSegParam(f32);
 
-#[derive(Clone, Copy, Serialize, Deserialize, Schematize)]
+#[derive(Clone, Copy, Serialize, Deserialize)]
 pub enum ClosePoint {
     Vertex(V2D),
     OnEdge(LineSegParam, V2D),
@@ -65,7 +64,7 @@ impl ClosePoint {
 /// Generates CIL/CAL/adhesion related interaction information. These
 /// are the interactions that require cells to engage in
 /// physical contact.
-#[derive(Clone, Deserialize, Serialize, Schematize)]
+#[derive(Clone, Deserialize, Serialize)]
 pub struct PhysicalContactGenerator {
     dat: CvCvDat<ClosePoint>,
     pub contact_bbs: Vec<BBox>,
@@ -185,31 +184,31 @@ impl PhysicalContactGenerator {
         r
     }
 
-    /// Get vertices on cell `oci` that are close to cell `ci`.
-    pub fn get_close_verts(
-        &self,
-        aci: usize,
-        bci: usize,
-    ) -> Vec<usize> {
-        let mut r = vec![];
-        for avi in 0..NVERTS {
-            for (bvi, close_point) in self
-                .dat
-                .get_per_other_vertex(aci, avi, bci)
-                .iter()
-                .enumerate()
-            {
-                match close_point {
-                    ClosePoint::Vertex(_)
-                    | ClosePoint::OnEdge(_, _) => r.push(bvi),
-                    ClosePoint::None => {}
-                }
-            }
-        }
-        r.sort_unstable();
-        r.dedup();
-        r
-    }
+    // /// Get vertices on cell `oci` that are close to cell `ci`.
+    // pub fn get_close_verts(
+    //     &self,
+    //     aci: usize,
+    //     bci: usize,
+    // ) -> Vec<usize> {
+    //     let mut r = vec![];
+    //     for avi in 0..NVERTS {
+    //         for (bvi, close_point) in self
+    //             .dat
+    //             .get_per_other_vertex(aci, avi, bci)
+    //             .iter()
+    //             .enumerate()
+    //         {
+    //             match close_point {
+    //                 ClosePoint::Vertex(_)
+    //                 | ClosePoint::OnEdge(_, _) => r.push(bvi),
+    //                 ClosePoint::None => {}
+    //             }
+    //         }
+    //     }
+    //     r.sort_unstable();
+    //     r.dedup();
+    //     r
+    // }
 
     pub fn update(&mut self, ci: usize, cell_polys: &[Poly]) {
         let poly_a = cell_polys[ci];

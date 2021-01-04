@@ -1,10 +1,3 @@
-mod utils;
-
-use avro_rs::schema::{
-    Name, RecordField, RecordFieldOrder, UnionSchema,
-};
-use avro_rs::{to_value, Schema, Writer};
-use avro_schema_derive::Schematize;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
