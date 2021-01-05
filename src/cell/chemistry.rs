@@ -23,7 +23,9 @@ use std::fmt;
 use std::fmt::Display;
 
 pub enum DistributionType {
+    /// Distribute Rho GTPase randomly over all vertices.
     Random,
+    /// Mark vertices `true` if Rho GTPase is to be placed there.
     Specific([bool; NVERTS as usize]),
 }
 
@@ -33,6 +35,9 @@ pub struct DistributionScheme {
 }
 
 impl DistributionScheme {
+    /// [1.0, 10.0, 4.0, 5.0] (consider the relative fraction of rho gtpase), sum = 20.0,,
+    /// go thru each and divide by 20 = [0.05, 0.5, 0.2, 0.25]
+    /// if we now sum up everything in the new array, sum = 1.0
     fn scaled_unitize(
         frac: f32,
         mut distrib: [f32; NVERTS as usize],
@@ -47,9 +52,9 @@ impl DistributionScheme {
         frac: f32,
     ) -> [f32; NVERTS as usize] {
         let mut r = [0.0; NVERTS as usize];
-        let distrib: Uniform<f32> = Uniform::new_inclusive(0.0, 1.0);
+        let prob_distrib: Uniform<f32> = Uniform::new_inclusive(0.0, 1.0);
         r.iter_mut().for_each(|e| {
-            *e = rng.sample(distrib);
+            *e = rng.sample(prob_distrib);
         });
         Self::scaled_unitize(frac, r)
     }
@@ -58,6 +63,7 @@ impl DistributionScheme {
         frac: f32,
         marked_verts: &[bool; NVERTS as usize],
     ) -> [f32; NVERTS as usize] {
+        println!("marking in gen_specific: {:?}", &marked_verts);
         let mut r = [0.0; NVERTS as usize];
         marked_verts.iter().zip(r.iter_mut()).for_each(|(&marked, e)| {
             if marked {

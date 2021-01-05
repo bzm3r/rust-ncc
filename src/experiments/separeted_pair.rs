@@ -4,12 +4,14 @@ use crate::cell::chemistry::{
 };
 use crate::experiments::{
     gen_default_adhesion_mag, gen_default_char_quants,
-    gen_default_phys_contact_dist, gen_default_raw_params,
-    gen_default_viscosity, CellGroup, Experiment, GroupBBox,
+    gen_default_phys_contact_dist, gen_default_viscosity, CellGroup,
+    Experiment, GroupBBox,
 };
 use crate::interactions::dat_sym2d::SymCcDat;
 use crate::math::v2d::V2D;
-use crate::parameters::quantity::{Force, Length, Quantity};
+use crate::parameters::quantity::{
+    Force, Length, Quantity, Stress, Time,
+};
 use crate::parameters::{
     CharQuantities, CoaParams, PhysicalContactParams, RawCoaParams,
     RawInteractionParams, RawParameters, RawPhysicalContactParams,
@@ -47,26 +49,39 @@ fn group_bbox(
     }
 }
 
-
 /// Define the cell groups that will exist in this experiment.
 fn cell_groups(
     rng: &mut Pcg64,
     cq: &CharQuantities,
 ) -> Vec<CellGroup> {
-    let raw_params = gen_default_raw_params(rng,true);
-    let parameters = raw_params.gen_parameters(cq);
+    let group0_marked = [
+        false, true, true, true, true, true, true, true, false,
+        false, false, false, false, false, false, false,
+    ];
+    let group1_marked = [
+        false, true, true, true, true, true, true, true, false,
+        false, false, false, false, false, false, false,
+    ];
+    let raw_params0 =
+        gen_default_raw_params(rng, true, group0_marked);
+    let raw_params1 =
+        gen_default_raw_params(rng, true, group1_marked);
+    let parameters = raw_params0.gen_parameters(cq);
     let bottom_left0 = (Length(0.0), Length(0.0));
     let num_cells0 = 1;
     let group0_layout = CellGroup {
         num_cells: num_cells0,
-        layout: group_bbox(num_cells0, cq, bottom_left0,1,1 ).unwrap(),
+        layout: group_bbox(num_cells0, cq, bottom_left0, 1, 1)
+            .unwrap(),
         parameters,
     };
-    let bottom_left1 = (Length(0.0), raw_params.cell_diam.mul_number(2.0));
+    let bottom_left1 =
+        (Length(0.0), raw_params1.cell_diam.mul_number(2.0));
     let num_cells1 = 1;
     let group1_layout = CellGroup {
         num_cells: num_cells1,
-        layout: group_bbox(num_cells1, cq,bottom_left1,1,1).unwrap(),
+        layout: group_bbox(num_cells1, cq, bottom_left1, 1, 1)
+            .unwrap(),
         parameters,
     };
     vec![group0_layout, group1_layout]
@@ -101,7 +116,10 @@ fn raw_world_parameters(
             bdry: None,
             phys_contact: RawPhysicalContactParams {
                 range: gen_default_phys_contact_dist(),
-                adh_mag: Some(gen_default_adhesion_mag(char_quants, 1.0)),
+                adh_mag: Some(gen_default_adhesion_mag(
+                    char_quants,
+                    1.0,
+                )),
                 cal_mag: Some(0.0),
                 cil_mag: 60.0,
             },
@@ -126,5 +144,62 @@ pub fn generate(seed: Option<u64>) -> Experiment {
         cell_groups,
         rng,
         seed,
+    }
+}
+
+fn gen_default_raw_params(
+    rng: &mut Pcg64,
+    randomization: bool,
+    marked: [bool; NVERTS],
+) -> RawParameters {
+    println!("marking: {:?}", &marked);
+
+    let rgtp_d = (Length(0.1_f32.sqrt()).micro().pow(2.0).g()
+        / Time(1.0).g())
+    .to_diffusion()
+    .unwrap();
+
+    let init_rac = RgtpDistribution::generate(
+        DistributionScheme {
+            frac: 0.1,
+            ty: DistributionType::Specific(marked),
+        },
+        DistributionScheme {
+            frac: 0.1,
+            ty: DistributionType::Random,
+        },
+        rng,
+    )
+    .unwrap();
+
+    RawParameters {
+        cell_diam: Length(40.0).micro(),
+        stiffness_cortex: Stress(8.0).kilo(),
+        lm_h: Length(200.0).nano(),
+        halfmax_rgtp_max_f_frac: 0.3,
+        halfmax_rgtp_frac: 0.4,
+        lm_ss: Stress(10.0).kilo(),
+        rho_friction: 0.2,
+        stiffness_ctyo: Force(1e-7),
+        diffusion_rgtp: rgtp_d,
+        tot_rac: 2.5e6,
+        tot_rho: 1e6,
+        kgtp_rac: 24.0,
+        kgtp_rac_auto: 500.0,
+        kdgtp_rac: 8.0,
+        kdgtp_rho_on_rac: 4000.0,
+        halfmax_tension_inhib: 0.1,
+        tension_inhib: 40.0,
+        kgtp_rho: 28.0,
+        kgtp_auto_rho: 390.0,
+        kdgtp_rho: 60.0,
+        kdgtp_rac_on_rho: 400.0,
+        randomization,
+        rand_avg_t: Time(40.0 * 60.0),
+        rand_std_t: Time(0.2 * 40.0 * 60.0),
+        rand_mag: 10.0,
+        rand_vs: 0.25,
+        init_rac,
+        init_rho: init_rac,
     }
 }
