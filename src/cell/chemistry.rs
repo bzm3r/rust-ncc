@@ -52,7 +52,8 @@ impl DistributionScheme {
         frac: f32,
     ) -> [f32; NVERTS as usize] {
         let mut r = [0.0; NVERTS as usize];
-        let prob_distrib: Uniform<f32> = Uniform::new_inclusive(0.0, 1.0);
+        let prob_distrib: Uniform<f32> =
+            Uniform::new_inclusive(0.0, 1.0);
         r.iter_mut().for_each(|e| {
             *e = rng.sample(prob_distrib);
         });
@@ -63,13 +64,15 @@ impl DistributionScheme {
         frac: f32,
         marked_verts: &[bool; NVERTS as usize],
     ) -> [f32; NVERTS as usize] {
-        println!("marking in gen_specific: {:?}", &marked_verts);
+        //println!("marking in gen_specific: {:?}", &marked_verts);
         let mut r = [0.0; NVERTS as usize];
-        marked_verts.iter().zip(r.iter_mut()).for_each(|(&marked, e)| {
-            if marked {
-                *e = 1.0;
-            }
-        });
+        marked_verts.iter().zip(r.iter_mut()).for_each(
+            |(&marked, e)| {
+                if marked {
+                    *e = 1.0;
+                }
+            },
+        );
         Self::scaled_unitize(frac, r)
     }
 

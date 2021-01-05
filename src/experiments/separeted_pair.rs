@@ -59,13 +59,21 @@ fn cell_groups(
         false, false, false, false, false, false, false,
     ];
     let group1_marked = [
-        false, true, true, true, true, true, true, true, false,
-        false, false, false, false, false, false, false,
+        false, false, false, false, false, false, false, false,
+        false, true, true, true, true, true, true, true,
     ];
-    let raw_params0 =
-        gen_default_raw_params(rng, true, group0_marked);
-    let raw_params1 =
-        gen_default_raw_params(rng, true, group1_marked);
+    let raw_params0 = gen_default_raw_params(
+        rng,
+        false,
+        group0_marked,
+        group1_marked,
+    );
+    let raw_params1 = gen_default_raw_params(
+        rng,
+        false,
+        group1_marked,
+        group0_marked,
+    );
     let parameters = raw_params0.gen_parameters(cq);
     let bottom_left0 = (Length(0.0), Length(0.0));
     let num_cells0 = 1;
@@ -150,9 +158,10 @@ pub fn generate(seed: Option<u64>) -> Experiment {
 fn gen_default_raw_params(
     rng: &mut Pcg64,
     randomization: bool,
-    marked: [bool; NVERTS],
+    marked_rac: [bool; NVERTS],
+    marked_rho: [bool; NVERTS],
 ) -> RawParameters {
-    println!("marking: {:?}", &marked);
+    //println!("marking: {:?}", &marked_rac);
 
     let rgtp_d = (Length(0.1_f32.sqrt()).micro().pow(2.0).g()
         / Time(1.0).g())
@@ -162,7 +171,7 @@ fn gen_default_raw_params(
     let init_rac = RgtpDistribution::generate(
         DistributionScheme {
             frac: 0.1,
-            ty: DistributionType::Specific(marked),
+            ty: DistributionType::Specific(marked_rac),
         },
         DistributionScheme {
             frac: 0.1,
@@ -172,6 +181,18 @@ fn gen_default_raw_params(
     )
     .unwrap();
 
+    let init_rho = RgtpDistribution::generate(
+        DistributionScheme {
+            frac: 0.1,
+            ty: DistributionType::Specific(marked_rho),
+        },
+        DistributionScheme {
+            frac: 0.1,
+            ty: DistributionType::Random,
+        },
+        rng,
+    )
+    .unwrap();
     RawParameters {
         cell_diam: Length(40.0).micro(),
         stiffness_cortex: Stress(8.0).kilo(),
@@ -200,6 +221,6 @@ fn gen_default_raw_params(
         rand_mag: 10.0,
         rand_vs: 0.25,
         init_rac,
-        init_rho: init_rac,
+        init_rho,
     }
 }

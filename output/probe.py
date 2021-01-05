@@ -141,13 +141,13 @@ def paint(delta):
             rac_act_arrows_per_cell_per_tstep[tstep]
     ):
         for p, rac_arrow in zip(poly, rac_act_arrows):
-            ax.arrow(p[0], p[1], rac_arrow[0], rac_arrow[1], color="b",
+            ax.arrow(p[0], p[1], 3*rac_arrow[0], 3*rac_arrow[1], color="b",
                      length_includes_head=True, head_width=0.0)
 
     for poly, rho_act_arrows in zip(poly_per_cell_per_tstep[tstep],
                                     rho_act_arrows_per_cell_per_tstep[tstep]):
         for p, rho_arrow in zip(poly, rho_act_arrows):
-            ax.arrow(p[0], p[1], rho_arrow[0], rho_arrow[1], color="r",
+            ax.arrow(p[0], p[1], 3*rho_arrow[0], 3*rho_arrow[1], color="r",
                      length_includes_head=True, head_width=0.0)
 
     # for rac_act in rac_acts_arrows_per_tstep[tstep]:
