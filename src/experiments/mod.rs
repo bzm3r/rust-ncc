@@ -25,11 +25,11 @@ use crate::NVERTS;
 
 /// Specifies initial placement of the group.
 pub struct GroupBBox {
-    /// Width of group in terms of number of cells.
+    /// Width of group in terms of cell diameter.
     pub width: u32,
-    /// Height of group in terms of number if cells.
+    /// Height of group in terms of cell diameter.
     pub height: u32,
-    /// Bottom left of the group in micrometers.
+    /// Bottom left of the group in normalized space units.
     pub bottom_left: V2D,
 }
 
@@ -170,11 +170,6 @@ fn gen_default_adhesion_mag(
 ) -> Force {
     // Warning: going above this value may result in weirdness!
     // Danger zone: (Length(1.0).micro().g() * Tinv(1.0).g()).mul_number(0.1)
-
-    // let v =
-    //     (Length(1.0).micro().g() * Tinv(1.0).g()).mul_number(0.09);
-    // (v * char_quants.eta.g()).to_force().expect("Need a force!")
-
     let max_cell_v = Length(3.0).micro().g() * Tinv(1.0 / 60.0).g();
     let eta = char_quants.eta.g();
     let f_adh = (eta * max_cell_v)

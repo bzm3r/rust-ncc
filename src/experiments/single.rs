@@ -22,17 +22,21 @@ use rand::SeedableRng;
 fn group_layout(
     num_cells: u32,
     char_quants: &CharQuantities,
+    bottom_left: (Length, Length),
+    width: u32,
+    height: u32,
 ) -> Result<GroupBBox, String> {
-    // specify initial location of group centroid
-    let centroid = V2D {
-        x: char_quants.normalize(&Length(0.0)),
-        y: char_quants.normalize(&Length(0.0)),
+    // specify initial location of group bottom left
+    let bottom_left = V2D {
+        x: char_quants.normalize(&bottom_left.0),
+        y: char_quants.normalize(&bottom_left.1),
     };
     let r = GroupBBox {
-        width: 1,
-        height: 1,
-        bottom_left: centroid,
+        width,
+        height,
+        bottom_left,
     };
+
     if r.width * r.height > num_cells {
         Err(String::from(
             "Group layout area is too small to contain required number of cells.",
