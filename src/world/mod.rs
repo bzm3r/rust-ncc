@@ -19,6 +19,7 @@ use crate::parameters::{Parameters, WorldParameters};
 use crate::NVERTS;
 //use rand_core::SeedableRng;
 use crate::utils::pcg32::Pcg32;
+use bincode::serialize_into;
 use rand::seq::SliceRandom;
 use rand::{RngCore, SeedableRng};
 use serde::{Deserialize, Serialize};
@@ -33,54 +34,6 @@ pub struct Cells {
 }
 
 impl Cells {
-    #[cfg(not(feature = "debug_mode"))]
-    fn simulate(
-        &self,
-        rng: &mut Pcg32,
-        cell_regs: &mut [Option<RandomEventGenerator>],
-        world_parameters: &WorldParameters,
-        group_parameters: &[Parameters],
-        interaction_generator: &mut InteractionGenerator,
-    ) -> Cells {
-        let mut cells =
-            vec![self.cell_states[0]; self.cell_states.len()];
-        let shuffled_cells = {
-            let mut crs =
-                self.cell_states.iter().collect::<Vec<&CellState>>();
-            crs.shuffle(rng);
-            crs
-        };
-        for c in shuffled_cells {
-            // println!("------------------");
-            let ci = c.ix as usize;
-            // println!("ci: {}", ci);
-            // println!(
-            //     "contacts: {:?}",
-            //     interaction_generator.get_physical_contacts(ci)
-            // );
-            let contact_polys =
-                interaction_generator.get_contact_data(ci);
-            let new_cell_state = c.simulate_euler(
-                self.tstep,
-                &self.interactions[ci],
-                contact_polys,
-                cell_regs[ci].as_mut(),
-                world_parameters,
-                &group_parameters[c.group_ix as usize],
-            );
-            // println!("----------------------");
-            interaction_generator
-                .update(ci, &new_cell_state.state.vertex_coords);
-            cells[ci] = new_cell_state;
-        }
-        Cells {
-            tstep: self.tstep + 1,
-            cell_states: cells,
-            interactions: interaction_generator.generate(),
-        }
-    }
-
-    #[cfg(feature = "debug_mode")]
     fn simulate(
         &self,
         tstep: u32,
@@ -89,7 +42,6 @@ impl Cells {
         group_parameters: &[Parameters],
         interaction_generator: &mut InteractionGenerator,
     ) -> Result<Cells, String> {
-        dbg!("simulating cells...");
         let mut new_cell_states =
             vec![self.cell_states[0]; self.cell_states.len()];
         let shuffled_cells = {
@@ -99,25 +51,10 @@ impl Cells {
             crs
         };
         for cell_state in shuffled_cells {
-            // println!("------------------");
             let ci = cell_state.ix as usize;
-            // println!("ci: {}", ci);
-            // println!(
-            //     "contacts: {:?}",
-            //     interaction_generator.get_physical_contacts(ci)
-            // );
-            // let contacts =
-            //     interaction_generator.get_physical_contacts(ci);
             let contact_data =
                 interaction_generator.get_contact_data(ci);
-            // println!("----------------------------");
-            // println!(
-            //     "    ci = {}; vi = {}; x_adh = {}; f_tot: {}",
-            //     ci,
-            //     vi,
-            //     self.interactions[ci].x_adhs[vi].mag(),
-            //     cell_state.mech.sum_fs[vi].mag(),
-            // );
+
             let new_cell_state = cell_state.simulate_rkdp5(
                 tstep,
                 &self.interactions[ci],
@@ -126,37 +63,17 @@ impl Cells {
                 &group_parameters[cell_state.group_ix as usize],
                 rng,
             )?;
-            // println!(
-            //     "                      old_v = {},\n                      new_v = {}, \n                      delta_mag: {}",
-            //     cell_state.core.vertex_coords[vi],
-            //     new_cell_state.core.vertex_coords[vi],
-            //     (cell_state.core.vertex_coords[vi]
-            //         - new_cell_state.core.vertex_coords[vi])
-            //         .mag()
-            // );
 
-            // println!("----------------------------");
-
-            // if (tstep == 347 && ci == 1) || (tstep == 346 && ci == 0)
-            // {
-            //     println!(
-            //         "cell{} at {}->{}: {}",
-            //         ci,
-            //         tstep,
-            //         tstep + 1,
-            //         poly_to_string(
-            //             &new_cell_state.state.vertex_coords
-            //         )
-            //     );
-            // }
-            // println!("----------------------");
             interaction_generator
                 .update(ci, &new_cell_state.core.poly);
+
+            #[cfg(feature = "debug_mode")]
             confirm_volume_exclusion(
                 &new_cell_state.core.poly,
                 &interaction_generator.get_contact_data(ci),
                 &format!("world cell {}", ci),
             )?;
+
             new_cell_states[ci] = new_cell_state;
         }
         Ok(Cells {
@@ -168,10 +85,10 @@ impl Cells {
 
 #[derive(Deserialize, Serialize)]
 pub struct WorldHistory {
-    tstep: u32,
-    interaction_generator: InteractionGenerator,
-    rng: Pcg32,
-    cells: Cells,
+    pub tstep: u32,
+    pub interaction_generator: InteractionGenerator,
+    pub rng: Pcg32,
+    pub cells: Cells,
 }
 
 pub struct World {
@@ -306,7 +223,7 @@ impl World {
             interaction_generator,
             rng,
             output_dir,
-            title: experiment.title,
+            title: experiment.file_name,
         }
     }
 
@@ -319,15 +236,14 @@ impl World {
         }
     }
 
-    pub fn simulate(&mut self, final_tpoint: f32) {
+    pub fn simulate(
+        &mut self,
+        final_tpoint: f32,
+        save_frequency: u32,
+    ) {
         let num_tsteps =
             (final_tpoint / self.tstep_length).ceil() as u32;
         while self.tstep < num_tsteps {
-            // println!(
-            //     "tstep: {}/{}",
-            //     self.tstep, num_tsteps
-            // );
-            #[cfg(feature = "debug_mode")]
             let new_cells: Cells = self
                 .cells
                 .simulate(
@@ -338,44 +254,64 @@ impl World {
                     &mut self.interaction_generator,
                 )
                 .unwrap_or_else(|e| {
-                    self.save_history();
+                    self.save_history(false, true);
                     panic!("tstep: {}\n{}", self.tstep, e);
                 });
 
-            #[cfg(not(feature = "debug_mode"))]
-            let new_cells = self.cells.simulate(
-                &mut self.rng,
-                self.cell_rngs.as_mut_slice(),
-                &self.world_params,
-                &self.group_params,
-                &mut self.interaction_generator,
-            );
             self.cells = new_cells;
-            if self.tstep % 10 == 0 {
+            if self.tstep % save_frequency == 0 {
                 self.history.push(self.as_history());
             }
             self.tstep += 1;
         }
     }
 
-    pub fn save_history(&self) {
-        dbg!("saving history...");
-        #[cfg(feature = "debug_mode")]
-        let name = format!("history_dbg_{}", &self.title);
-        #[cfg(not(feature = "debug_mode"))]
-        let name = format!("history_{}", &self.title);
-        let mut path = self.output_dir.clone();
-        path.push(format!("{}.json", &name));
+    pub fn save_history(&self, compact: bool, json: bool) {
+        let name = if cfg!(features = "debug_mode") {
+            format!("history_dbg_{}", &self.title)
+        } else {
+            format!("history_{}", &self.title)
+        };
 
-        let mut f = OpenOptions::new()
+        let mut path_json = self.output_dir.clone();
+        path_json.push(format!("{}.json", &name));
+
+        let mut path_binc = self.output_dir.clone();
+        path_binc.push(format!("{}.binc", &name));
+
+        let mut f_json = OpenOptions::new()
             .write(true)
             .create(true)
             .truncate(true)
-            .open(path)
+            .open(path_json)
             .unwrap();
 
-        for wh in self.history.iter() {
-            serde_json::to_writer(&mut f, wh).unwrap();
+        let mut f_binc = OpenOptions::new()
+            .write(true)
+            .create(true)
+            .truncate(true)
+            .open(path_binc)
+            .unwrap();
+
+        if compact {
+            if json {
+                serde_json::to_writer(
+                    &mut f_json,
+                    &self
+                        .history
+                        .iter()
+                        .map(|wh| (wh.tstep, wh.cells.clone()))
+                        .collect::<Vec<(u32, Cells)>>(),
+                )
+                .unwrap();
+            }
+            serialize_into(&mut f_binc, &self.history).unwrap()
+        } else {
+            if json {
+                serde_json::to_writer(&mut f_json, &self.history)
+                    .unwrap();
+            }
+            serialize_into(&mut f_binc, &self.history).unwrap();
         }
     }
 }

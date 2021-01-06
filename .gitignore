@@ -11,21 +11,18 @@ Cargo.lock
 # IntelliJ IDEA files
 .idea
 
-**/*.avro
-**/*.avsc
-
-# piped output from runs
-out.txt
-out_*.txt
-
+# animation
 *.mp4
 
 # macos files to ignore
 .DS_Store
 
-# json output
+# outputs
 **/*.json
-
-# bson output
 **/*.bson
+**/*.binc
+**/*.avro
+**/*.avsc
+out.txt
+out_*.txt
 

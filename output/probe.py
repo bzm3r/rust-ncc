@@ -2,14 +2,14 @@ import matplotlib.pyplot as plt
 import fastavro
 import json
 import numpy as np
+import json
 
-state_recs = []
-with open('history_dbg_a pair of cells_schema.avsc') as sf:
-    fastavro.parse_schema(json.load(sf))
-    with open('history_dbg_a pair of cells_dat.avro', 'rb') as df:
-        for r in fastavro.reader(df):
-            state_recs.append(r)
+output = None
+with open('history_separated_pair.json') as sf:
+    output = json.load(sf)
 
+tsteps = [o[0] for o in output]
+state_recs = [o[1] for o in output]
 
 def p2ds_to_numpy(p2ds):
     vs = []

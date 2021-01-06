@@ -10,7 +10,8 @@ use crate::math::radians::{arctan, Radians};
 use crate::math::{max_f32, min_f32};
 use serde::{Deserialize, Serialize};
 use std::fmt;
-use std::fmt::{Display, Write};
+use std::fmt::Display;
+use std::fmt::Write;
 use std::ops::{Add, Div, Mul, Sub};
 
 /// 2D vector with `f32` elements.
@@ -231,6 +232,7 @@ impl Display for V2D {
     }
 }
 
+#[allow(unused)]
 pub fn poly_to_string(poly: &[V2D]) -> String {
     let mut r = "[".to_string();
     for p in poly {

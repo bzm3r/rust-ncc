@@ -5,7 +5,7 @@ use crate::cell::chemistry::{
 use crate::experiments::{
     gen_default_adhesion_mag, gen_default_char_quants,
     gen_default_phys_contact_dist, gen_default_raw_params,
-    gen_default_viscosity, CellGroup, Experiment, GroupLayout,
+    gen_default_viscosity, CellGroup, Experiment, GroupBBox,
 };
 use crate::interactions::dat_sym2d::SymCcDat;
 use crate::math::v2d::V2D;
@@ -23,13 +23,13 @@ use rand::SeedableRng;
 fn group_layout(
     num_cells: u32,
     char_quants: &CharQuantities,
-) -> Result<GroupLayout, String> {
+) -> Result<GroupBBox, String> {
     // specify initial location of group centroid
     let centroid = V2D {
         x: char_quants.normalize(&Length(0.0)),
         y: char_quants.normalize(&Length(0.0)),
     };
-    let r = GroupLayout {
+    let r = GroupBBox {
         width: 1,
         height: 2,
         bottom_left: centroid,
@@ -108,7 +108,7 @@ pub fn generate(seed: Option<u64>) -> Experiment {
         raw_world_parameters(&char_quants).refine(&char_quants);
     let cell_groups = cell_groups(&mut rng, &char_quants);
     Experiment {
-        title: "a pair of cells".to_string(),
+        file_name: "pair".to_string(),
         char_quants,
         world_parameters,
         cell_groups,

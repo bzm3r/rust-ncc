@@ -1,7 +1,7 @@
 #![allow(clippy::too_many_arguments)]
 //! The entry point.
-// #[cfg(feature = "animate")]
-// mod animator;
+#[cfg(feature = "animate")]
+mod animator;
 mod cell;
 mod experiments;
 mod interactions;
@@ -12,8 +12,6 @@ mod world;
 
 #[cfg(feature = "animate")]
 use crate::animator::create_animation;
-// use crate::math::geometry::debug_2516;
-// use crate::math::geometry::debug_point_in_poly;
 use std::path::PathBuf;
 use std::time::Instant;
 
@@ -21,22 +19,21 @@ use std::time::Instant;
 pub const NVERTS: usize = 16;
 
 fn main() {
-    let exp = experiments::pairs::generate(Some(3));
-    #[cfg(target_os = "windows")]
-    let output_dir = PathBuf::from(format!(
-        "{}\\output",
-        std::env::current_dir().unwrap().to_str().unwrap()
-    ));
+    let exp = experiments::separated_pair::generate(Some(3));
 
-    #[cfg(target_os = "macos")]
     let output_dir = PathBuf::from("./output");
     let mut w = world::World::new(exp, output_dir.clone());
+
     let now = Instant::now();
-    w.simulate(1.0 * 3600.0);
-    w.save_history();
+    w.simulate(3.0 * 3600.0, 10);
     println!("Simulation complete. {} s.", now.elapsed().as_secs());
+    let now = Instant::now();
+    w.save_history(true, true);
+    println!(
+        "Finished saving history. {} s.",
+        now.elapsed().as_secs()
+    );
+
     #[cfg(feature = "animate")]
     create_animation(&w.history, &output_dir.join("out.mp4"));
-    // //println!("test result: {}", debug_2516());
-    // debug_point_in_poly();
 }

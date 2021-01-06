@@ -17,9 +17,9 @@ use crate::parameters::{
     RawInteractionParams, RawParameters, RawPhysicalContactParams,
     RawWorldParameters,
 };
+use crate::utils::pcg32::Pcg32;
 use crate::NVERTS;
 use rand::SeedableRng;
-use rand_pcg::Pcg64;
 
 /// Generate the group layout to use for this experiment.
 fn group_bbox(
@@ -51,7 +51,7 @@ fn group_bbox(
 
 /// Define the cell groups that will exist in this experiment.
 fn cell_groups(
-    rng: &mut Pcg64,
+    rng: &mut Pcg32,
     cq: &CharQuantities,
 ) -> Vec<CellGroup> {
     let group0_marked = [
@@ -125,10 +125,7 @@ fn raw_world_parameters(
             bdry: None,
             phys_contact: RawPhysicalContactParams {
                 range: gen_default_phys_contact_dist(),
-                adh_mag: Some(gen_default_adhesion_mag(
-                    char_quants,
-                    1.0,
-                )),
+                adh_mag: None,
                 cal_mag: None,
                 cil_mag: 60.0,
             },
@@ -139,15 +136,15 @@ fn raw_world_parameters(
 /// Generate the experiment, so that it can be run.
 pub fn generate(seed: Option<u64>) -> Experiment {
     let mut rng = match seed {
-        Some(s) => Pcg64::seed_from_u64(s),
-        None => Pcg64::from_entropy(),
+        Some(s) => Pcg32::seed_from_u64(s),
+        None => Pcg32::from_entropy(),
     };
     let char_quants = gen_default_char_quants();
     let world_parameters =
         raw_world_parameters(&char_quants).refine(&char_quants);
     let cell_groups = cell_groups(&mut rng, &char_quants);
     Experiment {
-        title: "a pair of cells".to_string(),
+        file_name: "separated_pair".to_string(),
         char_quants,
         world_parameters,
         cell_groups,
@@ -157,7 +154,7 @@ pub fn generate(seed: Option<u64>) -> Experiment {
 }
 
 fn gen_default_raw_params(
-    rng: &mut Pcg64,
+    rng: &mut Pcg32,
     randomization: bool,
     marked_rac: [bool; NVERTS],
     marked_rho: [bool; NVERTS],

@@ -6,7 +6,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub mod pairs;
+pub mod pair;
+pub mod separated_pair;
 pub mod single;
 
 use crate::cell::chemistry::{
@@ -23,7 +24,7 @@ use crate::utils::pcg32::Pcg32;
 use crate::NVERTS;
 
 /// Specifies initial placement of the group.
-pub struct GroupLayout {
+pub struct GroupBBox {
     /// Width of group in terms of number of cells.
     pub width: u32,
     /// Height of group in terms of number if cells.
@@ -37,14 +38,14 @@ pub struct CellGroup {
     /// The number of cells in the group.
     pub num_cells: u32,
     /// Initial layout of the cell group.
-    pub layout: GroupLayout,
+    pub layout: GroupBBox,
     /// Parameters shared by all cells in this group.
     pub parameters: Parameters,
 }
 
 /// Information required to create an experiment.
 pub struct Experiment {
-    pub title: String,
+    pub file_name: String,
     /// Characteristic quantities.
     pub char_quants: CharQuantities,
     pub world_parameters: WorldParameters,

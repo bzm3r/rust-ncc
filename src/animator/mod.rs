@@ -1,5 +1,5 @@
 use crate::math::v2d::V2D;
-use crate::world::Cells;
+use crate::world::{Cells, WorldHistory};
 use crate::NVERTS;
 use cairo::{Context, Format, ImageSurface};
 use std::io::Write;
@@ -84,7 +84,7 @@ pub struct DrawingData {
 
 impl DrawingData {
     pub fn from_history(
-        history: &[Cells],
+        history: &[&Cells],
         px_w: i32,
         px_h: i32,
         px_per_micron: f32,
@@ -121,7 +121,13 @@ impl DrawingData {
     }
 }
 
-pub fn create_animation(history: &[Cells], output_path: &Path) {
-    let data = DrawingData::from_history(history, 1280, 720, 2.0);
+pub fn create_animation(
+    history: &[WorldHistory],
+    output_path: &Path,
+) {
+    let cells_history =
+        history.iter().map(|h| &h.cells).collect::<Vec<&Cells>>();
+    let data =
+        DrawingData::from_history(&cells_history, 1280, 720, 2.0);
     create_mp4(&data, 1000, 1000, 30, output_path);
 }
