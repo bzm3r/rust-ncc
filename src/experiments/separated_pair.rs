@@ -13,9 +13,9 @@ use crate::parameters::quantity::{
     Force, Length, Quantity, Stress, Time,
 };
 use crate::parameters::{
-    CharQuantities, CoaParams, PhysicalContactParams, RawCoaParams,
-    RawInteractionParams, RawParameters, RawPhysicalContactParams,
-    RawWorldParameters,
+    CharQuantities, CoaParams, PhysicalContactParams, RawCloseBounds,
+    RawCoaParams, RawInteractionParams, RawParameters,
+    RawPhysicalContactParams, RawWorldParameters,
 };
 use crate::utils::pcg32::Pcg32;
 use crate::NVERTS;
@@ -117,6 +117,7 @@ fn raw_world_parameters(
     //     range: Length(100.0).micro(),
     //     mag: 100.0,
     // })
+    let one_at = gen_default_phys_contact_dist();
     RawWorldParameters {
         vertex_eta: gen_default_viscosity(),
         interactions: RawInteractionParams {
@@ -124,7 +125,10 @@ fn raw_world_parameters(
             chem_attr: None,
             bdry: None,
             phys_contact: RawPhysicalContactParams {
-                range: gen_default_phys_contact_dist(),
+                range: RawCloseBounds::new(
+                    one_at.mul_number(2.0),
+                    one_at,
+                ),
                 adh_mag: None,
                 cal_mag: None,
                 cil_mag: 60.0,

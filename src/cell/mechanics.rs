@@ -6,7 +6,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use crate::math::capped_linear_function;
+use crate::math::capped_linear_fn;
 use crate::math::geometry::calc_poly_area;
 use crate::math::v2d::V2D;
 use crate::utils::circ_ix_plus;
@@ -86,14 +86,16 @@ pub fn calc_rgtp_forces(
         // which points in the direction `uiv`.
         let mag = if ra > pa {
             -1.0 * const_protrusive
-                * capped_linear_function(
+                * capped_linear_fn(
                     ra - pa,
+                    0.0,
                     2.0 * halfmax_vertex_rgtp_act,
                 )
         } else {
             const_retractive
-                * capped_linear_function(
+                * capped_linear_fn(
                     pa - ra,
+                    0.0,
                     2.0 * halfmax_vertex_rgtp_act,
                 )
         };

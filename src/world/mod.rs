@@ -6,7 +6,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 pub mod hardio;
-#[cfg(feature = "debug_mode")]
+#[cfg(feature = "validation")]
 use crate::cell::confirm_volume_exclusion;
 use crate::cell::core_state::CoreState;
 use crate::cell::CellState;
@@ -19,12 +19,11 @@ use crate::parameters::{Parameters, WorldParameters};
 use crate::NVERTS;
 //use rand_core::SeedableRng;
 use crate::utils::pcg32::Pcg32;
-use bincode::serialize_into;
+use crate::world::hardio::{save_compact, save_full, Format};
 use rand::seq::SliceRandom;
 use rand::{RngCore, SeedableRng};
 use serde::{Deserialize, Serialize};
 use std::f32::consts::PI;
-use std::fs::OpenOptions;
 use std::path::PathBuf;
 
 #[derive(Clone, Deserialize, Serialize)]
@@ -67,7 +66,7 @@ impl Cells {
             interaction_generator
                 .update(ci, &new_cell_state.core.poly);
 
-            #[cfg(feature = "debug_mode")]
+            #[cfg(feature = "validation")]
             confirm_volume_exclusion(
                 &new_cell_state.core.poly,
                 &interaction_generator.get_contact_data(ci),
@@ -83,8 +82,8 @@ impl Cells {
     }
 }
 
-#[derive(Deserialize, Serialize)]
-pub struct WorldHistory {
+#[derive(Deserialize, Serialize, Clone)]
+pub struct Snapshot {
     pub tstep: u32,
     pub interaction_generator: InteractionGenerator,
     pub rng: Pcg32,
@@ -96,12 +95,12 @@ pub struct World {
     tstep: u32,
     world_params: WorldParameters,
     group_params: Vec<Parameters>,
-    pub history: Vec<WorldHistory>,
+    pub history: Vec<Snapshot>,
     cells: Cells,
     interaction_generator: InteractionGenerator,
     pub rng: Pcg32,
-    output_dir: PathBuf,
-    title: String,
+    out_dir: PathBuf,
+    file_name: String,
 }
 
 fn gen_poly(centroid: &V2D, radius: f32) -> [V2D; NVERTS] {
@@ -207,7 +206,7 @@ impl World {
             cell_states,
             interactions: cell_interactions.clone(),
         };
-        let history = vec![WorldHistory {
+        let history = vec![Snapshot {
             tstep: 0,
             interaction_generator: interaction_generator.clone(),
             rng,
@@ -222,13 +221,13 @@ impl World {
             cells,
             interaction_generator,
             rng,
-            output_dir,
-            title: experiment.file_name,
+            out_dir: output_dir,
+            file_name: experiment.file_name,
         }
     }
 
-    pub fn as_history(&self) -> WorldHistory {
-        WorldHistory {
+    pub fn as_history(&self) -> Snapshot {
+        Snapshot {
             tstep: self.tstep,
             interaction_generator: self.interaction_generator.clone(),
             rng: self.rng,
@@ -244,6 +243,11 @@ impl World {
         let num_tsteps =
             (final_tpoint / self.tstep_length).ceil() as u32;
         while self.tstep < num_tsteps {
+            println!("------------------");
+            println!("tstep: {}", self.tstep);
+            // if self.tstep == 1760 {
+            //     println!("at tstep 1760!")
+            // }
             let new_cells: Cells = self
                 .cells
                 .simulate(
@@ -254,7 +258,10 @@ impl World {
                     &mut self.interaction_generator,
                 )
                 .unwrap_or_else(|e| {
-                    self.save_history(false, true);
+                    self.save_history(
+                        false,
+                        vec![Format::Json, Format::Bincode],
+                    );
                     panic!("tstep: {}\n{}", self.tstep, e);
                 });
 
@@ -263,55 +270,31 @@ impl World {
                 self.history.push(self.as_history());
             }
             self.tstep += 1;
+            println!("------------------")
         }
     }
 
-    pub fn save_history(&self, compact: bool, json: bool) {
-        let name = if cfg!(features = "debug_mode") {
-            format!("history_dbg_{}", &self.title)
-        } else {
-            format!("history_{}", &self.title)
-        };
-
-        let mut path_json = self.output_dir.clone();
-        path_json.push(format!("{}.json", &name));
-
-        let mut path_binc = self.output_dir.clone();
-        path_binc.push(format!("{}.binc", &name));
-
-        let mut f_json = OpenOptions::new()
-            .write(true)
-            .create(true)
-            .truncate(true)
-            .open(path_json)
-            .unwrap();
-
-        let mut f_binc = OpenOptions::new()
-            .write(true)
-            .create(true)
-            .truncate(true)
-            .open(path_binc)
-            .unwrap();
-
+    pub fn save_history(&self, compact: bool, formats: Vec<Format>) {
         if compact {
-            if json {
-                serde_json::to_writer(
-                    &mut f_json,
-                    &self
-                        .history
-                        .iter()
-                        .map(|wh| (wh.tstep, wh.cells.clone()))
-                        .collect::<Vec<(u32, Cells)>>(),
-                )
-                .unwrap();
-            }
-            serialize_into(&mut f_binc, &self.history).unwrap()
+            let data = self
+                .history
+                .iter()
+                .map(|h| (h.tstep, h.cells.clone()))
+                .collect::<Vec<(u32, Cells)>>();
+            save_compact(
+                data,
+                &self.out_dir,
+                formats,
+                &self.file_name,
+            );
         } else {
-            if json {
-                serde_json::to_writer(&mut f_json, &self.history)
-                    .unwrap();
-            }
-            serialize_into(&mut f_binc, &self.history).unwrap();
+            let data = self
+                .history
+                .iter()
+                .enumerate()
+                .map(|(ix, snapshot)| (ix as u32, snapshot.clone()))
+                .collect::<Vec<(u32, Snapshot)>>();
+            save_full(data, &self.out_dir, formats, &self.file_name);
         }
     }
 }

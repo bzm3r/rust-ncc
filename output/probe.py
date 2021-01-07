@@ -5,7 +5,8 @@ import numpy as np
 import json
 
 output = None
-with open('history_separated_pair.json') as sf:
+file_name = "history_separated_pair.json"
+with open(file_name) as sf:
     output = json.load(sf)
 
 tsteps = [o[0] for o in output]
@@ -118,13 +119,13 @@ circ_vixs = np.take(np.arange(16), np.arange(17), mode='wrap')
 def paint(delta):
     global fig
     global ax
-    global tstep
+    global tstep_ix
     global num_tsteps
     ax.cla()
     ax.set_aspect('equal')
     ax.set_xlim([0, 40])
     ax.set_ylim([0, 160])
-    for (ci, poly) in enumerate(poly_per_cell_per_tstep[tstep]):
+    for (ci, poly) in enumerate(poly_per_cell_per_tstep[tstep_ix]):
         if ci == 0:
             poly_color = "k"
         else:
@@ -137,15 +138,15 @@ def paint(delta):
             ax.annotate(str(vix), (poly[vix, 0], poly[vix, 1]))
 
     for poly, rac_act_arrows in zip(
-            poly_per_cell_per_tstep[tstep],
-            rac_act_arrows_per_cell_per_tstep[tstep]
+            poly_per_cell_per_tstep[tstep_ix],
+            rac_act_arrows_per_cell_per_tstep[tstep_ix]
     ):
         for p, rac_arrow in zip(poly, rac_act_arrows):
             ax.arrow(p[0], p[1], 3*rac_arrow[0], 3*rac_arrow[1], color="b",
                      length_includes_head=True, head_width=0.0)
 
-    for poly, rho_act_arrows in zip(poly_per_cell_per_tstep[tstep],
-                                    rho_act_arrows_per_cell_per_tstep[tstep]):
+    for poly, rho_act_arrows in zip(poly_per_cell_per_tstep[tstep_ix],
+                                    rho_act_arrows_per_cell_per_tstep[tstep_ix]):
         for p, rho_arrow in zip(poly, rho_act_arrows):
             ax.arrow(p[0], p[1], 3*rho_arrow[0], 3*rho_arrow[1], color="r",
                      length_includes_head=True, head_width=0.0)
@@ -168,8 +169,8 @@ def paint(delta):
     #     ax.arrow(edge_force[0], edge_force[1], edge_force[2], edge_force[3], color="g", length_includes_head=True, head_width=0.5)
     # for rgtp_force in rgtp_forces_per_tstep[tstep]:
     #     ax.arrow(rgtp_force[0], rgtp_force[1], rgtp_force[2], rgtp_force[3], color="b", length_includes_head=True, head_width=0.5)
-    ax.set_title("frame {}".format(tstep))
-    tstep = (tstep + delta) % num_tsteps
+    ax.set_title("frame {}".format(tsteps[tstep_ix]))
+    tstep_ix = (tstep_ix + delta) % len(tsteps)
     plt.show()
 
 
@@ -179,14 +180,18 @@ def on_press(event):
         paint(1)
     elif event.key == 'z':
         paint(-1)
+    if event.key == 'c':
+        paint(5)
+    elif event.key == 'v':
+        paint(-5)
     elif event.key == 'n':
-        paint(-100)
+        paint(-10)
     elif event.key == 'm':
-        paint(100)
+        paint(10)
     fig.canvas.draw()
 
 
 num_tsteps = poly_per_cell_per_tstep.shape[0]
-tstep = 0
+tstep_ix = 0
 fig, ax = plt.subplots()
 fig.canvas.mpl_connect('key_press_event', on_press)

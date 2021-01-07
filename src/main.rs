@@ -12,6 +12,7 @@ mod world;
 
 #[cfg(feature = "animate")]
 use crate::animator::create_animation;
+use crate::world::hardio::Format;
 use std::path::PathBuf;
 use std::time::Instant;
 
@@ -25,10 +26,10 @@ fn main() {
     let mut w = world::World::new(exp, output_dir.clone());
 
     let now = Instant::now();
-    w.simulate(3.0 * 3600.0, 10);
+    w.simulate(2.42 * 3600.0, 1);
     println!("Simulation complete. {} s.", now.elapsed().as_secs());
     let now = Instant::now();
-    w.save_history(true, true);
+    w.save_history(true, vec![Format::Bson, Format::Bincode]);
     println!(
         "Finished saving history. {} s.",
         now.elapsed().as_secs()

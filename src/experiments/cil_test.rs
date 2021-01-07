@@ -13,13 +13,13 @@ use crate::parameters::quantity::{
     Force, Length, Quantity, Stress, Time,
 };
 use crate::parameters::{
-    CharQuantities, CoaParams, PhysicalContactParams, RawCoaParams,
-    RawInteractionParams, RawParameters, RawPhysicalContactParams,
-    RawWorldParameters,
+    CharQuantities, CoaParams, PhysicalContactParams, RawCloseBounds,
+    RawCoaParams, RawInteractionParams, RawParameters,
+    RawPhysicalContactParams, RawWorldParameters,
 };
+use crate::utils::pcg32::Pcg32;
 use crate::NVERTS;
 use rand::SeedableRng;
-use rand_pcg::Pcg64;
 
 /// Generate the group layout to use for this experiment.
 fn group_bbox(
@@ -51,7 +51,7 @@ fn group_bbox(
 
 /// Define the cell groups that will exist in this experiment.
 fn cell_groups(
-    rng: &mut Pcg64,
+    rng: &mut Pcg32,
     cq: &CharQuantities,
 ) -> Vec<CellGroup> {
     let group0_marked = [
@@ -74,23 +74,24 @@ fn cell_groups(
         group1_marked,
         group0_marked,
     );
-    let parameters = raw_params0.gen_parameters(cq);
+    let params0 = raw_params0.gen_parameters(cq);
+    let params1 = raw_params1.gen_parameters(cq);
     let bottom_left0 = (Length(0.0), Length(0.0));
     let num_cells0 = 1;
     let group0_layout = CellGroup {
         num_cells: num_cells0,
         layout: group_bbox(num_cells0, cq, bottom_left0, 1, 1)
             .unwrap(),
-        parameters,
+        parameters: params0,
     };
     let bottom_left1 =
-        (Length(0.0), raw_params1.cell_diam.mul_number(2.0));
+        (Length(0.0), raw_params1.cell_diam.mul_number(1.0));
     let num_cells1 = 1;
     let group1_layout = CellGroup {
         num_cells: num_cells1,
         layout: group_bbox(num_cells1, cq, bottom_left1, 1, 1)
             .unwrap(),
-        parameters,
+        parameters: params1,
     };
     vec![group0_layout, group1_layout]
 }
@@ -116,6 +117,7 @@ fn raw_world_parameters(
     //     range: Length(100.0).micro(),
     //     mag: 100.0,
     // })
+    let one_at = gen_default_phys_contact_dist();
     RawWorldParameters {
         vertex_eta: gen_default_viscosity(),
         interactions: RawInteractionParams {
@@ -123,12 +125,12 @@ fn raw_world_parameters(
             chem_attr: None,
             bdry: None,
             phys_contact: RawPhysicalContactParams {
-                range: gen_default_phys_contact_dist(),
-                adh_mag: Some(gen_default_adhesion_mag(
-                    char_quants,
-                    1.0,
-                )),
-                cal_mag: Some(0.0),
+                range: RawCloseBounds::new(
+                    one_at.mul_number(2.0),
+                    one_at,
+                ),
+                adh_mag: None,
+                cal_mag: None,
                 cil_mag: 60.0,
             },
         },
@@ -138,15 +140,15 @@ fn raw_world_parameters(
 /// Generate the experiment, so that it can be run.
 pub fn generate(seed: Option<u64>) -> Experiment {
     let mut rng = match seed {
-        Some(s) => Pcg64::seed_from_u64(s),
-        None => Pcg64::from_entropy(),
+        Some(s) => Pcg32::seed_from_u64(s),
+        None => Pcg32::from_entropy(),
     };
     let char_quants = gen_default_char_quants();
     let world_parameters =
         raw_world_parameters(&char_quants).refine(&char_quants);
     let cell_groups = cell_groups(&mut rng, &char_quants);
     Experiment {
-        title: "a pair of cells".to_string(),
+        file_name: "cil_test".to_string(),
         char_quants,
         world_parameters,
         cell_groups,
@@ -156,7 +158,7 @@ pub fn generate(seed: Option<u64>) -> Experiment {
 }
 
 fn gen_default_raw_params(
-    rng: &mut Pcg64,
+    rng: &mut Pcg32,
     randomization: bool,
     marked_rac: [bool; NVERTS],
     marked_rho: [bool; NVERTS],
@@ -187,7 +189,7 @@ fn gen_default_raw_params(
             ty: DistributionType::Specific(marked_rho),
         },
         DistributionScheme {
-            frac: 0.1,
+            frac: 0.0,
             ty: DistributionType::Random,
         },
         rng,

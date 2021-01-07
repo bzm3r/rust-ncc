@@ -1,14 +1,15 @@
 use crate::interactions::dat_4d::CvCvDat;
 use crate::interactions::dat_sym2d::SymCcDat;
 use crate::interactions::{generate_contacts, RgtpActivityDiff};
-use crate::math::close_to_zero;
 use crate::math::geometry::{BBox, Poly};
 use crate::math::v2d::V2D;
-use crate::parameters::PhysicalContactParams;
+use crate::math::{
+    capped_linear_fn, close_to_zero, in_unit_interval,
+};
+use crate::parameters::{CloseBounds, PhysicalContactParams};
 use crate::utils::circ_ix_plus;
 use crate::NVERTS;
 use serde::{Deserialize, Serialize};
-use std::cmp::Ordering;
 
 #[derive(Clone, Copy)]
 pub struct Dist(f32);
@@ -17,40 +18,58 @@ pub struct LineSegParam(f32);
 
 #[derive(Clone, Copy, Serialize, Deserialize)]
 pub enum ClosePoint {
-    Vertex(V2D),
-    OnEdge(LineSegParam, V2D),
+    Vertex {
+        vector_to: V2D,
+        smooth_factor: f32,
+    },
+    OnEdge {
+        edge_point_param: f32,
+        vector_to: V2D,
+        smooth_factor: f32,
+    },
     None,
 }
 
 impl ClosePoint {
     /// Returns the point closest to `p` (`ClosePoint`) on the line
     /// segment `k = (b - a)*t + a, 0 <= t < 1`.
-    pub fn calc(range: f32, p: V2D, a: V2D, b: V2D) -> ClosePoint {
+    pub fn calc(
+        range: CloseBounds,
+        p: V2D,
+        a: V2D,
+        b: V2D,
+    ) -> ClosePoint {
         // Is `p` close to `a`? Then it interacts directly with `a`.
         let pa = a - p;
-        if pa.mag() < range {
-            ClosePoint::Vertex(pa)
-        } else if (b - p).mag() < range {
+        if pa.mag() < range.zero_at {
+            let smooth_factor = capped_linear_fn(
+                pa.mag(),
+                range.zero_at,
+                range.one_at,
+            );
+            ClosePoint::Vertex {
+                vector_to: pa,
+                smooth_factor,
+            }
+        } else if (b - p).mag() < range.zero_at {
             ClosePoint::None
         } else {
-            let seg_gen = b - a;
-            let t = seg_gen.dot(&p) / seg_gen.mag_squared();
+            let ab = b - a;
+            let t = ab.dot(&pa) / ab.mag();
             // Is `t` in the interval `[0, 1)`? If yes, then the close
             // point lies on the edge.
-            if {
-                match t.partial_cmp(&0.0) {
-                    Some(Ordering::Less) => false,
-                    Some(Ordering::Greater)
-                    | Some(Ordering::Equal) => true,
-                    _ => panic!(
-                        "partial_cmp could not determine ordering of t ({}) relative to 0.0", t
-                    ),
-                }
-            } && (t < 1.0)
-            {
-                let pc = t * (seg_gen + a) - p;
-                if pc.mag() < range {
-                    ClosePoint::OnEdge(LineSegParam(t), pc)
+            if in_unit_interval(t) {
+                let pc = (t * ab) + pa;
+                if pc.mag() < range.zero_at {
+                    ClosePoint::OnEdge {
+                        edge_point_param: t,
+                        vector_to: pc,
+                        smooth_factor: capped_linear_fn(
+                            pc.mag(),
+                            range.zero_at,
+                            range.one_at,
+                        ),
+                    }
                 } else {
                     ClosePoint::None
                 }
@@ -88,18 +107,25 @@ impl PhysicalContactGenerator {
         let mut dat = CvCvDat::empty(num_cells, ClosePoint::None);
         let contact_bbs = cell_polys
             .iter()
-            .map(|cp| cp.bbox.expand_by(params.range))
+            .map(|cp| cp.bbox.expand_by(params.range.zero_at))
             .collect::<Vec<BBox>>();
         let contacts = generate_contacts(&contact_bbs);
-        for (ai, poly_a) in cell_polys.iter().enumerate() {
-            for (bi, poly_b) in cell_polys.iter().enumerate() {
+        let c0_contacts = contacts.get(0, 1);
+        let c1_contacts = contacts.get(1, 0);
+        for (ai, poly) in cell_polys.iter().enumerate() {
+            for (bi, other) in cell_polys.iter().enumerate() {
                 if ai != bi && contacts.get(ai, bi) {
-                    for (avi, av) in poly_a.verts.iter().enumerate() {
-                        for (bvi, bv) in
-                            poly_b.verts.iter().enumerate()
+                    for (avi, p) in poly.verts.iter().enumerate() {
+                        for (bvi, a) in other.verts.iter().enumerate()
                         {
-                            let bw = &poly_b.verts
+                            let b = &other.verts
                                 [circ_ix_plus(bvi, NVERTS)];
+                            let cp = ClosePoint::calc(
+                                params.range,
+                                *p,
+                                *a,
+                                *b,
+                            );
                             dat.set(
                                 ai,
                                 avi,
@@ -107,9 +133,9 @@ impl PhysicalContactGenerator {
                                 bvi,
                                 ClosePoint::calc(
                                     params.range,
-                                    *av,
-                                    *bv,
-                                    *bw,
+                                    *p,
+                                    *a,
+                                    *b,
                                 ),
                             )
                         }
@@ -137,7 +163,11 @@ impl PhysicalContactGenerator {
         (0..NVERTS)
             .filter_map(|ovi| match self.dat.get(ci, vi, oci, ovi) {
                 ClosePoint::None => None,
-                ClosePoint::OnEdge(LineSegParam(t), delta) => {
+                ClosePoint::OnEdge {
+                    vector_to,
+                    smooth_factor,
+                    edge_point_param,
+                } => {
                     //TODO: confirm that we don't want:
                     // let edge_rgtp = (1.0 - t) * cell_rgtps[oci][ovi]
                     //     + t * cell_rgtps[oci]
@@ -149,19 +179,24 @@ impl PhysicalContactGenerator {
                         cell_ix: oci,
                         vert_ix: ovi,
                         crl: CrlEffect::calc(v_rgtp, edge_rgtp),
-                        delta,
-                        t,
+                        vector_to,
+                        edge_point_param,
+                        smooth_factor,
                     })
                 }
-                ClosePoint::Vertex(delta) => Some(CloseEdge {
+                ClosePoint::Vertex {
+                    vector_to,
+                    smooth_factor,
+                } => Some(CloseEdge {
                     cell_ix: oci,
                     vert_ix: ovi,
                     crl: CrlEffect::calc(
                         v_rgtp,
                         cell_rgtps[oci][ovi],
                     ),
-                    delta,
-                    t: 0.0,
+                    vector_to,
+                    edge_point_param: 0.0,
+                    smooth_factor,
                 }),
             })
             .collect::<Vec<CloseEdge>>()
@@ -211,30 +246,59 @@ impl PhysicalContactGenerator {
     // }
 
     pub fn update(&mut self, ci: usize, cell_polys: &[Poly]) {
-        let poly_a = cell_polys[ci];
-        let bb = cell_polys[ci].bbox.expand_by(self.params.range);
+        let poly = cell_polys[ci];
+        let bb =
+            cell_polys[ci].bbox.expand_by(self.params.range.zero_at);
         self.contact_bbs[ci] = bb;
         for (oci, obb) in self.contact_bbs.iter().enumerate() {
             if oci != ci {
                 self.contacts.set(ci, oci, obb.intersects(&bb));
             }
         }
-        for (bci, poly_b) in cell_polys.iter().enumerate() {
-            if ci != bci && self.contacts.get(ci, bci) {
-                for (avi, av) in poly_a.verts.iter().enumerate() {
-                    for (bvi, bv) in poly_b.verts.iter().enumerate() {
-                        let bw =
-                            &poly_b.verts[circ_ix_plus(bvi, NVERTS)];
+        for (oci, other) in cell_polys.iter().enumerate() {
+            if ci != oci && self.contacts.get(ci, oci) {
+                for (pi, p) in poly.verts.iter().enumerate() {
+                    for (ai, a) in other.verts.iter().enumerate() {
+                        if ci == 0 && oci == 1 && pi == 3 && ai == 13
+                        {
+                            // println!(
+                            //     "c0_3, c1_13: {}",
+                            //     (p - a).mag()
+                            // );
+                        }
+                        if ci == 0 && oci == 1 && pi == 5 && ai == 11
+                        {
+                            // println!(
+                            //     "c0_5, c1_11: {}",
+                            //     (p - a).mag()
+                            // );
+                        }
+                        if ci == 0 && oci == 1 && pi == 4 && ai == 12
+                        {
+                            println!(
+                                "c0_4, c1_12: {}",
+                                (p - a).mag()
+                            );
+                        }
+                        if ci == 1 && oci == 0 && pi == 12 && ai == 4
+                        {
+                            println!(
+                                "c1_12, c0_4: {}",
+                                (p - a).mag()
+                            );
+                        }
+                        let bi = circ_ix_plus(ai, NVERTS);
+                        let b = &other.verts[bi];
                         self.dat.set(
                             ci,
-                            avi,
-                            bci,
-                            bvi,
+                            pi,
+                            oci,
+                            ai,
                             ClosePoint::calc(
                                 self.params.range,
-                                *av,
-                                *bv,
-                                *bw,
+                                *p,
+                                *a,
+                                *b,
                             ),
                         );
                     }
@@ -259,34 +323,42 @@ impl PhysicalContactGenerator {
                     cell_ix: oci,
                     vert_ix: ovi,
                     crl,
-                    delta,
-                    t,
-                    ..
+                    vector_to,
+                    edge_point_param,
+                    smooth_factor,
                 } in
                     self.close_edges(ci, vi, cell_rgtps).into_iter()
                 {
                     match (self.params.cal_mag, crl) {
                         (Some(cal_mag), CrlEffect::Cal) => {
-                            x_cals[vi] = cal_mag;
+                            x_cals[vi] = smooth_factor * cal_mag;
                         }
                         (Some(_), CrlEffect::Cil) | (None, _) => {
-                            x_cils[vi] = self.params.cil_mag;
+                            x_cils[vi] =
+                                smooth_factor * self.params.cil_mag;
                         }
                     }
 
                     if let Some(adh_mag) = self.params.adh_mag {
-                        let adh_force = adh_mag
-                            * ((1.0 / self.params.range) * delta);
+                        let d = vector_to.mag();
+                        let s = capped_linear_fn(
+                            d,
+                            self.params.range.one_at,
+                            0.0,
+                        );
+                        let adh_force = adh_mag * s * vector_to;
                         //* ((1.0 / self.params.range) * delta);
                         // We are close to the vertex.
-                        if close_to_zero(t) {
+                        if close_to_zero(edge_point_param) {
                             adh[oci][ovi] = adh[oci][ovi] - adh_force;
                         } else {
                             adh[oci][ovi] = adh[oci][ovi]
-                                + -1.0 * (1.0 - t) * adh_force;
+                                + -1.0
+                                    * (1.0 - edge_point_param)
+                                    * adh_force;
                             let owi = circ_ix_plus(ovi, NVERTS);
-                            adh[oci][owi] =
-                                adh[oci][owi] + -1.0 * t * adh_force;
+                            adh[oci][owi] = adh[oci][owi]
+                                + -1.0 * edge_point_param * adh_force;
                             adh[ci][vi] = adh[ci][vi] + adh_force;
                         }
                     };
@@ -323,11 +395,13 @@ pub struct CloseEdge {
     pub vert_ix: usize,
     /// Contact regulation of motion.
     pub crl: CrlEffect,
-    /// Let the position of the point on the close edge closest to the focus vertex be denoted `p`,
-    /// and the position of the focus vertex be denoted `v`. `delta` is such that `delta + v = p`.
-    pub delta: V2D,
+    /// Let the position of the focus vertex be denoted `p`, and
+    /// the point on the close edge closest to the focus vertex
+    /// be denoted `c`. `delta` is such that `delta + p = c`.
+    pub vector_to: V2D,
     /// Let the position of `vert_ix` be `p0`, and the position of `vert_ix + 1` be `p1`. Let `p`
     /// be the point on the close edge closest to the focus vertex. Then, `t` is such that
     /// `(p1 - p0)*t + p0 = p`.
-    pub t: f32,
+    pub edge_point_param: f32,
+    pub smooth_factor: f32,
 }

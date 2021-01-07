@@ -51,8 +51,20 @@ impl CharQuantities {
 }
 
 #[derive(Clone)]
+pub struct RawCloseBounds {
+    pub zero_until: Length,
+    pub one_at: Length,
+}
+
+impl RawCloseBounds {
+    pub fn new(zero_until: Length, one_at: Length) -> RawCloseBounds {
+        RawCloseBounds { zero_until, one_at }
+    }
+}
+
+#[derive(Clone)]
 pub struct RawPhysicalContactParams {
-    pub range: Length,
+    pub range: RawCloseBounds,
     pub adh_mag: Option<Force>,
     pub cal_mag: Option<f32>,
     pub cil_mag: f32,
@@ -61,13 +73,16 @@ pub struct RawPhysicalContactParams {
 impl RawPhysicalContactParams {
     pub fn refine(
         &self,
-        bq: &CharQuantities,
+        cq: &CharQuantities,
     ) -> PhysicalContactParams {
         PhysicalContactParams {
-            range: bq.normalize(&self.range),
+            range: CloseBounds::new(
+                cq.normalize(&self.range.zero_until),
+                cq.normalize(&self.range.one_at),
+            ),
             adh_mag: self
                 .adh_mag
-                .map(|adh_mag| bq.normalize(&adh_mag)),
+                .map(|adh_mag| cq.normalize(&adh_mag)),
             cal_mag: self.cal_mag,
             cil_mag: self.cil_mag,
         }
@@ -173,10 +188,25 @@ pub struct RawWorldParameters {
 }
 
 #[derive(Clone, Copy, Deserialize, Serialize)]
+pub struct CloseBounds {
+    pub zero_at: f32,
+    pub one_at: f32,
+}
+
+impl CloseBounds {
+    pub fn new(zero_until: f32, one_at: f32) -> CloseBounds {
+        CloseBounds {
+            zero_at: zero_until,
+            one_at,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Deserialize, Serialize)]
 pub struct PhysicalContactParams {
     /// Maximum distance between two points, for them to be considered
     /// in contact. This is usually set to 0.5 micrometers.
-    pub range: f32,
+    pub range: CloseBounds,
     /// Optional adhesion magnitude. If it is `None`, no adhesion
     /// will be calculated.
     pub adh_mag: Option<f32>,

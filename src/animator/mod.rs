@@ -1,5 +1,5 @@
 use crate::math::v2d::V2D;
-use crate::world::{Cells, WorldHistory};
+use crate::world::{Cells, Snapshot};
 use crate::NVERTS;
 use cairo::{Context, Format, ImageSurface};
 use std::io::Write;
@@ -121,10 +121,7 @@ impl DrawingData {
     }
 }
 
-pub fn create_animation(
-    history: &[WorldHistory],
-    output_path: &Path,
-) {
+pub fn create_animation(history: &[Snapshot], output_path: &Path) {
     let cells_history =
         history.iter().map(|h| &h.cells).collect::<Vec<&Cells>>();
     let data =

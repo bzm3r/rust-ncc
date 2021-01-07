@@ -82,7 +82,7 @@ fn move_point_out(
     good_v
 }
 
-#[cfg(feature = "debug_mode")]
+#[cfg(feature = "validation")]
 pub fn confirm_volume_exclusion(
     vs: &[V2D; NVERTS],
     contacts: &[ContactData],
@@ -113,7 +113,7 @@ pub fn enforce_volume_exclusion(
     mut new_vs: [V2D; NVERTS],
     contacts: Vec<ContactData>,
 ) -> Result<[V2D; NVERTS], String> {
-    #[cfg(feature = "debug_mode")]
+    #[cfg(feature = "validation")]
     confirm_volume_exclusion(&old_vs, &contacts, "old_vs")?;
 
     for vi in 0..NVERTS {
@@ -122,11 +122,11 @@ pub fn enforce_volume_exclusion(
         let new_u = new_vs[circ_ix_minus(vi, NVERTS)];
         let new_w = new_vs[circ_ix_plus(vi, NVERTS)];
         new_vs[vi] = move_point_out(
-            &new_u, new_v, &new_w, old_v, &contacts, 5,
+            &new_u, new_v, &new_w, old_v, &contacts, 20,
         );
     }
 
-    #[cfg(feature = "debug_mode")]
+    #[cfg(feature = "validation")]
     confirm_volume_exclusion(&new_vs, &contacts, "new_vs")?;
 
     Ok(new_vs)
@@ -214,7 +214,7 @@ impl CellState {
         )?;
         let geom_state = state.calc_geom_state();
 
-        #[cfg(feature = "debug_mode")]
+        #[cfg(feature = "validation")]
         state.validate("euler", &parameters)?;
 
         Ok(CellState {
@@ -274,7 +274,7 @@ impl CellState {
         .map_err(|e| format!("ci={}\n{}", self.ix, e))?;
         let geom_state = state.calc_geom_state();
 
-        #[cfg(feature = "debug_mode")]
+        #[cfg(feature = "validation")]
         state.validate("rkdp5", &parameters)?;
 
         Ok(CellState {

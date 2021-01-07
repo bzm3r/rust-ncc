@@ -783,7 +783,7 @@ impl CoreState {
         r
     }
 
-    #[cfg(feature = "debug_mode")]
+    #[cfg(feature = "validation")]
     pub fn validate(
         &self,
         loc_str: &str,

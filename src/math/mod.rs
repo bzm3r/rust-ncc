@@ -66,12 +66,20 @@ pub fn hill_function3(thresh: f32, x: f32) -> f32 {
 }
 
 #[inline]
-/// If `x > max_x`, returns 1.0, else `x/max_x`.
-pub fn capped_linear_function(x: f32, max_x: f32) -> f32 {
-    if x > max_x {
+/// Model a function which is `0` and `1` at the given inputs,
+/// but is capped in output between `[0, 1]`.
+pub fn capped_linear_fn(x: f32, zero_at: f32, one_at: f32) -> f32 {
+    // first, calculate the uncapped linear function
+    let m = 1.0 / (one_at - zero_at);
+    // 0.0 = y = m * zero_at + b => 0.0 - m * zero_at = b
+    let b = -1.0 * m * zero_at;
+    let y = m * x + b;
+    if y < 0.0 {
+        0.0
+    } else if y > 1.0 {
         1.0
     } else {
-        x / max_x
+        y
     }
 }
 

@@ -17,7 +17,28 @@
     <cargoProject FILE="$PROJECT_DIR$/playground/Cargo.toml" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="6e867186-6d46-442a-9050-0ad2ade12596" name="Default Changelist" comment="" />
+    <list default="true" id="6e867186-6d46-442a-9050-0ad2ade12596" name="Default Changelist" comment="">
+      <change afterPath="$PROJECT_DIR$/.idea/modules.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/rust-ncc.iml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Cargo.toml" beforeDir="false" afterPath="$PROJECT_DIR$/Cargo.toml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/output/probe.py" beforeDir="false" afterPath="$PROJECT_DIR$/output/probe.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/animator/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/animator/mod.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/cell/core_state.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/cell/core_state.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/cell/mechanics.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/cell/mechanics.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/cell/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/cell/mod.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/experiments/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/experiments/mod.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/experiments/separated_pair.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/experiments/separated_pair.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/experiments/separeted_pair.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/experiments/cil_test.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/interactions/dat_utils.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/interactions/dat_utils.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/interactions/gen_phys.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/interactions/gen_phys.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/main.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/math/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/math/mod.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/parameters/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/parameters/mod.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/world/hardio.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/world/hardio.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/world/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/world/mod.rs" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -54,6 +75,7 @@
     <option name="showLibraryContents" value="true" />
   </component>
   <component name="PropertiesComponent">
+    <property name="ASKED_SHARE_PROJECT_CONFIGURATION_FILES" value="true" />
     <property name="RunOnceActivity.OpenProjectViewOnStart" value="true" />
     <property name="RunOnceActivity.ShowReadmeOnStart" value="true" />
     <property name="WebServerToolWindowFactoryState" value="false" />
@@ -63,7 +85,7 @@
     <property name="org.rust.disableDetachedFileInspectionB:/rust-ncc/avro-test/src/macro_out.rs" value="true" />
     <property name="org.rust.disableDetachedFileInspectionB:/rust-ncc/playground/src/main.rs" value="true" />
     <property name="run.code.analysis.last.selected.profile" value="pProject Default" />
-    <property name="settings.editor.selected.configurable" value="CPPToolchains" />
+    <property name="settings.editor.selected.configurable" value="Errors" />
   </component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
@@ -74,9 +96,9 @@
       <recent name="B:\rust-ncc\src\utils" />
     </key>
   </component>
-  <component name="RunManager" selected="Cargo.Rel">
-    <configuration name="B-Dbg" type="CargoCommandRunConfiguration" factoryName="Cargo Command">
-      <option name="command" value="build --features &quot;debug_mode&quot;" />
+  <component name="RunManager" selected="Cargo.RelValid">
+    <configuration name="B-V+A" type="CargoCommandRunConfiguration" factoryName="Cargo Command">
+      <option name="command" value="build --features &quot;validation, animate&quot;" />
       <option name="workingDirectory" value="file://$PROJECT_DIR$" />
       <option name="channel" value="DEFAULT" />
       <option name="allFeatures" value="false" />
@@ -89,50 +111,8 @@
         <option name="CARGO.BUILD_TASK_PROVIDER" enabled="true" />
       </method>
     </configuration>
-    <configuration name="B-Dbg+A" type="CargoCommandRunConfiguration" factoryName="Cargo Command">
-      <option name="command" value="build --features &quot;debug_mode, animate&quot;" />
-      <option name="workingDirectory" value="file://$PROJECT_DIR$" />
-      <option name="channel" value="DEFAULT" />
-      <option name="allFeatures" value="false" />
-      <option name="emulateTerminal" value="false" />
-      <option name="backtrace" value="SHORT" />
-      <envs />
-      <option name="isRedirectInput" value="false" />
-      <option name="redirectInputPath" value="" />
-      <method v="2">
-        <option name="CARGO.BUILD_TASK_PROVIDER" enabled="true" />
-      </method>
-    </configuration>
-    <configuration name="B(N)-Dbg" type="CargoCommandRunConfiguration" factoryName="Cargo Command">
-      <option name="command" value="build --features &quot;debug_mode&quot;" />
-      <option name="workingDirectory" value="file://$PROJECT_DIR$" />
-      <option name="channel" value="NIGHTLY" />
-      <option name="allFeatures" value="false" />
-      <option name="emulateTerminal" value="false" />
-      <option name="backtrace" value="SHORT" />
-      <envs />
-      <option name="isRedirectInput" value="false" />
-      <option name="redirectInputPath" value="" />
-      <method v="2">
-        <option name="CARGO.BUILD_TASK_PROVIDER" enabled="true" />
-      </method>
-    </configuration>
-    <configuration name="Dbg" type="CargoCommandRunConfiguration" factoryName="Cargo Command">
-      <option name="command" value="run --features &quot;debug_mode&quot;" />
-      <option name="workingDirectory" value="file://$PROJECT_DIR$" />
-      <option name="channel" value="DEFAULT" />
-      <option name="allFeatures" value="false" />
-      <option name="emulateTerminal" value="false" />
-      <option name="backtrace" value="SHORT" />
-      <envs />
-      <option name="isRedirectInput" value="false" />
-      <option name="redirectInputPath" value="" />
-      <method v="2">
-        <option name="CARGO.BUILD_TASK_PROVIDER" enabled="true" />
-      </method>
-    </configuration>
-    <configuration name="Dbg+A" type="CargoCommandRunConfiguration" factoryName="Cargo Command">
-      <option name="command" value="run --features &quot;debug_mode, animate&quot;" />
+    <configuration name="B-Valid" type="CargoCommandRunConfiguration" factoryName="Cargo Command">
+      <option name="command" value="build --features &quot;validation&quot;" />
       <option name="workingDirectory" value="file://$PROJECT_DIR$" />
       <option name="channel" value="DEFAULT" />
       <option name="allFeatures" value="false" />
@@ -188,7 +168,7 @@
       </method>
     </configuration>
     <configuration name="RelValid" type="CargoCommandRunConfiguration" factoryName="Cargo Command">
-      <option name="command" value="run --release --features &quot;debug_mode&quot;" />
+      <option name="command" value="run --release --features &quot;validation&quot;" />
       <option name="workingDirectory" value="file://$PROJECT_DIR$" />
       <option name="channel" value="DEFAULT" />
       <option name="allFeatures" value="false" />
@@ -202,7 +182,7 @@
       </method>
     </configuration>
     <configuration name="Rel+A" type="CargoCommandRunConfiguration" factoryName="Cargo Command">
-      <option name="command" value="run --relase --features &quot;animate&quot;" />
+      <option name="command" value="run --release --features &quot;animate&quot;" />
       <option name="workingDirectory" value="file://$PROJECT_DIR$" />
       <option name="channel" value="DEFAULT" />
       <option name="allFeatures" value="false" />
@@ -243,6 +223,34 @@
         <option name="CARGO.BUILD_TASK_PROVIDER" enabled="true" />
       </method>
     </configuration>
+    <configuration name="V" type="CargoCommandRunConfiguration" factoryName="Cargo Command">
+      <option name="command" value="run --features &quot;validation&quot;" />
+      <option name="workingDirectory" value="file://$PROJECT_DIR$" />
+      <option name="channel" value="DEFAULT" />
+      <option name="allFeatures" value="false" />
+      <option name="emulateTerminal" value="false" />
+      <option name="backtrace" value="SHORT" />
+      <envs />
+      <option name="isRedirectInput" value="false" />
+      <option name="redirectInputPath" value="" />
+      <method v="2">
+        <option name="CARGO.BUILD_TASK_PROVIDER" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="V+A" type="CargoCommandRunConfiguration" factoryName="Cargo Command">
+      <option name="command" value="run --features &quot;validation, animate&quot;" />
+      <option name="workingDirectory" value="file://$PROJECT_DIR$" />
+      <option name="channel" value="DEFAULT" />
+      <option name="allFeatures" value="false" />
+      <option name="emulateTerminal" value="false" />
+      <option name="backtrace" value="SHORT" />
+      <envs />
+      <option name="isRedirectInput" value="false" />
+      <option name="redirectInputPath" value="" />
+      <method v="2">
+        <option name="CARGO.BUILD_TASK_PROVIDER" enabled="true" />
+      </method>
+    </configuration>
     <configuration name="avro-test" type="CargoCommandRunConfiguration" factoryName="Cargo Command" temporary="true">
       <option name="command" value="run" />
       <option name="workingDirectory" value="file://$PROJECT_DIR$/avro-test" />
@@ -257,13 +265,15 @@
         <option name="CARGO.BUILD_TASK_PROVIDER" enabled="true" />
       </method>
     </configuration>
+    <configuration default="true" type="GradleAppRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" PASS_PARENT_ENVS_2="true">
+      <method v="2">
+        <option name="com.jetbrains.cidr.cpp.gradle.execution.GradleNativeBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
     <configuration name="probe" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="rust-ncc" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
-      <envs>
-        <env name="PYTHONUNBUFFERED" value="1" />
-      </envs>
       <option name="SDK_HOME" value="A:\Anaconda\envs\rust-ncc\python.exe" />
       <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/output" />
       <option name="IS_MODULE_SDK" value="false" />
@@ -279,16 +289,15 @@
       <method v="2" />
     </configuration>
     <list>
-      <item itemvalue="Cargo.B-Dbg" />
-      <item itemvalue="Cargo.B-Dbg+A" />
-      <item itemvalue="Cargo.B(N)-Dbg" />
-      <item itemvalue="Cargo.Dbg" />
-      <item itemvalue="Cargo.Dbg+A" />
-      <item itemvalue="Cargo.Expand avro_test [avro-test]" />
+      <item itemvalue="Cargo.B-Valid" />
+      <item itemvalue="Cargo.B-V+A" />
+      <item itemvalue="Cargo.V" />
+      <item itemvalue="Cargo.V+A" />
       <item itemvalue="Cargo.Playground" />
       <item itemvalue="Cargo.RelValid" />
       <item itemvalue="Cargo.Rel" />
       <item itemvalue="Cargo.Rel+A" />
+      <item itemvalue="Cargo.Expand avro_test [avro-test]" />
       <item itemvalue="Cargo.Run avro-test" />
       <item itemvalue="Cargo.Run playground" />
       <item itemvalue="Cargo.avro-test" />
@@ -330,20 +339,21 @@
       <breakpoints>
         <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
           <dependency id="0" />
-          <url>file://$PROJECT_DIR$/src/cell/mod.rs</url>
-          <line>48</line>
-          <option name="timeStamp" value="10" />
+          <url>file://$PROJECT_DIR$/src/world/mod.rs</url>
+          <line>247</line>
+          <option name="timeStamp" value="27" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
-          <dependency leave-enabled="true" master-id="0" />
-          <url>file://$PROJECT_DIR$/src/math/geometry.rs</url>
-          <line>358</line>
-          <option name="timeStamp" value="12" />
+          <dependency id="1" master-id="0" />
+          <url>file://$PROJECT_DIR$/src/interactions/gen_phys.rs</url>
+          <line>225</line>
+          <option name="timeStamp" value="33" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
-          <url>file://$PROJECT_DIR$/playground/src/main.rs</url>
-          <line>2</line>
-          <option name="timeStamp" value="14" />
+          <dependency master-id="1" />
+          <url>file://$PROJECT_DIR$/src/interactions/gen_phys.rs</url>
+          <line>42</line>
+          <option name="timeStamp" value="34" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>
