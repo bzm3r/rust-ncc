@@ -26,10 +26,11 @@ fn main() {
     let mut w = world::World::new(exp, output_dir.clone());
 
     let now = Instant::now();
-    w.simulate(2.42 * 3600.0, 1);
+    w.simulate(3.0 * 3600.0, 1);
     println!("Simulation complete. {} s.", now.elapsed().as_secs());
     let now = Instant::now();
-    w.save_history(true, vec![Format::Bson, Format::Bincode]);
+    w.save_history(true, vec![Format::Cbor, Format::Bincode])
+        .unwrap();
     println!(
         "Finished saving history. {} s.",
         now.elapsed().as_secs()

@@ -21,7 +21,8 @@ use crate::interactions::gen_bdry::BdryEffectGenerator;
 use crate::interactions::gen_chemoa::ChemAttrGenerator;
 use crate::interactions::gen_coa::CoaGenerator;
 use crate::interactions::gen_phys::{
-    PhysContactFactors, PhysicalContactGenerator,
+    ClosePoint, ClosePointInfo, PhysContactFactors,
+    PhysicalContactGenerator,
 };
 use crate::math::geometry::{BBox, Poly};
 use crate::math::v2d::V2D;
@@ -29,16 +30,16 @@ use crate::parameters::InteractionParams;
 use crate::NVERTS;
 use serde::{Deserialize, Serialize};
 
-pub type RgtpActivityDiff = f32;
+pub type RelativeRgtpActivity = f64;
 
 #[derive(Copy, Clone, Debug, Default, Deserialize, Serialize)]
 pub struct CellInteractions {
-    pub x_cals: [f32; NVERTS],
-    pub x_cils: [f32; NVERTS],
+    pub x_cals: [f64; NVERTS],
+    pub x_cils: [f64; NVERTS],
     pub x_adhs: [V2D; NVERTS],
-    pub x_chem_attrs: [f32; NVERTS],
-    pub x_coas: [f32; NVERTS],
-    pub x_bdrys: [f32; NVERTS],
+    pub x_chem_attrs: [f64; NVERTS],
+    pub x_coas: [f64; NVERTS],
+    pub x_bdrys: [f64; NVERTS],
 }
 
 /// Generates interaction related factors.
@@ -46,11 +47,11 @@ pub struct CellInteractions {
 pub struct InteractionGenerator {
     /// Vertex coordinates, per cell, for all cells in the simulation.
     cell_polys: Vec<Poly>,
-    all_rgtps: Vec<[RgtpActivityDiff; NVERTS]>,
+    all_rgtps: Vec<[RelativeRgtpActivity; NVERTS]>,
     /// Generates CIL/CAL related interaction information. In other
     /// words, interactions that require cells to engage in physical
     /// contact.
-    phys_contact_generator: PhysicalContactGenerator,
+    pub phys_contact_generator: PhysicalContactGenerator,
     coa_generator: Option<CoaGenerator>,
     chem_attr_generator: Option<ChemAttrGenerator>,
     bdry_generator: Option<BdryEffectGenerator>,
@@ -64,7 +65,7 @@ pub struct ContactData {
 impl InteractionGenerator {
     pub fn new(
         cell_verts: &[[V2D; NVERTS]],
-        cell_rgtps: &[[RgtpActivityDiff; NVERTS]],
+        cell_rgtps: &[[RelativeRgtpActivity; NVERTS]],
         params: InteractionParams,
     ) -> InteractionGenerator {
         let cell_polys = cell_verts
@@ -92,7 +93,12 @@ impl InteractionGenerator {
         }
     }
 
-    pub fn update(&mut self, cell_ix: usize, vs: &[V2D; NVERTS]) {
+    pub fn update(
+        &mut self,
+        tstep: usize,
+        cell_ix: usize,
+        vs: &[V2D; NVERTS],
+    ) {
         self.cell_polys[cell_ix] = Poly::from_points(vs);
         if let Some(coa_gen) = self.coa_generator.as_mut() {
             coa_gen.update(cell_ix, &self.cell_polys)
@@ -103,8 +109,11 @@ impl InteractionGenerator {
         if let Some(_bdry_gen) = self.bdry_generator.as_mut() {
             unimplemented!()
         }
-        self.phys_contact_generator
-            .update(cell_ix, &self.cell_polys);
+        self.phys_contact_generator.update(
+            tstep,
+            cell_ix,
+            &self.cell_polys,
+        );
     }
 
     pub fn generate(&self) -> Vec<CellInteractions> {
@@ -159,6 +168,16 @@ impl InteractionGenerator {
                 poly: self.cell_polys[oci],
             })
             .collect()
+    }
+
+    pub fn get_close_points(
+        &self,
+        ci: usize,
+        vi: usize,
+        oci: usize,
+    ) -> Vec<ClosePointInfo> {
+        self.phys_contact_generator
+            .close_points_on_cell(ci, vi, oci)
     }
 }
 

@@ -7,18 +7,18 @@ use std::fmt;
 
 #[derive(Clone, Copy, Serialize)]
 pub struct NormalDistrib {
-    mean: f32,
-    std: f32,
+    mean: f64,
+    std: f64,
     #[serde(skip)]
-    distrib: Normal<f32>,
+    distrib: Normal<f64>,
 }
 
 impl NormalDistrib {
-    pub fn sample(&self, rng: &mut Pcg32) -> f32 {
+    pub fn sample(&self, rng: &mut Pcg32) -> f64 {
         self.distrib.sample(rng)
     }
 
-    pub fn new(mean: f32, std: f32) -> NormalDistrib {
+    pub fn new(mean: f64, std: f64) -> NormalDistrib {
         NormalDistrib {
             mean,
             std,

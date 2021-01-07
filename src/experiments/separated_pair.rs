@@ -23,11 +23,11 @@ use rand::SeedableRng;
 
 /// Generate the group layout to use for this experiment.
 fn group_bbox(
-    num_cells: u32,
+    num_cells: usize,
     char_quants: &CharQuantities,
     bottom_left: (Length, Length),
-    width: u32,
-    height: u32,
+    width: usize,
+    height: usize,
 ) -> Result<GroupBBox, String> {
     // specify initial location of group bottom left
     let bottom_left = V2D {
@@ -97,14 +97,14 @@ fn cell_groups(
 }
 
 /// Generate CAL values between different cells.
-fn gen_cal_mat() -> SymCcDat<f32> {
-    SymCcDat::<f32>::new(2, 0.0)
+fn gen_cal_mat() -> SymCcDat<f64> {
+    SymCcDat::<f64>::new(2, 0.0)
 }
 
 /// Generate CIL values between different cells (see SI for
 /// justification).
-fn gen_cil_mat() -> SymCcDat<f32> {
-    SymCcDat::<f32>::new(2, 60.0)
+fn gen_cil_mat() -> SymCcDat<f64> {
+    SymCcDat::<f64>::new(2, 60.0)
 }
 
 /// Generate raw world parameters, in particular, how
@@ -126,7 +126,7 @@ fn raw_world_parameters(
             bdry: None,
             phys_contact: RawPhysicalContactParams {
                 range: RawCloseBounds::new(
-                    one_at.mul_number(2.0),
+                    one_at.mul_number(1.1),
                     one_at,
                 ),
                 adh_mag: None,
@@ -165,7 +165,7 @@ fn gen_default_raw_params(
 ) -> RawParameters {
     //println!("marking: {:?}", &marked_rac);
 
-    let rgtp_d = (Length(0.1_f32.sqrt()).micro().pow(2.0).g()
+    let rgtp_d = (Length(0.1_f64.sqrt()).micro().pow(2.0).g()
         / Time(1.0).g())
     .to_diffusion()
     .unwrap();

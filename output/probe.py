@@ -1,13 +1,13 @@
 import matplotlib.pyplot as plt
-import fastavro
 import json
 import numpy as np
 import json
+import cbor2
 
 output = None
-file_name = "history_separated_pair.json"
-with open(file_name) as sf:
-    output = json.load(sf)
+file_name = "history_separated_pair.cbor"
+with open(file_name, mode='rb') as sf:
+    output = cbor2.load(sf)
 
 tsteps = [o[0] for o in output]
 state_recs = [o[1] for o in output]
@@ -123,8 +123,8 @@ def paint(delta):
     global num_tsteps
     ax.cla()
     ax.set_aspect('equal')
-    ax.set_xlim([0, 40])
-    ax.set_ylim([0, 160])
+    ax.set_xlim([-40, 80])
+    ax.set_ylim([-40, 160])
     for (ci, poly) in enumerate(poly_per_cell_per_tstep[tstep_ix]):
         if ci == 0:
             poly_color = "k"
@@ -181,13 +181,13 @@ def on_press(event):
     elif event.key == 'z':
         paint(-1)
     if event.key == 'c':
-        paint(5)
-    elif event.key == 'v':
-        paint(-5)
-    elif event.key == 'n':
         paint(-10)
-    elif event.key == 'm':
+    elif event.key == 'v':
         paint(10)
+    elif event.key == 'n':
+        paint(-100)
+    elif event.key == 'm':
+        paint(100)
     fig.canvas.draw()
 
 

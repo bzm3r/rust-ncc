@@ -12,7 +12,7 @@ use crate::cell::core_state::CoreState;
 use crate::cell::CellState;
 use crate::experiments::{CellGroup, Experiment};
 use crate::interactions::{
-    CellInteractions, InteractionGenerator, RgtpActivityDiff,
+    CellInteractions, InteractionGenerator, RelativeRgtpActivity,
 };
 use crate::math::v2d::V2D;
 use crate::parameters::{Parameters, WorldParameters};
@@ -23,7 +23,8 @@ use crate::world::hardio::{save_compact, save_full, Format};
 use rand::seq::SliceRandom;
 use rand::{RngCore, SeedableRng};
 use serde::{Deserialize, Serialize};
-use std::f32::consts::PI;
+use std::error::Error;
+use std::f64::consts::PI;
 use std::path::PathBuf;
 
 #[derive(Clone, Deserialize, Serialize)]
@@ -35,7 +36,7 @@ pub struct Cells {
 impl Cells {
     fn simulate(
         &self,
-        tstep: u32,
+        tstep: usize,
         rng: &mut Pcg32,
         world_parameters: &WorldParameters,
         group_parameters: &[Parameters],
@@ -63,8 +64,11 @@ impl Cells {
                 rng,
             )?;
 
-            interaction_generator
-                .update(ci, &new_cell_state.core.poly);
+            interaction_generator.update(
+                tstep,
+                ci,
+                &new_cell_state.core.poly,
+            );
 
             #[cfg(feature = "validation")]
             confirm_volume_exclusion(
@@ -84,15 +88,15 @@ impl Cells {
 
 #[derive(Deserialize, Serialize, Clone)]
 pub struct Snapshot {
-    pub tstep: u32,
+    pub tstep: usize,
     pub interaction_generator: InteractionGenerator,
     pub rng: Pcg32,
     pub cells: Cells,
 }
 
 pub struct World {
-    tstep_length: f32,
-    tstep: u32,
+    tstep_length: f64,
+    tstep: usize,
     world_params: WorldParameters,
     group_params: Vec<Parameters>,
     pub history: Vec<Snapshot>,
@@ -103,10 +107,10 @@ pub struct World {
     file_name: String,
 }
 
-fn gen_poly(centroid: &V2D, radius: f32) -> [V2D; NVERTS] {
+fn gen_poly(centroid: &V2D, radius: f64) -> [V2D; NVERTS] {
     let mut r = [V2D::default(); NVERTS];
     (0..NVERTS).for_each(|vix| {
-        let vf = (vix as f32) / (NVERTS as f32);
+        let vf = (vix as f64) / (NVERTS as f64);
         let theta = 2.0 * PI * vf;
         r[vix] = V2D {
             x: centroid.x + theta.cos() * radius,
@@ -173,7 +177,7 @@ impl World {
                 let parameters = &group_params[gix];
                 state.calc_crl_rgtp_state(parameters)
             })
-            .collect::<Vec<[RgtpActivityDiff; NVERTS]>>();
+            .collect::<Vec<[RelativeRgtpActivity; NVERTS]>>();
         // Create a new `InteractionGenerator`.
         let interaction_generator = InteractionGenerator::new(
             &cell_polys,
@@ -194,8 +198,8 @@ impl World {
             let mut cell_rng = Pcg32::seed_from_u64(rng.next_u64());
             // Create a new cell.
             cell_states.push(CellState::new(
-                cell_ix as u32,
-                group_ix as u32,
+                cell_ix as usize,
+                group_ix as usize,
                 cell_core_states[cell_ix],
                 &cell_interactions[cell_ix],
                 parameters,
@@ -237,14 +241,15 @@ impl World {
 
     pub fn simulate(
         &mut self,
-        final_tpoint: f32,
-        save_frequency: u32,
+        final_tpoint: f64,
+        save_frequency: usize,
     ) {
         let num_tsteps =
-            (final_tpoint / self.tstep_length).ceil() as u32;
+            (final_tpoint / self.tstep_length).ceil() as usize;
         while self.tstep < num_tsteps {
-            println!("------------------");
-            println!("tstep: {}", self.tstep);
+            //println!("------------------");
+            let tstep = self.tstep;
+            //println!("tstep: {}", self.tstep);
             // if self.tstep == 1760 {
             //     println!("at tstep 1760!")
             // }
@@ -260,8 +265,9 @@ impl World {
                 .unwrap_or_else(|e| {
                     self.save_history(
                         false,
-                        vec![Format::Json, Format::Bincode],
-                    );
+                        vec![Format::Cbor, Format::Bincode],
+                    )
+                    .unwrap();
                     panic!("tstep: {}\n{}", self.tstep, e);
                 });
 
@@ -270,32 +276,57 @@ impl World {
                 self.history.push(self.as_history());
             }
             self.tstep += 1;
-            println!("------------------")
+            // if tstep > 2805 {
+            //     println!(
+            //         "ci (0, 4, oci: 1) = {}",
+            //         self.interaction_generator
+            //             .get_close_points(0, 4, 1)
+            //             .iter()
+            //             .map(|cp| format!("{}", cp))
+            //             .collect::<Vec<String>>()
+            //             .join(", ")
+            //     );
+            //     println!(
+            //         "ci (1, 12, oci: 0) = {}",
+            //         self.interaction_generator
+            //             .get_close_points(1, 12, 0)
+            //             .iter()
+            //             .map(|cp| format!("{}", cp))
+            //             .collect::<Vec<String>>()
+            //             .join(", ")
+            //     );
+            // }
+            //println!("------------------")
         }
     }
 
-    pub fn save_history(&self, compact: bool, formats: Vec<Format>) {
+    pub fn save_history(
+        &self,
+        compact: bool,
+        formats: Vec<Format>,
+    ) -> Result<(), Box<dyn Error>> {
         if compact {
             let data = self
                 .history
                 .iter()
                 .map(|h| (h.tstep, h.cells.clone()))
-                .collect::<Vec<(u32, Cells)>>();
+                .collect::<Vec<(usize, Cells)>>();
             save_compact(
                 data,
                 &self.out_dir,
                 formats,
                 &self.file_name,
-            );
+            )?;
         } else {
             let data = self
                 .history
                 .iter()
                 .enumerate()
-                .map(|(ix, snapshot)| (ix as u32, snapshot.clone()))
-                .collect::<Vec<(u32, Snapshot)>>();
-            save_full(data, &self.out_dir, formats, &self.file_name);
+                .map(|(ix, snapshot)| (ix as usize, snapshot.clone()))
+                .collect::<Vec<(usize, Snapshot)>>();
+            save_full(data, &self.out_dir, formats, &self.file_name)?;
         }
+        Ok(())
     }
 }
 
@@ -324,8 +355,8 @@ fn gen_cell_centroids(cg: &CellGroup) -> Result<Vec<V2D>, String> {
             let row = ix / layout.width;
             let col = ix - layout.width * row;
             let cg = first_cell_centroid
-                + (row as f32) * row_delta
-                + (col as f32) * col_delta;
+                + (row as f64) * row_delta
+                + (col as f64) * col_delta;
             r.push(cg);
         }
         Ok(r)

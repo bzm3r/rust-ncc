@@ -1,7 +1,5 @@
 use crate::world::{Cells, Snapshot};
 use bincode::serialize_into;
-use bson::Document;
-use serde::{Deserialize, Serialize};
 use std::error::Error;
 use std::fs::File;
 use std::fs::OpenOptions;
@@ -10,7 +8,7 @@ use std::path::PathBuf;
 
 #[derive(Clone, Copy)]
 pub enum Format {
-    Bson,
+    Cbor,
     Json,
     Bincode,
 }
@@ -23,13 +21,13 @@ pub fn get_file(
     let mut path = out_dir.clone();
 
     let ext = match format {
-        Format::Bson => ".bson".to_string(),
-        Format::Json => ".json".to_string(),
-        Format::Bincode => ".binc".to_string(),
+        Format::Cbor => "cbor".to_string(),
+        Format::Json => "json".to_string(),
+        Format::Bincode => "binc".to_string(),
     };
 
     #[cfg(features = "validation")]
-    path.push(format!("history_dbg_{}.{}", title, ext));
+    path.push(format!("history_valid_{}.{}", title, ext));
     #[cfg(not(features = "validation"))]
     path.push(format!("history_{}.{}", title, ext));
 
@@ -41,7 +39,7 @@ pub fn get_file(
 }
 
 pub fn save_compact(
-    data: Vec<(u32, Cells)>,
+    data: Vec<(usize, Cells)>,
     out_dir: &PathBuf,
     formats: Vec<Format>,
     title: &str,
@@ -50,10 +48,8 @@ pub fn save_compact(
         let mut f = get_file(out_dir, title, format)?;
 
         match format {
-            Format::Bson => {
-                let mut doc = Document::new();
-                doc.insert("data", bson::to_bson(&data)?);
-                doc.to_writer(&mut f);
+            Format::Cbor => {
+                serde_cbor::to_writer(&mut f, &data)?;
             }
             Format::Json => serde_json::to_writer(&mut f, &data)?,
             Format::Bincode => serialize_into(&mut f, &data)?,
@@ -64,7 +60,7 @@ pub fn save_compact(
 }
 
 pub fn save_full(
-    data: Vec<(u32, Snapshot)>,
+    data: Vec<(usize, Snapshot)>,
     out_dir: &PathBuf,
     formats: Vec<Format>,
     title: &str,
@@ -73,11 +69,8 @@ pub fn save_full(
         let mut f = get_file(out_dir, title, format)?;
 
         match format {
-            Format::Bson => {
-                let mut doc = Document::new();
-                let bson = bson::to_bson(&data)?;
-                doc.insert("data", bson).unwrap();
-                doc.to_writer(&mut f);
+            Format::Cbor => {
+                serde_cbor::to_writer(&mut f, &data)?;
             }
             Format::Json => serde_json::to_writer(&mut f, &data)?,
             Format::Bincode => serialize_into(&mut f, &data)?,

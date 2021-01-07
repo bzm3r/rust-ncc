@@ -87,7 +87,7 @@ impl DrawingData {
         history: &[&Cells],
         px_w: i32,
         px_h: i32,
-        px_per_micron: f32,
+        px_per_micron: f64,
     ) -> DrawingData {
         let num_cells = history[0].cell_states.len();
         let mut cell_polys: Vec<[V2D; NVERTS]> = vec![];
@@ -100,8 +100,8 @@ impl DrawingData {
                     .for_each(|(new_v, old_v)| {
                         *new_v =
                             old_v.scale(px_per_micron).translate(
-                                px_w as f32 * 0.5,
-                                px_h as f32 * 0.5,
+                                px_w as f64 * 0.5,
+                                px_h as f64 * 0.5,
                             );
                     });
                 cell_polys.push(transformed_vs);
