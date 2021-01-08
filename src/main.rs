@@ -20,7 +20,7 @@ use std::time::Instant;
 pub const NVERTS: usize = 16;
 
 fn main() {
-    let exp = experiments::separated_pair::generate(Some(3));
+    let exp = experiments::pair::generate(Some(3));
 
     let output_dir = PathBuf::from("./output");
     let mut w = world::World::new(exp, output_dir.clone());

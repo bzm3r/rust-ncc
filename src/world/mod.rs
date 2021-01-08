@@ -169,13 +169,14 @@ impl World {
                 )
             })
             .collect::<Vec<CoreState>>();
-        // Create initial Rho GTPase distributions.
+        // Calcualte relative activity of Rac1 vs. RhoA at a node.
+        // This is needed for CRL.
         let cell_rgtps = cell_group_ixs
             .iter()
             .zip(cell_core_states.iter())
             .map(|(&gix, state)| {
                 let parameters = &group_params[gix];
-                state.calc_crl_rgtp_state(parameters)
+                state.calc_relative_rgtp_activity(parameters)
             })
             .collect::<Vec<[RelativeRgtpActivity; NVERTS]>>();
         // Create a new `InteractionGenerator`.
@@ -264,7 +265,7 @@ impl World {
                 )
                 .unwrap_or_else(|e| {
                     self.save_history(
-                        false,
+                        true,
                         vec![Format::Cbor, Format::Bincode],
                     )
                     .unwrap();
@@ -276,27 +277,45 @@ impl World {
                 self.history.push(self.as_history());
             }
             self.tstep += 1;
-            // if tstep > 2805 {
-            //     println!(
-            //         "ci (0, 4, oci: 1) = {}",
-            //         self.interaction_generator
-            //             .get_close_points(0, 4, 1)
+            // if true {
+            //     let ics = self.interaction_generator.generate();
+            //     let c0_cps = self
+            //         .interaction_generator
+            //         .get_close_points(0, 4, 1);
+            //     let c1_cps = self
+            //         .interaction_generator
+            //         .get_close_points(1, 12, 0);
+            //
+            //     if (c0_cps.len() > 0 || c1_cps.len() > 0)
+            //         && (c0_cps
             //             .iter()
-            //             .map(|cp| format!("{}", cp))
-            //             .collect::<Vec<String>>()
-            //             .join(", ")
-            //     );
-            //     println!(
-            //         "ci (1, 12, oci: 0) = {}",
-            //         self.interaction_generator
-            //             .get_close_points(1, 12, 0)
-            //             .iter()
-            //             .map(|cp| format!("{}", cp))
-            //             .collect::<Vec<String>>()
-            //             .join(", ")
-            //     );
+            //             .any(|cp| cp.get_vector_to_mag() < 0.5)
+            //             || c1_cps
+            //                 .iter()
+            //                 .any(|cp| cp.get_vector_to_mag() < 0.5))
+            //     {
+            //         println!("tstep = {}", tstep);
+            //         println!(
+            //             "ci (0, 4, oci: 1) = {}\nx_adhs[4] = {}",
+            //             c0_cps
+            //                 .iter()
+            //                 .map(|cp| format!("{}", cp))
+            //                 .collect::<Vec<String>>()
+            //                 .join(", "),
+            //             ics[0].x_adhs[4]
+            //         );
+            //         println!(
+            //             "ci (1, 12, oci: 0) = {}\nx_adh[12] = {}",
+            //             c1_cps
+            //                 .iter()
+            //                 .map(|cp| format!("{}", cp))
+            //                 .collect::<Vec<String>>()
+            //                 .join(", "),
+            //             ics[1].x_adhs[12]
+            //         );
+            //         println!("------------------")
+            //     }
             // }
-            //println!("------------------")
         }
     }
 

@@ -6,8 +6,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//pub mod pair;
 pub mod cil_test;
+pub mod pair;
 pub mod separated_pair;
 //pub mod single;
 
@@ -162,7 +162,7 @@ fn gen_default_viscosity() -> Viscosity {
 }
 
 fn gen_default_phys_contact_dist() -> Length {
-    Length(0.75).micro()
+    Length(0.5).micro()
 }
 
 fn gen_default_adhesion_mag(

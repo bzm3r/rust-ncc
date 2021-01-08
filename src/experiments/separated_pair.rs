@@ -126,11 +126,14 @@ fn raw_world_parameters(
             bdry: None,
             phys_contact: RawPhysicalContactParams {
                 range: RawCloseBounds::new(
-                    one_at.mul_number(1.1),
+                    one_at.mul_number(2.0),
                     one_at,
                 ),
-                adh_mag: None,
-                cal_mag: None,
+                adh_mag: Some(gen_default_adhesion_mag(
+                    char_quants,
+                    10.0,
+                )),
+                cal_mag: Some(60.0),
                 cil_mag: 60.0,
             },
         },
