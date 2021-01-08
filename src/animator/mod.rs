@@ -6,14 +6,14 @@ use crate::world::hardio::{load_compact, Format};
 use crate::world::{MiniHistory, MiniSnapshot};
 use crate::NVERTS;
 use nannou::color;
+use nannou::color::encoding::Linear;
 use nannou::color::gradient::Gradient;
-use nannou::color::Rgb;
+use nannou::color::{LinSrgba, Rgb};
 use nannou::event::Key;
 use nannou::geom::Vector2;
 use nannou::{App, Draw, Frame};
 use std::path::PathBuf;
 use std::str::FromStr;
-use tracing::field::display;
 
 pub fn animate() {
     nannou::app(model).run();
@@ -43,29 +43,29 @@ fn display_cell(
                 relative_rgtp_activity[circ_ix_plus(vi, NVERTS)]
                     > 0.0,
             ) {
-                (true, true) => {
-                    Gradient::new(&[Rgb::new(0.0, 0.0, 1.0)])
-                }
-                (true, false) => Gradient::new(&[
-                    Rgb::new(0.0, 0.0, 1.0),
-                    Rgb::new(1.0, 0.0, 0.0),
+                (true, true) => Gradient::new(vec![LinSrgba::new(
+                    0.0, 0.0, 1.0, 1.0,
+                )]),
+                (true, false) => Gradient::new(vec![
+                    LinSrgba::new(0.0, 0.0, 1.0, 1.0),
+                    LinSrgba::new(1.0, 0.0, 0.0, 1.0),
                 ]),
-                (false, true) => Gradient::new(&[
-                    Rgb::new(1.0, 0.0, 0.0),
-                    Rgb::new(0.0, 0.0, 1.0),
+                (false, true) => Gradient::new(vec![
+                    LinSrgba::new(1.0, 0.0, 0.0, 1.0),
+                    LinSrgba::new(0.0, 0.0, 1.0, 1.0),
                 ]),
-                (false, false) => {
-                    Gradient::new(&[Rgb::new(1.0, 0.0, 0.0)])
-                }
+                (false, false) => Gradient::new(vec![LinSrgba::new(
+                    1.0, 0.0, 1.0, 1.0,
+                )]),
             }
         })
-        .collect::<Vec<Gradient<Rgb>>>();
-    let colored_vertices = cell
-        .core
-        .poly
-        .iter()
-        .zip(colors.iter())
-        .collect::<Vec<(&V2D, &Gradient<Rgb>)>>();
+        .collect::<Vec<Gradient<LinSrgba>>>();
+    let colored_vertices =
+        cell.core
+            .poly
+            .iter()
+            .zip(colors.iter())
+            .collect::<Vec<(&V2D, &Gradient<LinSrgba>)>>();
 
     // Draw the polyline as a stroked path.
     draw.polyline()
@@ -106,10 +106,10 @@ fn key_pressed(_app: &App, model: &mut Model, key: Key) {
         _ => 0,
     };
     let new_ix = model.ix as isize + delta;
-    if new_ix > model.data.len() as isize {
-        model.ix = new_ix as usize - model.data.len();
+    if new_ix > model.snapshots.len() as isize {
+        model.ix = new_ix as usize - model.snapshots.len();
     } else if new_ix < 0 {
-        model.ix = (model.data.len() as isize + new_ix) as usize;
+        model.ix = (model.snapshots.len() as isize + new_ix) as usize;
     } else {
         model.ix = new_ix as usize;
     }
