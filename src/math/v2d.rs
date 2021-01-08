@@ -7,24 +7,24 @@
 // except according to those terms.
 
 use crate::math::radians::{arctan, Radians};
-use crate::math::{max_f64, min_f64};
+use crate::math::{max_f32, min_f32};
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::fmt::Display;
 use std::fmt::Write;
 use std::ops::{Add, Div, Mul, Sub};
 
-/// 2D vector with `f64` elements.
+/// 2D vector with `f32` elements.
 #[derive(Clone, Copy, Debug, Default, Deserialize, Serialize)]
 pub struct V2D {
-    pub x: f64,
-    pub y: f64,
+    pub x: f32,
+    pub y: f32,
 }
 
 impl V2D {
     /// Create a new `V2d` given two coordinate points `(x, y)` of
-    /// type `(f64, f64)`.
-    pub fn new(x: f64, y: f64) -> V2D {
+    /// type `(f32, f32)`.
+    pub fn new(x: f32, y: f32) -> V2D {
         V2D { x, y }
     }
 
@@ -35,17 +35,17 @@ impl V2D {
 
     /// Calculate magnitude of vector from origin to point.
     #[inline]
-    pub fn mag(&self) -> f64 {
+    pub fn mag(&self) -> f32 {
         self.mag_squared().sqrt()
     }
 
     /// Calculate magnitude squared of vector.
     #[inline]
-    pub fn mag_squared(&self) -> f64 {
+    pub fn mag_squared(&self) -> f32 {
         self.x.powi(2) + self.y.powi(2)
     }
 
-    pub fn dot(&self, other: &V2D) -> f64 {
+    pub fn dot(&self, other: &V2D) -> f32 {
         self.x * other.x + self.y * other.y
     }
 
@@ -58,15 +58,15 @@ impl V2D {
 
     pub fn max(&self, other: &V2D) -> V2D {
         V2D {
-            x: max_f64(self.x, other.x),
-            y: max_f64(self.y, other.y),
+            x: max_f32(self.x, other.x),
+            y: max_f32(self.y, other.y),
         }
     }
 
     pub fn min(&self, other: &V2D) -> V2D {
         V2D {
-            x: min_f64(self.x, other.x),
-            y: min_f64(self.y, other.y),
+            x: min_f32(self.x, other.x),
+            y: min_f32(self.y, other.y),
         }
     }
 
@@ -82,14 +82,14 @@ impl V2D {
         }
     }
 
-    pub fn scalar_mul_x(&self, s: f64) -> V2D {
+    pub fn scalar_mul_x(&self, s: f32) -> V2D {
         V2D {
             x: self.x * s,
             y: self.y,
         }
     }
 
-    pub fn scalar_mul_y(&self, s: f64) -> V2D {
+    pub fn scalar_mul_y(&self, s: f32) -> V2D {
         V2D {
             x: self.x,
             y: self.y * s,
@@ -103,14 +103,14 @@ impl V2D {
         }
     }
 
-    pub fn scale(&self, factor: f64) -> V2D {
+    pub fn scale(&self, factor: f32) -> V2D {
         V2D {
             x: self.x * factor,
             y: self.y * factor,
         }
     }
 
-    pub fn translate(&self, dx: f64, dy: f64) -> V2D {
+    pub fn translate(&self, dx: f32, dy: f32) -> V2D {
         V2D {
             x: self.x + dx,
             y: self.y + dy,
@@ -118,7 +118,7 @@ impl V2D {
     }
 
     pub fn close_to_zero(&self) -> bool {
-        self.x.abs() < f64::EPSILON && self.y.abs() < f64::EPSILON
+        self.x.abs() < f32::EPSILON && self.y.abs() < f32::EPSILON
     }
 
     #[inline]
@@ -160,7 +160,7 @@ impl Div for V2D {
     }
 }
 
-impl Mul<V2D> for f64 {
+impl Mul<V2D> for f32 {
     type Output = V2D;
 
     fn mul(self, rhs: V2D) -> Self::Output {
@@ -171,7 +171,7 @@ impl Mul<V2D> for f64 {
     }
 }
 
-impl Mul<&V2D> for f64 {
+impl Mul<&V2D> for f32 {
     type Output = V2D;
 
     fn mul(self, rhs: &V2D) -> Self::Output {
@@ -182,7 +182,7 @@ impl Mul<&V2D> for f64 {
     }
 }
 
-impl Mul<V2D> for &f64 {
+impl Mul<V2D> for &f32 {
     type Output = V2D;
 
     fn mul(self, rhs: V2D) -> Self::Output {
@@ -193,7 +193,7 @@ impl Mul<V2D> for &f64 {
     }
 }
 
-impl Add<V2D> for f64 {
+impl Add<V2D> for f32 {
     type Output = V2D;
 
     fn add(self, rhs: V2D) -> Self::Output {

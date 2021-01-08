@@ -10,9 +10,9 @@ use serde::{Deserialize, Serialize};
 // /// data types as long as they implement `Copy` and `Default`.
 // pub struct CcVvDat<T: Copy> {
 //     /// Number of cells this structure is designed to store data for.
-//     num_cells: usize,
-//     vv_stride: usize,
-//     cc_stride: usize,
+//     num_cells: u32,
+//     vv_stride: u32,
+//     cc_stride: u32,
 //     /// Vector in which data is stored linearly.
 //     dat: Vec<T>,
 //     /// Value to return when no data is set, or when an invalid
@@ -22,7 +22,7 @@ use serde::{Deserialize, Serialize};
 //
 // impl<T: Copy> CcVvDat<T> {
 //     /// Generate an empty `CcVvDat` structure.
-//     pub fn empty(num_cells: usize, undefined: T) -> CcVvDat<T> {
+//     pub fn empty(num_cells: u32, undefined: T) -> CcVvDat<T> {
 //         // number of possible vertex-vertex pairs.
 //         let vv_stride = NVERTS * NVERTS;
 //         // number of cells a cell can interact with (ignores self)
@@ -40,11 +40,11 @@ use serde::{Deserialize, Serialize};
 //     /// `(ci, vi, oci, ovi)`.
 //     pub fn calc_ix(
 //         &self,
-//         ci: usize,
-//         vi: usize,
-//         oci: usize,
-//         ovi: usize,
-//     ) -> usize {
+//         ci: u32,
+//         vi: u32,
+//         oci: u32,
+//         ovi: u32,
+//     ) -> u32 {
 //         let oci = if ci < oci { oci - 1 } else { oci };
 //         ci * self.cc_stride + oci * self.vv_stride + vi * NVERTS + ovi
 //     }
@@ -52,10 +52,10 @@ use serde::{Deserialize, Serialize};
 //     /// Set data into the element indexed by `(ci, vi, oci, ovi)`.
 //     pub fn set(
 //         &mut self,
-//         ci: usize,
-//         vi: usize,
-//         oci: usize,
-//         ovi: usize,
+//         ci: u32,
+//         vi: u32,
+//         oci: u32,
+//         ovi: u32,
 //         x: T,
 //     ) {
 //         if ci != oci {
@@ -67,10 +67,10 @@ use serde::{Deserialize, Serialize};
 //     /// Set data into the element indexed by `(ci, vi, oci, ovi)`.
 //     pub fn reset(
 //         &mut self,
-//         ci: usize,
-//         vi: usize,
-//         oci: usize,
-//         ovi: usize,
+//         ci: u32,
+//         vi: u32,
+//         oci: u32,
+//         ovi: u32,
 //     ) {
 //         if ci != oci {
 //             let ix = self.calc_ix(ci, vi, oci, ovi);
@@ -81,10 +81,10 @@ use serde::{Deserialize, Serialize};
 //     /// Get data from the element indexed by `(ci, vi, oci, ovi)`.
 //     pub fn get(
 //         &self,
-//         ci: usize,
-//         vi: usize,
-//         oci: usize,
-//         ovi: usize,
+//         ci: u32,
+//         vi: u32,
+//         oci: u32,
+//         ovi: u32,
 //     ) -> T {
 //         if ci == oci {
 //             self.undefined
@@ -138,10 +138,10 @@ impl<T: Copy> CvCvDat<T> {
 
     // pub fn calc_ix_range(
     //     &self,
-    //     ci: usize,
-    //     vi: usize,
-    //     oci: usize,
-    // ) -> (usize, usize) {
+    //     ci: u32,
+    //     vi: u32,
+    //     oci: u32,
+    // ) -> (u32, u32) {
     //     let oci = if ci < oci { oci - 1 } else { oci };
     //     let begin =
     //         ci * self.c_stride + vi * self.cv_stride + oci * NVERTS;
@@ -164,10 +164,10 @@ impl<T: Copy> CvCvDat<T> {
 
     // pub fn reset(
     //     &mut self,
-    //     ci: usize,
-    //     vi: usize,
-    //     oci: usize,
-    //     ovi: usize,
+    //     ci: u32,
+    //     vi: u32,
+    //     oci: u32,
+    //     ovi: u32,
     // ) {
     //     if ci != oci {
     //         let ix = self.calc_ix(ci, vi, oci, ovi);
@@ -192,9 +192,9 @@ impl<T: Copy> CvCvDat<T> {
 
     // pub fn get_per_other_vertex(
     //     &self,
-    //     ci: usize,
-    //     vi: usize,
-    //     oci: usize,
+    //     ci: u32,
+    //     vi: u32,
+    //     oci: u32,
     // ) -> [T; NVERTS] {
     //     let mut r = [self.undefined; NVERTS];
     //     if ci != oci {

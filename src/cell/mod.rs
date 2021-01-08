@@ -16,19 +16,22 @@ use crate::cell::core_state::{
     ChemState, CoreState, GeomState, MechState,
 };
 use crate::cell::rkdp5::AuxArgs;
-use crate::interactions::{CellInteractions, ContactData};
+use crate::interactions::{ContactData, Interactions};
 use crate::math::geometry::{calc_poly_area, LineSeg2D};
-use crate::math::v2d::{poly_to_string, V2D};
+use crate::math::v2d::V2D;
 use crate::parameters::{Parameters, WorldParameters};
 use crate::utils::pcg32::Pcg32;
 use crate::utils::{circ_ix_minus, circ_ix_plus};
 use crate::NVERTS;
 use serde::{Deserialize, Serialize};
-use std::f64::consts::PI;
+use std::f32::consts::PI;
+
+#[cfg(feature = "validate")]
+use crate::math::v2d::poly_to_string;
 
 /// Cell state structure.
 #[derive(Copy, Clone, Deserialize, Serialize)]
-pub struct CellState {
+pub struct Cell {
     /// Index of cell within world.
     pub ix: usize,
     /// Index of group that cell belongs to.
@@ -66,7 +69,7 @@ fn move_point_out(
     new_w: &V2D,
     mut good_v: V2D,
     contacts: &[ContactData],
-    num_iters: usize,
+    num_iters: u32,
 ) -> V2D {
     let mut n = 0;
     while n < num_iters {
@@ -82,7 +85,7 @@ fn move_point_out(
     good_v
 }
 
-#[cfg(feature = "validation")]
+#[cfg(feature = "validate")]
 pub fn confirm_volume_exclusion(
     vs: &[V2D; NVERTS],
     contacts: &[ContactData],
@@ -113,7 +116,7 @@ pub fn enforce_volume_exclusion(
     mut new_vs: [V2D; NVERTS],
     contacts: Vec<ContactData>,
 ) -> Result<[V2D; NVERTS], String> {
-    #[cfg(feature = "validation")]
+    #[cfg(feature = "validate")]
     confirm_volume_exclusion(&old_vs, &contacts, "old_vs")?;
 
     for vi in 0..NVERTS {
@@ -126,21 +129,21 @@ pub fn enforce_volume_exclusion(
         );
     }
 
-    #[cfg(feature = "validation")]
+    #[cfg(feature = "validate")]
     confirm_volume_exclusion(&new_vs, &contacts, "new_vs")?;
 
     Ok(new_vs)
 }
 
-impl CellState {
+impl Cell {
     pub fn new(
         ix: usize,
         group_ix: usize,
         core: CoreState,
-        interactions: &CellInteractions,
+        interactions: &Interactions,
         parameters: &Parameters,
         rng: &mut Pcg32,
-    ) -> CellState {
+    ) -> Cell {
         let geom = core.calc_geom_state();
         let mech = core.calc_mech_state(&geom, parameters);
         let rac_rand = if parameters.randomization {
@@ -155,7 +158,7 @@ impl CellState {
             &interactions,
             parameters,
         );
-        CellState {
+        Cell {
             ix,
             group_ix,
             core,
@@ -172,19 +175,19 @@ impl CellState {
     /// assume `(next_state - state)/delta(t) = delta(state)`.
     pub fn simulate_euler(
         &mut self,
-        tstep: usize,
-        interactions: &CellInteractions,
+        tstep: u32,
+        interactions: &Interactions,
         contact_data: Vec<ContactData>,
         world_parameters: &WorldParameters,
         parameters: &Parameters,
         rng: &mut Pcg32,
-    ) -> Result<CellState, String> {
+    ) -> Result<Cell, String> {
         let mut state = self.core;
-        let nsteps: usize = 10;
+        let nsteps: u32 = 10;
         // Assumed normalized time by time provided in CharQuant.
         // Therefore, we can take the time period to integrate over
         // as 1.0.
-        let dt = 1.0 / (nsteps as f64);
+        let dt = 1.0 / (nsteps as f32);
         for _ in 0..nsteps {
             // d(state)/dt = dynamics_f(state) <- calculate RHS of ODE
             let delta = CoreState::dynamics_f(
@@ -214,10 +217,10 @@ impl CellState {
         )?;
         let geom_state = state.calc_geom_state();
 
-        #[cfg(feature = "validation")]
+        #[cfg(feature = "validate")]
         state.validate("euler", &parameters)?;
 
-        Ok(CellState {
+        Ok(Cell {
             ix: self.ix,
             group_ix: self.group_ix,
             core: state,
@@ -230,13 +233,13 @@ impl CellState {
 
     pub fn simulate_rkdp5(
         &self,
-        tstep: usize,
-        interactions: &CellInteractions,
+        tstep: u32,
+        interactions: &Interactions,
         contact_data: Vec<ContactData>,
         world_parameters: &WorldParameters,
         parameters: &Parameters,
         rng: &mut Pcg32,
-    ) -> Result<CellState, String> {
+    ) -> Result<Cell, String> {
         let aux_args = AuxArgs {
             max_iters: 100,
             atol: 1e-8,
@@ -274,10 +277,10 @@ impl CellState {
         .map_err(|e| format!("ci={}\n{}", self.ix, e))?;
         let geom_state = state.calc_geom_state();
 
-        #[cfg(feature = "validation")]
+        #[cfg(feature = "validate")]
         state.validate("rkdp5", &parameters)?;
 
-        Ok(CellState {
+        Ok(Cell {
             ix: self.ix,
             group_ix: self.group_ix,
             core: state,
@@ -290,10 +293,10 @@ impl CellState {
 }
 
 /// Calculate the area of an "ideal" initial cell of radius R, if it has n vertices.
-pub fn calc_init_cell_area(r: f64, n: usize) -> f64 {
-    let poly_coords = (0..n)
+pub fn calc_init_cell_area(r: f32) -> f32 {
+    let poly_coords = (0..NVERTS)
         .map(|vix| {
-            let theta = (vix as f64) / (n as f64) * 2.0 * PI;
+            let theta = (vix as f32) / (NVERTS as f32) * 2.0 * PI;
             V2D {
                 x: r * theta.cos(),
                 y: r * theta.sin(),

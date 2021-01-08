@@ -58,14 +58,14 @@ fn cell_groups(
 }
 
 /// Generate CAL values between different cells.
-fn gen_cal_mat() -> SymCcDat<f64> {
-    SymCcDat::<f64>::new(2, 0.0)
+fn gen_cal_mat() -> SymCcDat<f32> {
+    SymCcDat::<f32>::new(2, 0.0)
 }
 
 /// Generate CIL values between different cells (see SI for
 /// justification).
-fn gen_cil_mat() -> SymCcDat<f64> {
-    SymCcDat::<f64>::new(2, 60.0)
+fn gen_cil_mat() -> SymCcDat<f32> {
+    SymCcDat::<f32>::new(2, 60.0)
 }
 
 /// Generate raw world parameters, in particular, how

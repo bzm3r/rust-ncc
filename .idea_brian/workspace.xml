@@ -17,7 +17,10 @@
     <cargoProject FILE="$PROJECT_DIR$/playground/Cargo.toml" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="6e867186-6d46-442a-9050-0ad2ade12596" name="Default Changelist" comment="" />
+    <list default="true" id="6e867186-6d46-442a-9050-0ad2ade12596" name="Default Changelist" comment="">
+      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -59,7 +62,7 @@
     <property name="RunOnceActivity.ShowReadmeOnStart" value="true" />
     <property name="WebServerToolWindowFactoryState" value="false" />
     <property name="cf.first.check.clang-format" value="false" />
-    <property name="last_opened_file_path" value="$PROJECT_DIR$" />
+    <property name="last_opened_file_path" value="$PROJECT_DIR$/../nannou" />
     <property name="org.rust.cargo.project.model.PROJECT_DISCOVERY" value="true" />
     <property name="org.rust.disableDetachedFileInspectionB:/rust-ncc/avro-test/src/macro_out.rs" value="true" />
     <property name="org.rust.disableDetachedFileInspectionB:/rust-ncc/playground/src/main.rs" value="true" />
@@ -68,7 +71,6 @@
   </component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
-      <recent name="B:\rust-ncc" />
       <recent name="B:\rust-ncc\src\experiments" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
@@ -77,11 +79,6 @@
     </key>
   </component>
   <component name="RunManager" selected="Cargo.Rel+A">
-    <configuration default="true" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" PASS_PARENT_ENVS_2="true">
-      <method v="2">
-        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
-      </method>
-    </configuration>
     <configuration name="B-Dbg-V" type="CargoCommandRunConfiguration" factoryName="Cargo Command">
       <option name="command" value="build --features &quot;validate&quot;" />
       <option name="workingDirectory" value="file://$PROJECT_DIR$" />
@@ -316,16 +313,16 @@
     <list>
       <item itemvalue="Cargo.B-Dbg-V" />
       <item itemvalue="Cargo.B-Dbg-V+A" />
-      <item itemvalue="Cargo.Dbg+V" />
-      <item itemvalue="Cargo.Dbg+V+A" />
-      <item itemvalue="Cargo.Playground" />
-      <item itemvalue="Cargo.Rel+V" />
-      <item itemvalue="Cargo.Rel+V+A" />
       <item itemvalue="Cargo.Dbg" />
       <item itemvalue="Cargo.Dbg+A" />
+      <item itemvalue="Cargo.Dbg+V" />
+      <item itemvalue="Cargo.Dbg+V+A" />
+      <item itemvalue="Cargo.Expand avro_test [avro-test]" />
+      <item itemvalue="Cargo.Playground" />
       <item itemvalue="Cargo.Rel" />
       <item itemvalue="Cargo.Rel+A" />
-      <item itemvalue="Cargo.Expand avro_test [avro-test]" />
+      <item itemvalue="Cargo.Rel+V" />
+      <item itemvalue="Cargo.Rel+V+A" />
       <item itemvalue="Cargo.Run avro-test" />
       <item itemvalue="Cargo.Run playground" />
       <item itemvalue="Cargo.avro-test" />

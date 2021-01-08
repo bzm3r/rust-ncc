@@ -54,10 +54,10 @@ impl<T: Copy> SymCcVvDat<T> {
 
     // pub fn reset(
     //     &mut self,
-    //     ci: usize,
-    //     vi: usize,
-    //     oci: usize,
-    //     ovi: usize,
+    //     ci: u32,
+    //     vi: u32,
+    //     oci: u32,
+    //     ovi: u32,
     // ) {
     //     if ci != oci {
     //         let ix = self.calc_ix(ci, vi, oci, ovi);

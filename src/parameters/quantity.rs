@@ -25,11 +25,11 @@ use std::ops::{Div, Mul};
 #[derive(Deserialize, Clone, Copy)]
 pub struct Units {
     /// Exponent for force.
-    pub f: f64,
+    pub f: f32,
     /// Exponent for length.
-    pub l: f64,
+    pub l: f32,
     /// Exponent for time.
-    pub t: f64,
+    pub t: f32,
 }
 
 impl PartialEq for Units {
@@ -65,7 +65,7 @@ impl Units {
     ///     l: 0.0 * n,
     /// }
     /// ```
-    fn pow(&self, exp: f64) -> Units {
+    fn pow(&self, exp: f32) -> Units {
         Units {
             f: exp * self.f,
             l: exp * self.l,
@@ -186,7 +186,7 @@ impl Div for Units {
 pub trait Quantity {
     /// Return a quantity that whose number part is a multiple
     /// of this quantity.
-    fn mul_number(&self, multiple: f64) -> Self;
+    fn mul_number(&self, multiple: f32) -> Self;
 
     /// Return a quantity that is `10^-3` times the original.
     fn kilo(&self) -> Self;
@@ -197,8 +197,8 @@ pub trait Quantity {
     /// Return a quantity that is `10^-9` times the original.
     fn nano(&self) -> Self;
 
-    /// Return the number (`f64`) part of the quantity (not the units).
-    fn number(&self) -> f64;
+    /// Return the number (`f32`) part of the quantity (not the units).
+    fn number(&self) -> f32;
 
     /// Return the `Units` of the `Quantity`
     fn units(&self) -> Units;
@@ -208,14 +208,14 @@ pub trait Quantity {
 
     /// Return a quantity that is the `exp`th power of
     /// this quantity.
-    fn pow(&self, exp: f64) -> General;
+    fn pow(&self, exp: f32) -> General;
 }
 
 /// A general quantity.
 #[derive(Deserialize, Clone, Copy)]
 pub struct General {
     /// Numerical value of this quantity.
-    n: f64,
+    n: f32,
     /// Units of this quantity.
     u: Units,
 }
@@ -257,7 +257,7 @@ impl General {
 }
 
 impl Quantity for General {
-    fn mul_number(&self, multiplier: f64) -> Self {
+    fn mul_number(&self, multiplier: f32) -> Self {
         General {
             n: self.n * multiplier,
             u: self.u,
@@ -276,7 +276,7 @@ impl Quantity for General {
         self.mul_number(1e-9)
     }
 
-    fn number(&self) -> f64 {
+    fn number(&self) -> f32 {
         self.n
     }
 
@@ -288,7 +288,7 @@ impl Quantity for General {
         *self
     }
 
-    fn pow(&self, exp: f64) -> General {
+    fn pow(&self, exp: f32) -> General {
         General {
             n: self.n.powf(exp),
             u: self.u.pow(exp),
@@ -325,10 +325,10 @@ impl Display for General {
 }
 
 #[derive(Default, Clone, Copy, Deserialize)]
-pub struct Force(pub f64);
+pub struct Force(pub f32);
 
 impl Quantity for Force {
-    fn mul_number(&self, other: f64) -> Self {
+    fn mul_number(&self, other: f32) -> Self {
         Force(self.0 * other)
     }
 
@@ -344,7 +344,7 @@ impl Quantity for Force {
         self.mul_number(1e-9)
     }
 
-    fn number(&self) -> f64 {
+    fn number(&self) -> f32 {
         self.0
     }
 
@@ -359,16 +359,16 @@ impl Quantity for Force {
         }
     }
 
-    fn pow(&self, exp: f64) -> General {
+    fn pow(&self, exp: f32) -> General {
         self.g().pow(exp)
     }
 }
 
 #[derive(Clone, Deserialize)]
-pub struct Length(pub f64);
+pub struct Length(pub f32);
 
 impl Quantity for Length {
-    fn mul_number(&self, other: f64) -> Self {
+    fn mul_number(&self, other: f32) -> Self {
         Length(self.0 * other)
     }
 
@@ -384,7 +384,7 @@ impl Quantity for Length {
         self.mul_number(1e-9)
     }
 
-    fn number(&self) -> f64 {
+    fn number(&self) -> f32 {
         self.0
     }
 
@@ -399,16 +399,16 @@ impl Quantity for Length {
         }
     }
 
-    fn pow(&self, exp: f64) -> General {
+    fn pow(&self, exp: f32) -> General {
         self.g().pow(exp)
     }
 }
 
 #[derive(Deserialize, Clone, Copy)]
-pub struct Time(pub f64);
+pub struct Time(pub f32);
 
 impl Quantity for Time {
-    fn mul_number(&self, other: f64) -> Self {
+    fn mul_number(&self, other: f32) -> Self {
         Time(self.0 * other)
     }
 
@@ -424,7 +424,7 @@ impl Quantity for Time {
         self.mul_number(1e-9)
     }
 
-    fn number(&self) -> f64 {
+    fn number(&self) -> f32 {
         self.0
     }
 
@@ -439,16 +439,16 @@ impl Quantity for Time {
         }
     }
 
-    fn pow(&self, exp: f64) -> General {
+    fn pow(&self, exp: f32) -> General {
         self.g().pow(exp)
     }
 }
 
 #[derive(Deserialize, Clone, Copy)]
-pub struct Tinv(pub f64);
+pub struct Tinv(pub f32);
 
 impl Quantity for Tinv {
-    fn mul_number(&self, other: f64) -> Self {
+    fn mul_number(&self, other: f32) -> Self {
         Tinv(self.0 * other)
     }
 
@@ -464,7 +464,7 @@ impl Quantity for Tinv {
         self.mul_number(1e-9)
     }
 
-    fn number(&self) -> f64 {
+    fn number(&self) -> f32 {
         self.0
     }
 
@@ -479,16 +479,16 @@ impl Quantity for Tinv {
         }
     }
 
-    fn pow(&self, exp: f64) -> General {
+    fn pow(&self, exp: f32) -> General {
         self.g().pow(exp)
     }
 }
 
 #[derive(Deserialize, Clone, Copy)]
-pub struct Diffusion(pub f64);
+pub struct Diffusion(pub f32);
 
 impl Quantity for Diffusion {
-    fn mul_number(&self, other: f64) -> Self {
+    fn mul_number(&self, other: f32) -> Self {
         Diffusion(self.0 * other)
     }
 
@@ -504,7 +504,7 @@ impl Quantity for Diffusion {
         self.mul_number(1e-9)
     }
 
-    fn number(&self) -> f64 {
+    fn number(&self) -> f32 {
         self.0
     }
 
@@ -519,16 +519,16 @@ impl Quantity for Diffusion {
         }
     }
 
-    fn pow(&self, exp: f64) -> General {
+    fn pow(&self, exp: f32) -> General {
         self.g().pow(exp)
     }
 }
 
 #[derive(Deserialize, Clone, Copy)]
-pub struct Stress(pub f64);
+pub struct Stress(pub f32);
 
 impl Quantity for Stress {
-    fn mul_number(&self, other: f64) -> Self {
+    fn mul_number(&self, other: f32) -> Self {
         Stress(self.0 * other)
     }
 
@@ -544,7 +544,7 @@ impl Quantity for Stress {
         self.mul_number(1e-9)
     }
 
-    fn number(&self) -> f64 {
+    fn number(&self) -> f32 {
         self.0
     }
 
@@ -559,16 +559,16 @@ impl Quantity for Stress {
         }
     }
 
-    fn pow(&self, exp: f64) -> General {
+    fn pow(&self, exp: f32) -> General {
         self.g().pow(exp)
     }
 }
 
 #[derive(Deserialize, Clone, Copy)]
-pub struct Viscosity(pub f64);
+pub struct Viscosity(pub f32);
 
 impl Quantity for Viscosity {
-    fn mul_number(&self, other: f64) -> Self {
+    fn mul_number(&self, other: f32) -> Self {
         Viscosity(self.0 * other)
     }
 
@@ -584,7 +584,7 @@ impl Quantity for Viscosity {
         self.mul_number(1e-9)
     }
 
-    fn number(&self) -> f64 {
+    fn number(&self) -> f32 {
         self.0
     }
 
@@ -599,16 +599,16 @@ impl Quantity for Viscosity {
         }
     }
 
-    fn pow(&self, exp: f64) -> General {
+    fn pow(&self, exp: f32) -> General {
         self.g().pow(exp)
     }
 }
 
 #[derive(Deserialize, Clone, Copy)]
-pub struct Unitless(pub f64);
+pub struct Unitless(pub f32);
 
 impl Quantity for Unitless {
-    fn mul_number(&self, other: f64) -> Self {
+    fn mul_number(&self, other: f32) -> Self {
         Unitless(self.0 * other)
     }
 
@@ -624,7 +624,7 @@ impl Quantity for Unitless {
         self.mul_number(1e-9)
     }
 
-    fn number(&self) -> f64 {
+    fn number(&self) -> f32 {
         self.0
     }
 
@@ -639,7 +639,7 @@ impl Quantity for Unitless {
         }
     }
 
-    fn pow(&self, exp: f64) -> General {
+    fn pow(&self, exp: f32) -> General {
         self.g().pow(exp)
     }
 }

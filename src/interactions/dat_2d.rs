@@ -7,7 +7,7 @@
 /// and `Default`.
 #[derive(Clone, Default)]
 pub struct CcDat<T: Copy + Default> {
-    pub num_cells: usize,
+    pub num_cells: u32,
     dat: Vec<T>,
     undefined: T,
 }
@@ -20,7 +20,7 @@ impl<T: Copy + Default> CcDat<T> {
     /// is because we assume that we do not need to store data for
     /// `(ci, ci)` We assume instead that we always have `(ci, oci)`
     /// such that `ci != oci`.
-    pub fn new(num_cells: usize, undefined: T) -> CcDat<T> {
+    pub fn new(num_cells: u32, undefined: T) -> CcDat<T> {
         CcDat {
             num_cells,
             dat: vec![undefined; num_cells * (num_cells - 1)],
@@ -29,7 +29,7 @@ impl<T: Copy + Default> CcDat<T> {
     }
 
     /// Calculate the index at which data for `(ci, oci)` is stored.
-    fn calc_ix(&self, ci: usize, oci: usize) -> usize {
+    fn calc_ix(&self, ci: u32, oci: u32) -> u32 {
         // shift `oci` to account to ignore "diagonal" elements
         if ci < oci {
             oci - 1
@@ -42,7 +42,7 @@ impl<T: Copy + Default> CcDat<T> {
 
     /// Set `x` as data for index `(ci, oci)`.
     /// Setting does nothing if `ci == oci`.
-    pub fn set(&mut self, ci: usize, oci: usize, x: T) {
+    pub fn set(&mut self, ci: u32, oci: u32, x: T) {
         if ci != oci {
             let ix = self.calc_ix(ci, oci);
             self.dat[ix] = x;
@@ -52,7 +52,7 @@ impl<T: Copy + Default> CcDat<T> {
     /// Get the data stored at index `(ci, oci)`. If `ci == oci`,
     /// this will return the undefined value specified during
     /// creation of `CcDat`.
-    pub fn get(&self, ci: usize, oci: usize) -> T {
+    pub fn get(&self, ci: u32, oci: u32) -> T {
         if ci == oci {
             self.undefined
         } else {
