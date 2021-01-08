@@ -762,7 +762,7 @@ impl CoreState {
 
     /// Calculate which Rho GTPase has dominates in terms of effect
     /// at this vertex.
-    pub fn calc_crl_rgtp_state(
+    pub fn calc_relative_rgtp_activity(
         &self,
         parameters: &Parameters,
     ) -> [RelativeRgtpActivity; NVERTS] {

@@ -30,6 +30,8 @@ use crate::parameters::InteractionParams;
 use crate::NVERTS;
 use serde::{Deserialize, Serialize};
 
+/// The relative Rho GTPase activity at a cell is positive if Rac1
+/// dominates, otherwise it is negative.
 pub type RelativeRgtpActivity = f64;
 
 #[derive(Copy, Clone, Debug, Default, Deserialize, Serialize)]

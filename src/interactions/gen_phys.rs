@@ -32,8 +32,21 @@ pub enum ClosePoint {
 }
 
 pub struct ClosePointInfo {
-    cp: ClosePoint,
-    ovi: usize,
+    pub cp: ClosePoint,
+    pub ovi: usize,
+}
+
+impl ClosePointInfo {
+    pub fn get_vector_to_mag(&self) -> f64 {
+        match self.cp {
+            ClosePoint::Vertex { vector_to, .. } => vector_to,
+            ClosePoint::OnEdge { vector_to, .. } => vector_to,
+            _ => panic!(
+                "close point in close point info should not be none!"
+            ),
+        }
+        .mag()
+    }
 }
 
 impl ClosePoint {
@@ -418,28 +431,28 @@ impl PhysicalContactGenerator {
                     }
 
                     if let Some(adh_mag) = self.params.adh_mag {
-                        let d = vector_to.mag();
-                        let s = capped_linear_fn(
-                            d,
-                            self.params.range.one_at,
-                            0.0,
-                        );
-                        let adh_force = adh_mag * s * vector_to;
+                        let x = -1.0
+                            * (vector_to.mag()
+                                / self.params.range.one_at)
+                            * smooth_factor;
+                        let adh_force =
+                            -1.0 * adh_mag * x * vector_to;
                         //* ((1.0 / self.params.range) * delta);
                         // We are close to the vertex.
                         if close_to_zero(edge_point_param) {
                             adh_per_cell[oci][ovi] =
                                 adh_per_cell[oci][ovi] - adh_force;
+                            adh_per_cell[ci][vi] =
+                                adh_per_cell[ci][vi] + adh_force;
                         } else {
                             adh_per_cell[oci][ovi] = adh_per_cell
                                 [oci][ovi]
-                                + -1.0
-                                    * (1.0 - edge_point_param)
+                                - (1.0 - edge_point_param)
                                     * adh_force;
                             let owi = circ_ix_plus(ovi, NVERTS);
                             adh_per_cell[oci][owi] = adh_per_cell
                                 [oci][owi]
-                                + -1.0 * edge_point_param * adh_force;
+                                - edge_point_param * adh_force;
                             adh_per_cell[ci][vi] =
                                 adh_per_cell[ci][vi] + adh_force;
                         }
@@ -466,7 +479,7 @@ impl CrlEffect {
         b: RelativeRgtpActivity,
     ) -> CrlEffect {
         match (a > 0.0, b > 0.0) {
-            (true, true) => CrlEffect::Cal,
+            (false, true) | (true, false) => CrlEffect::Cal,
             (_, _) => CrlEffect::Cil,
         }
     }

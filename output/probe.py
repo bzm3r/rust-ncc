@@ -5,7 +5,7 @@ import json
 import cbor2
 
 output = None
-file_name = "history_separated_pair.cbor"
+file_name = "history_pair.cbor"
 with open(file_name, mode='rb') as sf:
     output = cbor2.load(sf)
 
@@ -19,7 +19,7 @@ def p2ds_to_numpy(p2ds):
     return np.array(vs)
 
 
-def extract_p2ds(state_key, dat_key, state_recs):
+def extract_p2ds_from_cell_states(state_key, dat_key, state_recs):
     dat_per_cell_per_tstep = []
     for rec in state_recs:
         dat_per_cell = []
@@ -28,6 +28,14 @@ def extract_p2ds(state_key, dat_key, state_recs):
         dat_per_cell_per_tstep.append(np.array(dat_per_cell))
     return np.array(dat_per_cell_per_tstep)
 
+def extract_p2ds_from_interactions(dat_key, state_recs):
+    dat_per_cell_per_tstep = []
+    for rec in state_recs:
+        dat_per_cell = []
+        for cell_rec in rec['interactions']:
+            dat_per_cell.append(p2ds_to_numpy(cell_rec[dat_key]))
+        dat_per_cell_per_tstep.append(np.array(dat_per_cell))
+    return np.array(dat_per_cell_per_tstep)
 
 def extract_scalars(state_key, dat_key, state_recs):
     dat_per_cell_per_tstep = []
@@ -39,8 +47,8 @@ def extract_scalars(state_key, dat_key, state_recs):
     return np.array(dat_per_cell_per_tstep)
 
 
-poly_per_cell_per_tstep = extract_p2ds('core', 'poly', state_recs)
-uivs_per_cell_per_tstep = extract_p2ds('geom', 'unit_inward_vecs',
+poly_per_cell_per_tstep = extract_p2ds_from_cell_states('core', 'poly', state_recs)
+uivs_per_cell_per_tstep = extract_p2ds_from_cell_states('geom', 'unit_inward_vecs',
                                        state_recs)
 uovs_per_cell_per_tstep = -1 * uivs_per_cell_per_tstep
 rac_acts_per_cell_per_tstep = extract_scalars('core', 'rac_acts', state_recs)
@@ -49,6 +57,8 @@ rac_act_arrows_per_cell_per_tstep = 50 * rac_acts_per_cell_per_tstep[:, :, :,
 rho_acts_per_cell_per_tstep = extract_scalars('core', 'rho_acts', state_recs)
 rho_act_arrows_per_cell_per_tstep = 50 * rho_acts_per_cell_per_tstep[:, :, :,
                                          np.newaxis] * uivs_per_cell_per_tstep
+
+adhs_per_cell_per_tstep = 5*extract_p2ds_from_interactions('x_adhs', state_recs)
 
 #
 # rho_acts_arrows_per_tstep = []
@@ -150,6 +160,15 @@ def paint(delta):
         for p, rho_arrow in zip(poly, rho_act_arrows):
             ax.arrow(p[0], p[1], 3*rho_arrow[0], 3*rho_arrow[1], color="r",
                      length_includes_head=True, head_width=0.0)
+
+    for poly_ix, poly, adhs in zip(np.arange(0, len(poly_per_cell_per_tstep[0])), poly_per_cell_per_tstep[tstep_ix], adhs_per_cell_per_tstep[tstep_ix]):
+        if poly_ix == 0:
+            adh_arrow_color = "magenta"
+        else:
+            adh_arrow_color = "cyan"
+        for p, adh in zip(poly, adhs):
+            ax.arrow(p[0], p[1], adh[0], adh[1], color=adh_arrow_color,
+             length_includes_head=True, head_width=1.0)
 
     # for rac_act in rac_acts_arrows_per_tstep[tstep]:
     #     ax.arrow(rac_act[0], rac_act[1], rac_act[2], rac_act[3], color="b", length_includes_head=True, head_width=0.0)

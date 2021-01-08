@@ -57,11 +57,8 @@ pub struct RawCloseBounds {
 }
 
 impl RawCloseBounds {
-    pub fn new(zero_until: Length, one_at: Length) -> RawCloseBounds {
-        RawCloseBounds {
-            zero_at: zero_until,
-            one_at,
-        }
+    pub fn new(zero_at: Length, one_at: Length) -> RawCloseBounds {
+        RawCloseBounds { zero_at, one_at }
     }
 }
 
