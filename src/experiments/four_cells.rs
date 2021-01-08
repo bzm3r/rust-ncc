@@ -112,7 +112,7 @@ pub fn generate(seed: Option<u64>) -> Experiment {
         raw_world_parameters(&char_quants).refine(&char_quants);
     let cell_groups = cell_groups(&mut rng, &char_quants);
     Experiment {
-        file_name: "pair".to_string(),
+        file_name: "four_cells".to_string(),
         char_quants,
         world_parameters,
         cell_groups,

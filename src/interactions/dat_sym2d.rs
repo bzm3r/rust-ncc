@@ -88,7 +88,7 @@ impl<T: Copy + Default> SymCcDat<T> {
     pub fn set(&mut self, ci: usize, oci: usize, x: T) {
         if ci != oci {
             let ix = self.calc_ix(ci, oci);
-            println!("calculated ix: {}", ix);
+            // println!("calculated ix: {}", ix);
             self.dat[ix] = x;
         }
     }

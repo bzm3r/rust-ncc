@@ -5,12 +5,16 @@ import json
 import cbor2
 
 output = None
-file_name = "history_pair.cbor"
+file_name = "history_four_cells.cbor"
 with open(file_name, mode='rb') as sf:
     output = cbor2.load(sf)
 
 tsteps = [o[0] for o in output]
+frequency = tsteps[1] - tsteps[0]
 state_recs = [o[1] for o in output]
+
+def lookup_tstep_ix(tstep):
+    return int(np.floor(tstep/frequency))
 
 def p2ds_to_numpy(p2ds):
     vs = []

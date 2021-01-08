@@ -190,10 +190,8 @@ pub fn generate_contacts(contact_bbs: &[BBox]) -> SymCcDat<bool> {
     let mut contacts = SymCcDat::new(contact_bbs.len(), false);
     for (ci, bb) in contact_bbs.iter().enumerate() {
         for (oxi, obb) in contact_bbs[(ci + 1)..].iter().enumerate() {
-            println!("setting: {}, {}", ci, oxi + ci + 1);
             contacts.set(ci, ci + 1 + oxi, obb.intersects(bb));
         }
     }
-    panic!("stop.");
     contacts
 }

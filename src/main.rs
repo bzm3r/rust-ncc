@@ -20,13 +20,13 @@ use std::time::Instant;
 pub const NVERTS: usize = 16;
 
 fn main() {
-    let exp = experiments::four::generate(Some(3));
+    let exp = experiments::four_cells::generate(Some(3));
 
     let output_dir = PathBuf::from("./output");
     let mut w = world::World::new(exp, output_dir.clone());
 
     let now = Instant::now();
-    w.simulate(3.0 * 3600.0, 1);
+    w.simulate(3.0 * 3600.0, 10);
     println!("Simulation complete. {} s.", now.elapsed().as_secs());
     let now = Instant::now();
     w.save_history(true, vec![Format::Cbor, Format::Bincode])
