@@ -8,14 +8,14 @@
 
 pub mod quantity;
 
-use rust_ncc::cell::calc_init_cell_area;
-use rust_ncc::cell::chemistry::RgtpDistribution;
-use rust_ncc::math::geometry::BBox;
-use rust_ncc::math::v2d::V2D;
-use rust_ncc::parameters::quantity::{
+use crate::cell::calc_init_cell_area;
+use crate::cell::chemistry::RgtpDistribution;
+use crate::math::geometry::BBox;
+use crate::math::v2d::V2D;
+use crate::parameters::quantity::{
     Diffusion, Force, Length, Quantity, Stress, Time, Tinv, Viscosity,
 };
-use rust_ncc::NVERTS;
+use crate::NVERTS;
 use serde::{Deserialize, Serialize};
 use std::f32::consts::PI;
 

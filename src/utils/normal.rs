@@ -1,6 +1,6 @@
+use crate::utils::pcg32::Pcg32;
 use rand::distributions::Distribution;
 use rand_distr::Normal;
-use rust_ncc::utils::pcg32::Pcg32;
 use serde::de::Visitor;
 use serde::{de, Deserialize, Deserializer, Serialize};
 use std::fmt;

@@ -11,18 +11,18 @@ pub mod pair;
 pub mod separated_pair;
 //pub mod single;
 
-use rust_ncc::cell::chemistry::{
+use crate::cell::chemistry::{
     DistributionScheme, DistributionType, RgtpDistribution,
 };
-use rust_ncc::math::v2d::V2D;
-use rust_ncc::parameters::quantity::{
+use crate::math::v2d::V2D;
+use crate::parameters::quantity::{
     Force, Length, Quantity, Stress, Time, Tinv, Viscosity,
 };
-use rust_ncc::parameters::{
+use crate::parameters::{
     CharQuantities, Parameters, RawParameters, WorldParameters,
 };
-use rust_ncc::utils::pcg32::Pcg32;
-use rust_ncc::NVERTS;
+use crate::utils::pcg32::Pcg32;
+use crate::NVERTS;
 
 /// Specifies initial placement of the group.
 pub struct GroupBBox {

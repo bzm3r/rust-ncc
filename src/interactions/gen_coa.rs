@@ -1,9 +1,9 @@
-use rust_ncc::interactions::dat_sym2d::SymCcDat;
-use rust_ncc::interactions::dat_sym4d::SymCcVvDat;
-use rust_ncc::interactions::generate_contacts;
-use rust_ncc::math::geometry::{BBox, LineSeg2D, Poly};
-use rust_ncc::parameters::CoaParams;
-use rust_ncc::NVERTS;
+use crate::interactions::dat_sym2d::SymCcDat;
+use crate::interactions::dat_sym4d::SymCcVvDat;
+use crate::interactions::generate_contacts;
+use crate::math::geometry::{BBox, LineSeg2D, Poly};
+use crate::parameters::CoaParams;
+use crate::NVERTS;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Copy, Deserialize, Serialize)]

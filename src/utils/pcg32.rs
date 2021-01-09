@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! PCG random number generators, borrowed from the `rand_pcg` rust_ncc,
+//! PCG random number generators, borrowed from the `rand_pcg` crate,
 //! so that `Copy` can be derived on it.
 //!
 use core::fmt;

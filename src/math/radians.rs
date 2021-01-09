@@ -6,7 +6,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use rust_ncc::math::modulo_f32;
+use crate::math::modulo_f32;
 use std::f32::consts::PI;
 use std::ops::{Add, Sub};
 

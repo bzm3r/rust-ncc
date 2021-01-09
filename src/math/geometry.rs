@@ -6,12 +6,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use rust_ncc::math::v2d::V2D;
-use rust_ncc::math::{
+use crate::math::v2d::V2D;
+use crate::math::{
     close_to_zero, in_unit_interval, max_f32s, min_f32s,
 };
-use rust_ncc::utils::{circ_ix_minus, circ_ix_plus};
-use rust_ncc::NVERTS;
+use crate::utils::{circ_ix_minus, circ_ix_plus};
+use crate::NVERTS;
 use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
 

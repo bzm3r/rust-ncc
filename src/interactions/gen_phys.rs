@@ -1,16 +1,14 @@
-use rust_ncc::interactions::dat_4d::CvCvDat;
-use rust_ncc::interactions::dat_sym2d::SymCcDat;
-use rust_ncc::interactions::{
-    generate_contacts, RelativeRgtpActivity,
-};
-use rust_ncc::math::geometry::{BBox, Poly};
-use rust_ncc::math::v2d::V2D;
-use rust_ncc::math::{
+use crate::interactions::dat_4d::CvCvDat;
+use crate::interactions::dat_sym2d::SymCcDat;
+use crate::interactions::{generate_contacts, RelativeRgtpActivity};
+use crate::math::geometry::{BBox, Poly};
+use crate::math::v2d::V2D;
+use crate::math::{
     capped_linear_fn, close_to_zero, in_unit_interval,
 };
-use rust_ncc::parameters::{CloseBounds, PhysicalContactParams};
-use rust_ncc::utils::circ_ix_plus;
-use rust_ncc::NVERTS;
+use crate::parameters::{CloseBounds, PhysicalContactParams};
+use crate::utils::circ_ix_plus;
+use crate::NVERTS;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 

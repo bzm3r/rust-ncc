@@ -11,23 +11,23 @@ pub mod core_state;
 pub mod mechanics;
 pub mod rkdp5;
 
-use rust_ncc::cell::chemistry::RacRandState;
-use rust_ncc::cell::core_state::{
+use crate::cell::chemistry::RacRandState;
+use crate::cell::core_state::{
     ChemState, CoreState, GeomState, MechState,
 };
-use rust_ncc::cell::rkdp5::AuxArgs;
-use rust_ncc::interactions::{ContactData, Interactions};
-use rust_ncc::math::geometry::{calc_poly_area, LineSeg2D};
-use rust_ncc::math::v2d::V2D;
-use rust_ncc::parameters::{Parameters, WorldParameters};
-use rust_ncc::utils::pcg32::Pcg32;
-use rust_ncc::utils::{circ_ix_minus, circ_ix_plus};
-use rust_ncc::NVERTS;
+use crate::cell::rkdp5::AuxArgs;
+use crate::interactions::{ContactData, Interactions};
+use crate::math::geometry::{calc_poly_area, LineSeg2D};
+use crate::math::v2d::V2D;
+use crate::parameters::{Parameters, WorldParameters};
+use crate::utils::pcg32::Pcg32;
+use crate::utils::{circ_ix_minus, circ_ix_plus};
+use crate::NVERTS;
 use serde::{Deserialize, Serialize};
 use std::f32::consts::PI;
 
 #[cfg(feature = "validate")]
-use rust_ncc::math::v2d::poly_to_string;
+use crate::math::v2d::poly_to_string;
 
 /// Cell state structure.
 #[derive(Copy, Clone, Deserialize, Serialize)]

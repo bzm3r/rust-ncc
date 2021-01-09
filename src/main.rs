@@ -1,12 +1,9 @@
 #![allow(clippy::too_many_arguments)]
 //! The entry point.
 use rust_ncc::world::hardio::Format;
-use rust_ncc::{experiments, world};
+use rust_ncc::{experiments, world, DEFAULT_OUTPUT_DIR};
 use std::path::PathBuf;
 use std::time::Instant;
-
-/// Default directory where simulation output will be placed.
-pub const DEFAULT_OUTPUT_DIR: &str = "./output";
 
 fn main() {
     let exp = experiments::pair::generate(Some(3));
