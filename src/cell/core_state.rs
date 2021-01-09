@@ -27,13 +27,13 @@ pub struct CoreState {
     /// Polygon representing cell shape.
     pub poly: [V2D; NVERTS],
     /// Fraction of Rac1 active at each vertex.
-    rac_acts: [f32; NVERTS],
+    pub rac_acts: [f32; NVERTS],
     /// Fraction of Rac1 inactive at each vertex.
-    rac_inacts: [f32; NVERTS],
+    pub rac_inacts: [f32; NVERTS],
     /// Fraction of RhoA active at each vertex.
-    rho_acts: [f32; NVERTS],
+    pub rho_acts: [f32; NVERTS],
     /// Fraction of RhoA inactive at each vertex.
-    rho_inacts: [f32; NVERTS],
+    pub rho_inacts: [f32; NVERTS],
 }
 
 impl Add for CoreState {

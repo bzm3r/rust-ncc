@@ -1,6 +1,4 @@
-use crate::world::{
-    Cells, FullHistory, FullSnapshot, MiniHistory, MiniSnapshot,
-};
+use crate::world::{DeepHistory, DeepSnapshot, History, Snapshot};
 use bincode::{deserialize_from, serialize_into};
 use std::error::Error;
 use std::fs::File;
@@ -69,7 +67,7 @@ pub fn get_file_read(
 }
 
 pub fn save_compact(
-    data: MiniHistory,
+    data: History,
     out_dir: &PathBuf,
     formats: Vec<Format>,
     title: &str,
@@ -90,7 +88,7 @@ pub fn save_compact(
 }
 
 pub fn save_full(
-    data: FullHistory,
+    data: DeepHistory,
     out_dir: &PathBuf,
     formats: Vec<Format>,
     title: &str,
@@ -114,7 +112,7 @@ pub fn load_compact(
     out_dir: &PathBuf,
     format: Format,
     title: &str,
-) -> MiniHistory {
+) -> History {
     let mut f = get_file_read(true, out_dir, title, format).unwrap();
 
     match format {
@@ -128,7 +126,7 @@ pub fn load_full(
     out_dir: &PathBuf,
     format: Format,
     title: &str,
-) -> FullHistory {
+) -> DeepHistory {
     let mut f = get_file_read(false, out_dir, title, format).unwrap();
 
     match format {

@@ -20,6 +20,7 @@ use serde::{Deserialize, Serialize};
 use std::f32::consts::PI;
 
 /// Characteristic quantities used for normalization.
+#[derive(Clone, Copy, Deserialize, Serialize)]
 pub struct CharQuantities {
     pub eta: Viscosity,
     pub f: Force,

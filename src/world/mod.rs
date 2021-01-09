@@ -15,7 +15,9 @@ use crate::interactions::{
     InteractionGenerator, Interactions, RelativeRgtpActivity,
 };
 use crate::math::v2d::V2D;
-use crate::parameters::{Parameters, WorldParameters};
+use crate::parameters::{
+    CharQuantities, Parameters, WorldParameters,
+};
 use crate::NVERTS;
 //use rand_core::SeedableRng;
 use crate::utils::pcg32::Pcg32;
@@ -83,7 +85,7 @@ impl Cells {
 }
 
 #[derive(Deserialize, Serialize, Clone)]
-pub struct FullSnapshot {
+pub struct DeepSnapshot {
     pub tstep: u32,
     pub interaction_generator: InteractionGenerator,
     pub rng: Pcg32,
@@ -91,14 +93,14 @@ pub struct FullSnapshot {
 }
 
 #[derive(Deserialize, Serialize, Clone)]
-pub struct MiniSnapshot {
+pub struct Snapshot {
     pub tstep: u32,
     pub cells: Cells,
 }
 
-impl FullSnapshot {
-    pub fn to_mini(&self) -> MiniSnapshot {
-        MiniSnapshot {
+impl DeepSnapshot {
+    pub fn to_mini(&self) -> Snapshot {
+        Snapshot {
             tstep: self.tstep,
             cells: self.cells.clone(),
         }
@@ -106,39 +108,42 @@ impl FullSnapshot {
 }
 
 #[derive(Deserialize, Serialize, Clone)]
-pub struct MiniHistory {
-    world_params: WorldParameters,
-    cell_params: Vec<Parameters>,
-    snapshots: Vec<MiniSnapshot>,
+pub struct History {
+    pub char_quants: CharQuantities,
+    pub world_params: WorldParameters,
+    pub cell_params: Vec<Parameters>,
+    pub snapshots: Vec<Snapshot>,
 }
 
 #[derive(Deserialize, Serialize, Clone)]
-pub struct FullHistory {
+pub struct DeepHistory {
+    char_quants: CharQuantities,
     world_params: WorldParameters,
     cell_params: Vec<Parameters>,
-    snapshots: Vec<FullSnapshot>,
+    snapshots: Vec<DeepSnapshot>,
 }
 
-impl FullHistory {
-    pub fn to_mini(&self) -> MiniHistory {
-        MiniHistory {
+impl DeepHistory {
+    pub fn to_history(&self) -> History {
+        History {
+            char_quants: self.char_quants,
             world_params: self.world_params.clone(),
             cell_params: self.cell_params.clone(),
             snapshots: self
                 .snapshots
                 .iter()
                 .map(|fs| fs.to_mini())
-                .collect::<Vec<MiniSnapshot>>(),
+                .collect::<Vec<Snapshot>>(),
         }
     }
 }
 
 pub struct World {
-    tstep_length: f32,
+    char_quants: CharQuantities,
     tstep: u32,
     world_params: WorldParameters,
     group_params: Vec<Parameters>,
-    pub history: Vec<FullSnapshot>,
+    pub history: Vec<DeepSnapshot>,
     cells: Cells,
     interaction_generator: InteractionGenerator,
     pub rng: Pcg32,
@@ -249,7 +254,7 @@ impl World {
             states: cell_states,
             interactions: cell_interactions.clone(),
         };
-        let history = vec![FullSnapshot {
+        let history = vec![DeepSnapshot {
             tstep: 0,
             interaction_generator: interaction_generator.clone(),
             rng,
@@ -257,7 +262,7 @@ impl World {
         }];
         World {
             tstep: 0,
-            tstep_length: char_quants.time(),
+            char_quants,
             world_params,
             group_params,
             history,
@@ -269,8 +274,8 @@ impl World {
         }
     }
 
-    pub fn take_snapshot(&self) -> FullSnapshot {
-        FullSnapshot {
+    pub fn take_snapshot(&self) -> DeepSnapshot {
+        DeepSnapshot {
             tstep: self.tstep,
             interaction_generator: self.interaction_generator.clone(),
             rng: self.rng,
@@ -284,7 +289,7 @@ impl World {
         save_frequency: u32,
     ) {
         let num_tsteps =
-            (final_tpoint / self.tstep_length).ceil() as u32;
+            (final_tpoint / self.char_quants.time()).ceil() as u32;
         while self.tstep < num_tsteps {
             let new_cells: Cells = self
                 .cells
@@ -312,33 +317,35 @@ impl World {
         }
     }
 
-    pub fn get_full_history(&self) -> FullHistory {
-        FullHistory {
+    pub fn get_full_history(&self) -> DeepHistory {
+        DeepHistory {
+            char_quants: self.char_quants,
             world_params: self.world_params.clone(),
             cell_params: self
                 .cells
                 .states
                 .iter()
-                .map(|s| self.group_params[s.group_ix])
+                .map(|s| self.group_params[s.group_ix].clone())
                 .collect::<Vec<Parameters>>(),
             snapshots: self.history.clone(),
         }
     }
 
-    pub fn get_mini_history(&self) -> MiniHistory {
-        MiniHistory {
+    pub fn get_history(&self) -> History {
+        History {
+            char_quants: self.char_quants,
             world_params: self.world_params.clone(),
             cell_params: self
                 .cells
                 .states
                 .iter()
-                .map(|s| self.group_params[s.group_ix])
+                .map(|s| self.group_params[s.group_ix].clone())
                 .collect::<Vec<Parameters>>(),
             snapshots: self
                 .history
                 .iter()
                 .map(|fs| fs.to_mini())
-                .collect::<Vec<MiniSnapshot>>(),
+                .collect::<Vec<Snapshot>>(),
         }
     }
 
@@ -349,7 +356,7 @@ impl World {
     ) -> Result<(), Box<dyn Error>> {
         if compact {
             save_compact(
-                self.get_mini_history(),
+                self.get_history(),
                 &self.out_dir,
                 formats,
                 &self.file_name,

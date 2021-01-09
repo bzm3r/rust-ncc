@@ -5,7 +5,7 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::fmt::{Display, Formatter};
 use std::ops::{Div, Mul};
@@ -22,7 +22,7 @@ use std::ops::{Div, Mul};
 /// need to use some concept of mass, it comes in the form
 /// of a force. That is, recall that force has units
 /// M^1 L^1 T^-2 (mass * acceleration).
-#[derive(Deserialize, Clone, Copy)]
+#[derive(Deserialize, Serialize, Clone, Copy)]
 pub struct Units {
     /// Exponent for force.
     pub f: f32,
@@ -212,7 +212,7 @@ pub trait Quantity {
 }
 
 /// A general quantity.
-#[derive(Deserialize, Clone, Copy)]
+#[derive(Deserialize, Serialize, Clone, Copy)]
 pub struct General {
     /// Numerical value of this quantity.
     n: f32,
@@ -324,7 +324,7 @@ impl Display for General {
     }
 }
 
-#[derive(Default, Clone, Copy, Deserialize)]
+#[derive(Default, Clone, Copy, Serialize, Deserialize)]
 pub struct Force(pub f32);
 
 impl Quantity for Force {
@@ -364,7 +364,7 @@ impl Quantity for Force {
     }
 }
 
-#[derive(Clone, Deserialize)]
+#[derive(Deserialize, Serialize, Clone, Copy)]
 pub struct Length(pub f32);
 
 impl Quantity for Length {
@@ -404,7 +404,7 @@ impl Quantity for Length {
     }
 }
 
-#[derive(Deserialize, Clone, Copy)]
+#[derive(Deserialize, Serialize, Clone, Copy)]
 pub struct Time(pub f32);
 
 impl Quantity for Time {
@@ -444,7 +444,7 @@ impl Quantity for Time {
     }
 }
 
-#[derive(Deserialize, Clone, Copy)]
+#[derive(Deserialize, Serialize, Clone, Copy)]
 pub struct Tinv(pub f32);
 
 impl Quantity for Tinv {
@@ -484,7 +484,7 @@ impl Quantity for Tinv {
     }
 }
 
-#[derive(Deserialize, Clone, Copy)]
+#[derive(Deserialize, Serialize, Clone, Copy)]
 pub struct Diffusion(pub f32);
 
 impl Quantity for Diffusion {
@@ -524,7 +524,7 @@ impl Quantity for Diffusion {
     }
 }
 
-#[derive(Deserialize, Clone, Copy)]
+#[derive(Deserialize, Serialize, Clone, Copy)]
 pub struct Stress(pub f32);
 
 impl Quantity for Stress {
@@ -564,7 +564,7 @@ impl Quantity for Stress {
     }
 }
 
-#[derive(Deserialize, Clone, Copy)]
+#[derive(Deserialize, Serialize, Clone, Copy)]
 pub struct Viscosity(pub f32);
 
 impl Quantity for Viscosity {
