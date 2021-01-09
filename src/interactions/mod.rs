@@ -16,17 +16,17 @@ pub mod gen_bdry;
 pub mod gen_chemoa;
 mod gen_phys;
 
-use crate::interactions::dat_sym2d::SymCcDat;
-use crate::interactions::gen_bdry::BdryEffectGenerator;
-use crate::interactions::gen_chemoa::ChemAttrGenerator;
-use crate::interactions::gen_coa::CoaGenerator;
-use crate::interactions::gen_phys::{
+use rust_ncc::interactions::dat_sym2d::SymCcDat;
+use rust_ncc::interactions::gen_bdry::BdryEffectGenerator;
+use rust_ncc::interactions::gen_chemoa::ChemAttrGenerator;
+use rust_ncc::interactions::gen_coa::CoaGenerator;
+use rust_ncc::interactions::gen_phys::{
     PhysContactFactors, PhysicalContactGenerator,
 };
-use crate::math::geometry::{BBox, Poly};
-use crate::math::v2d::V2D;
-use crate::parameters::InteractionParams;
-use crate::NVERTS;
+use rust_ncc::math::geometry::{BBox, Poly};
+use rust_ncc::math::v2d::V2D;
+use rust_ncc::parameters::InteractionParams;
+use rust_ncc::NVERTS;
 use serde::{Deserialize, Serialize};
 
 /// The relative Rho GTPase activity at a cell is positive if Rac1

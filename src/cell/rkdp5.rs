@@ -1,8 +1,10 @@
 #![allow(unused)]
-use crate::cell::{chemistry::RacRandState, core_state::CoreState};
-use crate::interactions::Interactions;
-use crate::math::{max_f32, min_f32};
-use crate::parameters::{Parameters, WorldParameters};
+use rust_ncc::cell::{
+    chemistry::RacRandState, core_state::CoreState,
+};
+use rust_ncc::interactions::Interactions;
+use rust_ncc::math::{max_f32, min_f32};
+use rust_ncc::parameters::{Parameters, WorldParameters};
 
 type CellDynamicsFn = fn(
     state: &CoreState,

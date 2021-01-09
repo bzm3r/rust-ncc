@@ -6,8 +6,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use crate::math::radians::{arctan, Radians};
-use crate::math::{max_f32, min_f32};
+use rust_ncc::math::radians::{arctan, Radians};
+use rust_ncc::math::{max_f32, min_f32};
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::fmt::Display;

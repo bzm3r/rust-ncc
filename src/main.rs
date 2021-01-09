@@ -1,18 +1,11 @@
 #![allow(clippy::too_many_arguments)]
 //! The entry point.
-mod cell;
-mod experiments;
-mod interactions;
-mod math;
-mod parameters;
-mod utils;
-mod world;
-
-use crate::world::hardio::Format;
+use rust_ncc::world::hardio::Format;
+use rust_ncc::{experiments, world};
 use std::path::PathBuf;
 use std::time::Instant;
 
-/// Number of vertices per model cell.
+/// Default directory where simulation output will be placed.
 pub const DEFAULT_OUTPUT_DIR: &str = "./output";
 
 fn main() {

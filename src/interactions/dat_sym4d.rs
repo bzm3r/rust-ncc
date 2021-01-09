@@ -1,5 +1,5 @@
-use crate::interactions::dat_utils::{sort_ixs4d, sym_sum};
-use crate::NVERTS;
+use rust_ncc::interactions::dat_utils::{sort_ixs4d, sym_sum};
+use rust_ncc::NVERTS;
 use serde::{Deserialize, Serialize};
 
 /// Matrix to store inter-vertex data.

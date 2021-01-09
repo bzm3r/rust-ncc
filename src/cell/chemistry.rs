@@ -6,15 +6,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use crate::cell::core_state::fmt_var_arr;
-use crate::math::hill_function3;
-use crate::parameters::Parameters;
-use crate::utils::normal::NormalDistrib;
-use crate::utils::pcg32::Pcg32;
-use crate::utils::{circ_ix_minus, circ_ix_plus};
 use rand::seq::SliceRandom;
 use rand::Rng;
 use rand_distr::{Distribution, Uniform};
+use rust_ncc::cell::core_state::fmt_var_arr;
+use rust_ncc::math::hill_function3;
+use rust_ncc::parameters::Parameters;
+use rust_ncc::utils::normal::NormalDistrib;
+use rust_ncc::utils::pcg32::Pcg32;
+use rust_ncc::utils::{circ_ix_minus, circ_ix_plus};
 use rust_ncc::NVERTS;
 use serde::{Deserialize, Serialize};
 use std::fmt;

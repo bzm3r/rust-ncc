@@ -1,4 +1,4 @@
-use crate::NVERTS;
+use rust_ncc::NVERTS;
 use serde::{Deserialize, Serialize};
 
 // /// `CcVvDat` allows storage of (cell, vertex)-(cell, vertex) data

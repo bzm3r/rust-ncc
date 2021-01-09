@@ -1,4 +1,4 @@
-use crate::interactions::dat_utils::{sort_ixs, sym_sum};
+use rust_ncc::interactions::dat_utils::{sort_ixs, sym_sum};
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Default, Deserialize, Serialize)]

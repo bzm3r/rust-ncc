@@ -1,7 +1,7 @@
-use crate::math::geometry::Poly;
-use crate::math::v2d::V2D;
-use crate::parameters::ChemAttrParams;
-use crate::NVERTS;
+use rust_ncc::math::geometry::Poly;
+use rust_ncc::math::v2d::V2D;
+use rust_ncc::parameters::ChemAttrParams;
+use rust_ncc::NVERTS;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Deserialize, Serialize)]

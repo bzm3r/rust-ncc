@@ -1,7 +1,7 @@
-use crate::math::geometry::{is_point_in_poly, BBox, Poly};
-use crate::math::v2d::V2D;
-use crate::parameters::BdryParams;
-use crate::NVERTS;
+use rust_ncc::math::geometry::{is_point_in_poly, BBox, Poly};
+use rust_ncc::math::v2d::V2D;
+use rust_ncc::parameters::BdryParams;
+use rust_ncc::NVERTS;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Deserialize, Serialize)]

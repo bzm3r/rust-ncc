@@ -1,5 +1,5 @@
-use crate::world::{DeepHistory, History};
 use bincode::{deserialize_from, serialize_into};
+use rust_ncc::world::{DeepHistory, History};
 use std::error::Error;
 use std::fs::File;
 use std::fs::OpenOptions;

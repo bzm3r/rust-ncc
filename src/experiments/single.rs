@@ -1,22 +1,22 @@
 #![allow(unused)]
-use crate::cell::chemistry::{
+use rand::SeedableRng;
+use rust_ncc::cell::chemistry::{
     DistributionScheme, DistributionType, RgtpDistribution,
 };
-use crate::experiments::{
+use rust_ncc::experiments::{
     gen_default_char_quants, gen_default_phys_contact_dist,
     gen_default_raw_params, gen_default_viscosity, CellGroup,
     Experiment, GroupBBox,
 };
-use crate::interactions::dat_sym2d::SymCcDat;
-use crate::math::v2d::V2D;
-use crate::parameters::quantity::Length;
-use crate::parameters::{
+use rust_ncc::interactions::dat_sym2d::SymCcDat;
+use rust_ncc::math::v2d::V2D;
+use rust_ncc::parameters::quantity::Length;
+use rust_ncc::parameters::{
     CharQuantities, RawInteractionParams, RawParameters,
     RawPhysicalContactParams, RawWorldParameters,
 };
-use crate::utils::pcg32::Pcg32;
-use crate::NVERTS;
-use rand::SeedableRng;
+use rust_ncc::utils::pcg32::Pcg32;
+use rust_ncc::NVERTS;
 
 /// Generate the group layout to use for this experiment.
 fn group_layout(

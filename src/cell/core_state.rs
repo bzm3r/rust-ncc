@@ -1,18 +1,18 @@
-use crate::cell::chemistry::{
+use rust_ncc::cell::chemistry::{
     calc_conc_rgtps, calc_kdgtps_rac, calc_kdgtps_rho,
     calc_kgtps_rac, calc_kgtps_rho, calc_net_fluxes, RacRandState,
     RgtpDistribution,
 };
-use crate::cell::mechanics::{
+use rust_ncc::cell::mechanics::{
     calc_cyto_forces, calc_edge_forces, calc_edge_vecs,
     calc_rgtp_forces,
 };
-use crate::interactions::{Interactions, RelativeRgtpActivity};
-use crate::math::v2d::V2D;
-use crate::math::{hill_function3, max_f32, min_f32};
-use crate::parameters::{Parameters, WorldParameters};
-use crate::utils::circ_ix_minus;
-use crate::NVERTS;
+use rust_ncc::interactions::{Interactions, RelativeRgtpActivity};
+use rust_ncc::math::v2d::V2D;
+use rust_ncc::math::{hill_function3, max_f32, min_f32};
+use rust_ncc::parameters::{Parameters, WorldParameters};
+use rust_ncc::utils::circ_ix_minus;
+use rust_ncc::NVERTS;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::fmt::Display;

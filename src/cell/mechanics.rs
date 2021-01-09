@@ -6,11 +6,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use crate::math::capped_linear_fn;
-use crate::math::geometry::calc_poly_area;
-use crate::math::v2d::V2D;
-use crate::utils::circ_ix_plus;
-use crate::NVERTS;
+use rust_ncc::math::capped_linear_fn;
+use rust_ncc::math::geometry::calc_poly_area;
+use rust_ncc::math::v2d::V2D;
+use rust_ncc::utils::circ_ix_plus;
+use rust_ncc::NVERTS;
 
 /// Calculate edge vectors of a polygon.
 pub fn calc_edge_vecs(
