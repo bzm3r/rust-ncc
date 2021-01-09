@@ -6,11 +6,13 @@ use crate::world::hardio::{load_compact, Format};
 use crate::world::{History, Snapshot};
 use crate::NVERTS;
 use lazy_static::lazy_static;
-use nannou::color;
 use nannou::color::gradient::Gradient;
 use nannou::color::LinSrgba;
-use nannou::event::Key;
-use nannou::geom::Vector2;
+use nannou::event::WindowEvent::{KeyPressed, MousePressed};
+use nannou::event::{Key, MouseButton, WindowEvent};
+use nannou::geom::{Point2, Rect, Vector2};
+
+use nannou::{color, LoopMode};
 use nannou::{App, Draw, Frame};
 use std::cmp::Ordering;
 use std::path::PathBuf;
@@ -45,27 +47,33 @@ impl From<V2D> for Vector2 {
     }
 }
 
-fn map_rgtp_act_to_gradient(
-    rel_rgtp_act: f32,
-    rac_act: f32,
-    rho_act: f32,
-    rgtp_scale: f32,
-) -> Gradient<LinSrgba> {
-    match rel_rgtp_act.partial_cmp(&0.0_f32).unwrap() {
-        Ordering::Less => Gradient::new(vec![
-            BLACK_TO_RED.get(rho_act / rgtp_scale),
-            LinSrgba::new(0.0, 0.0, 0.0, 0.0),
-        ]),
-        Ordering::Greater => Gradient::new(vec![
-            BLACK_TO_BLUE.get(rac_act / rgtp_scale),
-            LinSrgba::new(0.0, 0.0, 0.0, 0.0),
-        ]),
-        Ordering::Equal => Gradient::new(vec![
-            BLACK.clone(),
-            LinSrgba::new(0.0, 0.0, 0.0, 0.0),
-        ]),
+impl From<Point2<f32>> for V2D {
+    fn from(v: Point2) -> Self {
+        V2D { x: v.x, y: v.y }
     }
 }
+
+// fn map_rgtp_act_to_gradient(
+//     rel_rgtp_act: f32,
+//     rac_act: f32,
+//     rho_act: f32,
+//     rgtp_scale: f32,
+// ) -> Gradient<LinSrgba> {
+//     match rel_rgtp_act.partial_cmp(&0.0_f32).unwrap() {
+//         Ordering::Less => Gradient::new(vec![
+//             BLACK_TO_RED.get(rho_act / rgtp_scale),
+//             LinSrgba::new(0.0, 0.0, 0.0, 0.0),
+//         ]),
+//         Ordering::Greater => Gradient::new(vec![
+//             BLACK_TO_BLUE.get(rac_act / rgtp_scale),
+//             LinSrgba::new(0.0, 0.0, 0.0, 0.0),
+//         ]),
+//         Ordering::Equal => Gradient::new(vec![
+//             BLACK.clone(),
+//             LinSrgba::new(0.0, 0.0, 0.0, 0.0),
+//         ]),
+//     }
+// }
 
 fn map_rgtp_act_to_color(
     rel_rgtp_act: f32,
@@ -76,11 +84,47 @@ fn map_rgtp_act_to_color(
     match rel_rgtp_act.partial_cmp(&0.0_f32).unwrap() {
         Ordering::Less => BLACK_TO_RED.get(rho_act / rgtp_scale),
         Ordering::Greater => BLACK_TO_BLUE.get(rac_act / rgtp_scale),
-        Ordering::Equal => BLACK.clone(),
+        Ordering::Equal => *BLACK,
     }
 }
 
-fn display_cell(
+fn draw_crosshair(
+    view_center: V2D,
+    win_rect: Rect<f32>,
+    draw: &Draw<f32>,
+) {
+    let weight = 2.0;
+    draw.line()
+        .stroke_weight(weight)
+        .color(LinSrgba::new(0.0, 0.0, 0.0, 0.5))
+        .points(
+            Point2 {
+                x: view_center.x,
+                y: win_rect.bottom(),
+            },
+            Point2 {
+                x: view_center.x,
+                y: win_rect.top(),
+            },
+        );
+    draw.line()
+        .stroke_weight(weight)
+        .color(LinSrgba::new(0.0, 0.0, 0.0, 0.5))
+        .points(
+            Point2 {
+                x: win_rect.left(),
+                y: view_center.y,
+            },
+            Point2 {
+                x: win_rect.right(),
+                y: view_center.y,
+            },
+        );
+}
+
+fn draw_cell(
+    scale: f32,
+    translation: V2D,
     cell: &Cell,
     rgtp_scale: f32,
     parameters: &Parameters,
@@ -151,7 +195,7 @@ fn display_cell(
             let g = &edge_gradients[ix];
             (0..21).map(move |k| {
                 let t = k as f32 / 20.0_f32;
-                (t * e + v, g.get(t))
+                (((v - translation) + t * e).scale(scale), g.get(t))
             })
         })
         .collect::<Vec<(V2D, LinSrgba)>>();
@@ -169,6 +213,10 @@ struct Model {
     cell_params: Vec<Parameters>,
     snapshots: Vec<Snapshot>,
     char_quants: CharQuantities,
+    scale: f32,
+    translation: V2D,
+    crosshairs: V2D,
+    draw_crosshairs: bool,
 }
 
 impl Model {
@@ -185,16 +233,15 @@ impl Model {
             char_quants,
             cell_params,
             snapshots,
+            scale: 1.0,
+            translation: V2D::zeros(),
+            crosshairs: V2D::zeros(),
+            draw_crosshairs: true,
         }
     }
 }
 
-fn key_pressed(_app: &App, model: &mut Model, key: Key) {
-    let delta = match key {
-        Key::M => 10,
-        Key::N => -10,
-        _ => 0,
-    };
+fn progress_drawing(model: &mut Model, delta: isize) {
     let new_ix = model.ix as isize + delta;
     if new_ix >= model.snapshots.len() as isize {
         model.ix = new_ix as usize - model.snapshots.len();
@@ -205,13 +252,58 @@ fn key_pressed(_app: &App, model: &mut Model, key: Key) {
     }
 }
 
+fn event(app: &App, model: &mut Model, event: WindowEvent) {
+    match event {
+        KeyPressed(key) => key_pressed(model, key),
+        MousePressed(mouse_button) => {
+            mouse_pressed(app, model, mouse_button)
+        }
+        _ => {}
+    };
+}
+
+fn key_pressed(model: &mut Model, key: Key) {
+    match key {
+        Key::M => progress_drawing(model, 10),
+        Key::N => progress_drawing(model, -10),
+        Key::X => update_view_zone(model, 0.25),
+        Key::Z => update_view_zone(model, -0.25),
+        Key::H => model.draw_crosshairs = !model.draw_crosshairs,
+        Key::R => {
+            model.crosshairs = V2D::zeros();
+            model.translation = V2D::zeros();
+            model.scale = 1.0;
+            update_view_zone(model, 0.0);
+        }
+        _ => {}
+    };
+}
+
+fn set_crosshairs(model: &mut Model, position: Point2<f32>) {
+    model.crosshairs = position.into();
+}
+
+fn update_view_zone(model: &mut Model, delta_scale: f32) {
+    model.scale = (model.scale + delta_scale).max(0.25);
+    model.translation =
+        model.translation + model.crosshairs.scale(1.0 / model.scale);
+    model.crosshairs = V2D::zeros();
+}
+
+fn mouse_pressed(
+    app: &App,
+    model: &mut Model,
+    mouse_button: MouseButton,
+) {
+    if let MouseButton::Left = mouse_button {
+        set_crosshairs(model, app.mouse.position())
+    };
+}
+
 /// Nannou app model
 fn model(app: &App) -> Model {
-    app.new_window()
-        .key_pressed(key_pressed)
-        .view(view)
-        .build()
-        .unwrap();
+    app.new_window().event(event).view(view).build().unwrap();
+    app.set_loop_mode(LoopMode::Wait);
 
     Model::new()
 }
@@ -223,15 +315,21 @@ fn model(app: &App) -> Model {
 
 fn view(app: &App, model: &Model, frame: Frame) {
     let draw = app.draw();
+    let win_rect = app.window_rect();
     // Draw model
     draw.background().color(color::WHITE);
+    if model.draw_crosshairs {
+        draw_crosshair(model.crosshairs, win_rect, &draw)
+    }
     model.snapshots[model.ix]
         .cells
         .states
         .iter()
         .enumerate()
         .for_each(|(ci, c)| {
-            display_cell(
+            draw_cell(
+                model.scale,
+                model.translation,
                 c,
                 model.char_quants.frac_rgtp / 10.0,
                 &model.cell_params[ci],
