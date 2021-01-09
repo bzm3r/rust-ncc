@@ -24,7 +24,7 @@ use crate::utils::pcg32::Pcg32;
 use crate::utils::{circ_ix_minus, circ_ix_plus};
 use crate::NVERTS;
 use serde::{Deserialize, Serialize};
-use std::f64::consts::PI;
+use std::f32::consts::PI;
 
 /// Cell state structure.
 #[derive(Copy, Clone, Deserialize, Serialize)]
@@ -82,7 +82,7 @@ fn move_point_out(
     good_v
 }
 
-#[cfg(feature = "validation")]
+#[cfg(feature = "validate")]
 pub fn confirm_volume_exclusion(
     vs: &[V2D; NVERTS],
     contacts: &[ContactData],
@@ -113,7 +113,7 @@ pub fn enforce_volume_exclusion(
     mut new_vs: [V2D; NVERTS],
     contacts: Vec<ContactData>,
 ) -> Result<[V2D; NVERTS], String> {
-    #[cfg(feature = "validation")]
+    #[cfg(feature = "validate")]
     confirm_volume_exclusion(&old_vs, &contacts, "old_vs")?;
 
     for vi in 0..NVERTS {
@@ -126,7 +126,7 @@ pub fn enforce_volume_exclusion(
         );
     }
 
-    #[cfg(feature = "validation")]
+    #[cfg(feature = "validate")]
     confirm_volume_exclusion(&new_vs, &contacts, "new_vs")?;
 
     Ok(new_vs)
@@ -184,7 +184,7 @@ impl CellState {
         // Assumed normalized time by time provided in CharQuant.
         // Therefore, we can take the time period to integrate over
         // as 1.0.
-        let dt = 1.0 / (nsteps as f64);
+        let dt = 1.0 / (nsteps as f32);
         for _ in 0..nsteps {
             // d(state)/dt = dynamics_f(state) <- calculate RHS of ODE
             let delta = CoreState::dynamics_f(
@@ -214,7 +214,7 @@ impl CellState {
         )?;
         let geom_state = state.calc_geom_state();
 
-        #[cfg(feature = "validation")]
+        #[cfg(feature = "validate")]
         state.validate("euler", &parameters)?;
 
         Ok(CellState {
@@ -274,7 +274,7 @@ impl CellState {
         .map_err(|e| format!("ci={}\n{}", self.ix, e))?;
         let geom_state = state.calc_geom_state();
 
-        #[cfg(feature = "validation")]
+        #[cfg(feature = "validate")]
         state.validate("rkdp5", &parameters)?;
 
         Ok(CellState {
@@ -290,10 +290,10 @@ impl CellState {
 }
 
 /// Calculate the area of an "ideal" initial cell of radius R, if it has n vertices.
-pub fn calc_init_cell_area(r: f64, n: usize) -> f64 {
+pub fn calc_init_cell_area(r: f32, n: usize) -> f32 {
     let poly_coords = (0..n)
         .map(|vix| {
-            let theta = (vix as f64) / (n as f64) * 2.0 * PI;
+            let theta = (vix as f32) / (n as f32) * 2.0 * PI;
             V2D {
                 x: r * theta.cos(),
                 y: r * theta.sin(),

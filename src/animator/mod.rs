@@ -13,9 +13,9 @@ fn set_background(context: &Context) {
 
 fn draw_cell_poly(context: &Context, cell_poly: &[V2D; NVERTS]) {
     context.set_source_rgb(0.0, 0.0, 0.0);
-    context.move_to(cell_poly[0].x as f64, cell_poly[0].y as f64);
+    context.move_to(cell_poly[0].x as f32, cell_poly[0].y as f32);
     cell_poly[1..].iter().for_each(|v| {
-        context.line_to(v.x as f64, v.y as f64);
+        context.line_to(v.x as f32, v.y as f32);
     });
     context.close_path();
     context.set_line_width(2.0);
@@ -87,7 +87,7 @@ impl DrawingData {
         history: &[&Cells],
         px_w: i32,
         px_h: i32,
-        px_per_micron: f64,
+        px_per_micron: f32,
     ) -> DrawingData {
         let num_cells = history[0].cell_states.len();
         let mut cell_polys: Vec<[V2D; NVERTS]> = vec![];
@@ -100,8 +100,8 @@ impl DrawingData {
                     .for_each(|(new_v, old_v)| {
                         *new_v =
                             old_v.scale(px_per_micron).translate(
-                                px_w as f64 * 0.5,
-                                px_h as f64 * 0.5,
+                                px_w as f32 * 0.5,
+                                px_h as f32 * 0.5,
                             );
                     });
                 cell_polys.push(transformed_vs);

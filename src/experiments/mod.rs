@@ -104,7 +104,7 @@ fn gen_default_raw_params(
     rng: &mut Pcg32,
     randomization: bool,
 ) -> RawParameters {
-    let rgtp_d = (Length(0.1_f64.sqrt()).micro().pow(2.0).g()
+    let rgtp_d = (Length(0.1_f32.sqrt()).micro().pow(2.0).g()
         / Time(1.0).g())
     .to_diffusion()
     .unwrap();
@@ -159,7 +159,7 @@ fn gen_default_raw_params(
 /// See SI for justification.
 //TODO: put justification here.
 fn gen_default_viscosity() -> Viscosity {
-    Viscosity(0.29).mul_number(1.0 / (NVERTS as f64))
+    Viscosity(0.29).mul_number(1.0 / (NVERTS as f32))
 }
 
 fn gen_default_phys_contact_dist() -> Length {
@@ -168,14 +168,14 @@ fn gen_default_phys_contact_dist() -> Length {
 
 fn gen_default_adhesion_mag(
     char_quants: &CharQuantities,
-    multiplier: f64,
+    multiplier: f32,
 ) -> Force {
     // Warning: going above this value may result in weirdness!
     // Danger zone: (Length(1.0).micro().g() * Tinv(1.0).g()).mul_number(0.1)
     let max_cell_v = Length(3.0).micro().g() * Tinv(1.0 / 60.0).g();
     let eta = char_quants.eta.g();
     let f_adh = (eta * max_cell_v)
-        .mul_number(1.0 / (NVERTS as f64))
+        .mul_number(1.0 / (NVERTS as f32))
         .to_force()
         .expect(
             "Procedure for generating default force does \

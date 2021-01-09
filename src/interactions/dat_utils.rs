@@ -32,7 +32,7 @@ pub fn sort_ixs4d(
 
 // Debug mode utility function to confirm that
 // #[allow(unused)]
-// #[cfg(feature = "validation")]
+// #[cfg(feature = "validate")]
 // pub fn check_indices4d(
 //     num_cells: usize,
 //     ci: usize,
@@ -71,7 +71,7 @@ pub fn sym_sum(n: usize) -> usize {
     n * (n - 1) / 2
 }
 
-// #[cfg(feature = "validation")]
+// #[cfg(feature = "validate")]
 // pub fn check_sym_indices4d(
 //     num_cells: usize,
 //     ci: usize,

@@ -17,7 +17,7 @@ use crate::parameters::quantity::{
 };
 use crate::NVERTS;
 use serde::{Deserialize, Serialize};
-use std::f64::consts::PI;
+use std::f32::consts::PI;
 
 /// Characteristic quantities used for normalization.
 pub struct CharQuantities {
@@ -30,13 +30,13 @@ pub struct CharQuantities {
     pub k_mem_on: Tinv,
     pub kgtp: Tinv,
     pub kdgtp: Tinv,
-    pub frac_rgtp: f64,
+    pub frac_rgtp: f32,
 }
 
 impl CharQuantities {
     /// Given a quantity `q`, normalize its units using the primary units `f` (Force),
     /// `l` (`Length`) and `t` (`Time`) provided in `CharQuants`.
-    pub fn normalize<T: Quantity>(&self, q: &T) -> f64 {
+    pub fn normalize<T: Quantity>(&self, q: &T) -> f32 {
         let q = q.g();
         let u = q.units();
         (q * self.f.pow(-1.0 * u.f)
@@ -45,7 +45,7 @@ impl CharQuantities {
         .number()
     }
 
-    pub fn time(&self) -> f64 {
+    pub fn time(&self) -> f32 {
         self.t.0
     }
 }
@@ -66,8 +66,8 @@ impl RawCloseBounds {
 pub struct RawPhysicalContactParams {
     pub range: RawCloseBounds,
     pub adh_mag: Option<Force>,
-    pub cal_mag: Option<f64>,
-    pub cil_mag: f64,
+    pub cal_mag: Option<f32>,
+    pub cil_mag: f32,
 }
 
 impl RawPhysicalContactParams {
@@ -92,9 +92,9 @@ impl RawPhysicalContactParams {
 #[derive(Clone)]
 pub struct RawCoaParams {
     /// Factor controlling to what extent line-of-sight blockage should be penalized.
-    pub los_penalty: f64,
+    pub los_penalty: f32,
     pub range: Length,
-    pub mag: f64,
+    pub mag: f32,
 }
 
 impl RawCoaParams {
@@ -106,7 +106,7 @@ impl RawCoaParams {
             mag: self.mag,
             // self.mag * exp(distrib_exp * x), where x is distance
             // between points.
-            distrib_exp: 0.5f64.ln() / (0.5 * range),
+            distrib_exp: 0.5f32.ln() / (0.5 * range),
         }
     }
 }
@@ -114,8 +114,8 @@ impl RawCoaParams {
 #[derive(Clone)]
 pub struct RawChemAttrParams {
     center: [Length; 2],
-    center_mag: f64,
-    drop_per_char_l: f64,
+    center_mag: f32,
+    drop_per_char_l: f32,
     char_l: Length,
 }
 
@@ -136,7 +136,7 @@ impl RawChemAttrParams {
 pub struct RawBdryParams {
     shape: Vec<[Length; 2]>,
     skip_bb_check: bool,
-    mag: f64,
+    mag: f32,
 }
 
 impl RawBdryParams {
@@ -189,12 +189,12 @@ pub struct RawWorldParameters {
 
 #[derive(Clone, Copy, Deserialize, Serialize)]
 pub struct CloseBounds {
-    pub zero_at: f64,
-    pub one_at: f64,
+    pub zero_at: f32,
+    pub one_at: f32,
 }
 
 impl CloseBounds {
-    pub fn new(zero_until: f64, one_at: f64) -> CloseBounds {
+    pub fn new(zero_until: f32, one_at: f32) -> CloseBounds {
         CloseBounds {
             zero_at: zero_until,
             one_at,
@@ -209,13 +209,13 @@ pub struct PhysicalContactParams {
     pub range: CloseBounds,
     /// Optional adhesion magnitude. If it is `None`, no adhesion
     /// will be calculated.
-    pub adh_mag: Option<f64>,
+    pub adh_mag: Option<f32>,
     /// Optional CAL magnitude. If it is `None`, simulation will
     /// always execute CIL upon contact.
-    pub cal_mag: Option<f64>,
+    pub cal_mag: Option<f32>,
     /// Magnitude of CIL that acts on Rho GTPase activation/
     /// inactivation rates.
-    pub cil_mag: f64,
+    pub cil_mag: f32,
 }
 
 #[derive(Clone, Copy, Deserialize, Serialize)]
@@ -223,22 +223,22 @@ pub struct CoaParams {
     //TODO: Expand upon LOS system.
     /// Factor controlling to what extent line-of-sight blockage
     /// should be penalized. See SI for further information.
-    pub los_penalty: f64,
+    pub los_penalty: f32,
     //TODO: Expand upon the exponential curve used to mdoel COA
     // (see SI). Confirm whether it is half-max, or full-max range.
     /// Factor controlling shape of the exponential modelling COA
     /// interaction. It captures the (half?)-maximum distance between
     /// two points still able to undergo COA.
-    pub range: f64,
+    pub range: f32,
     /// Magnitude of COA that acts on Rac1 activation rates.
-    pub mag: f64,
+    pub mag: f32,
     //TODO: look up exactly what is being done for this (see where
     // parameter is being generated for hint).
     /// Factor controlling the shape of the exponential modelling
     /// COA interaction (a function shaping parameter). It determines
     /// the distance at which two points would sense COA at half-max
     /// magnitude.
-    pub distrib_exp: f64,
+    pub distrib_exp: f32,
 }
 
 #[derive(Clone, Copy, Deserialize, Serialize)]
@@ -247,10 +247,10 @@ pub struct ChemAttrParams {
     pub center: V2D,
     /// Magnitude of chemoattractant a cell would sense if it were
     /// right on top of the chemoattractant source.
-    pub center_mag: f64,
+    pub center_mag: f32,
     /// Assuming shallow chemoattractant gradient, which can be
     /// modelled using a linear function with slope `slope`.
-    pub slope: f64,
+    pub slope: f32,
 }
 
 #[derive(Clone, Deserialize, Serialize)]
@@ -263,7 +263,7 @@ pub struct BdryParams {
     /// within the boundary?
     pub skip_bb_check: bool,
     /// Magnitude of CIL-type interaction.
-    pub mag: f64,
+    pub mag: f32,
 }
 
 #[derive(Clone, Deserialize, Serialize)]
@@ -278,7 +278,7 @@ pub struct InteractionParams {
 pub struct WorldParameters {
     /// Viscosity value used to calculate change in position of a
     /// vertex due to calculated forces on it.
-    pub vertex_eta: f64,
+    pub vertex_eta: f32,
     pub interactions: InteractionParams,
 }
 
@@ -296,17 +296,17 @@ pub struct RawParameters {
     /// Cell diameter.
     pub cell_diam: Length,
     /// Fraction of max force achieved at `rgtp_act_at_max_f`.
-    pub halfmax_rgtp_max_f_frac: f64,
+    pub halfmax_rgtp_max_f_frac: f32,
     /// Stiffness of the membrane-cortex complex.
     pub stiffness_cortex: Stress,
     /// Typical lamellipod height: typical height of lamellipod (on the order of 100 nm).
     pub lm_h: Length,
     /// Halfmax Rho GTPase activity.
-    pub halfmax_rgtp_frac: f64,
+    pub halfmax_rgtp_frac: f32,
     /// Lamellipod stall stress: how much stress can lamellipod exert at most.
     pub lm_ss: Stress,
     /// Friction force opposing RhoA pulling.
-    pub rho_friction: f64,
+    pub rho_friction: f32,
     /// Stiffness of cytoplasm.
     pub stiffness_ctyo: Force,
     /// Diffusion rate of Rho GTPase on membrane.
@@ -316,33 +316,33 @@ pub struct RawParameters {
     /// Initial distribution of RhoA.
     pub init_rho: RgtpDistribution,
     /// Total amount of Rac1 in cell.
-    pub tot_rac: f64,
+    pub tot_rac: f32,
     /// Total amount of RhoA in cell.
-    pub tot_rho: f64,
+    pub tot_rho: f32,
     /// Baseline Rac1 activation rate as a multiple of characteristic activation rate, which we
     /// currently take to be 1e-4/second.
     ///
     /// The user only needs to think about providing the baseline Rac1 activity rate in terms of
     /// the characteristic activity rate.
-    pub kgtp_rac: f64,
+    pub kgtp_rac: f32,
     /// Rac1 auto-activation rate as a multiple of the characteristic activity rate.
-    pub kgtp_rac_auto: f64,
+    pub kgtp_rac_auto: f32,
     /// Baseline Rac1 inactivation rate as a multiple of the characteristic inactivity rate.
-    pub kdgtp_rac: f64,
+    pub kdgtp_rac: f32,
     /// RhoA mediated inhibition of Rac1 as a multiple of baseline Rac1 inactivation rate.
-    pub kdgtp_rho_on_rac: f64,
+    pub kdgtp_rho_on_rac: f32,
     /// Strain at which Rac1 tension-mediated inhibition is half-strength.
-    pub halfmax_tension_inhib: f64,
+    pub halfmax_tension_inhib: f32,
     /// Maximum tension-mediated Rac1 inhibition as a multiple of baseline Rac1 inactivation rate.
-    pub tension_inhib: f64,
+    pub tension_inhib: f32,
     /// Baseline RhoA activation rate as a multiple of characteristic activation rate.
-    pub kgtp_rho: f64,
+    pub kgtp_rho: f32,
     /// RhoA auto-activation rate as a multiple of characteristic activation rate.
-    pub kgtp_auto_rho: f64,
+    pub kgtp_auto_rho: f32,
     /// Baseline RhoA inactivation rate as a multiple of characteristic inactivation rate.
-    pub kdgtp_rho: f64,
+    pub kdgtp_rho: f32,
     /// Rac1 mediated inhibition of RhoA as a multiple of characteristic inactivation rate.
-    pub kdgtp_rac_on_rho: f64,
+    pub kdgtp_rac_on_rho: f32,
     /// Enable randomization of bursts in Rac1 activity?
     pub randomization: bool,
     /// Average period between randomization events.
@@ -350,73 +350,73 @@ pub struct RawParameters {
     /// Standard deviation of period between randomization events.
     pub rand_std_t: Time,
     /// Magnitude of randomly applied factor affecting Rac1 activation rate: how big a burst?
-    pub rand_mag: f64,
+    pub rand_mag: f32,
     /// Fraction of vertices to be selected for increased Rac1 activation due to random events.
-    pub rand_vs: f64,
+    pub rand_vs: f32,
 }
 
 #[derive(Clone, Deserialize, Serialize)]
 pub struct Parameters {
     /// Resting cell radius.
-    pub cell_r: f64,
+    pub cell_r: f32,
     /// Resting edge length.
-    pub rest_edge_len: f64,
+    pub rest_edge_len: f32,
     /// Resting area.
-    pub rest_area: f64,
+    pub rest_area: f32,
     /// Stiffness of edge.
-    pub stiffness_edge: f64,
+    pub stiffness_edge: f32,
     /// Rac1 mediated protrusive force constant.
-    pub const_protrusive: f64,
+    pub const_protrusive: f32,
     /// RhoA mediated protrusive force constant.
-    pub const_retractive: f64,
+    pub const_retractive: f32,
     /// Stiffness of cytoplasm.
-    pub stiffness_ctyo: f64,
+    pub stiffness_ctyo: f32,
     /// Rate of Rho GTPase GDI unbinding and subsequent membrane attachment.
-    pub k_mem_on_vertex: f64,
+    pub k_mem_on_vertex: f32,
     /// Rate of Rho GTPase membrane disassociation.
-    pub k_mem_off: f64,
+    pub k_mem_off: f32,
     /// Diffusion rate of Rho GTPase on membrane.
-    pub diffusion_rgtp: f64,
+    pub diffusion_rgtp: f32,
     /// Initial distribution of Rac1.
     pub init_rac: RgtpDistribution,
     /// Initial distribution of RhoA.
     pub init_rho: RgtpDistribution,
     /// Halfmax Rho GTPase activity per vertex.
-    pub halfmax_vertex_rgtp_act: f64,
+    pub halfmax_vertex_rgtp_act: f32,
     /// Halfmax Rho GTPase activity per vertex as concentration.
-    pub halfmax_vertex_rgtp_conc: f64,
+    pub halfmax_vertex_rgtp_conc: f32,
     /// Total amount of Rac1 in cell.
-    pub tot_rac: f64,
+    pub tot_rac: f32,
     /// Total amount of RhoA in cell.
-    pub tot_rho: f64,
+    pub tot_rho: f32,
     /// Baseline Rac1 activation rate.
-    pub kgtp_rac: f64,
+    pub kgtp_rac: f32,
     /// Rac1 auto-activation rate as a multiple of baseline Rac1 activation rate.
-    pub kgtp_rac_auto: f64,
+    pub kgtp_rac_auto: f32,
     /// Baseline Rac1 inactivation rate.
-    pub kdgtp_rac: f64,
+    pub kdgtp_rac: f32,
     /// RhoA mediated inhibition of Rac1 as a multiple of baseline Rac1 inactivation rate.
-    pub kdgtp_rho_on_rac: f64,
+    pub kdgtp_rho_on_rac: f32,
     /// Strain at which Rac1 tension-mediated inhibition is half-strength.
-    pub halfmax_tension_inhib: f64,
+    pub halfmax_tension_inhib: f32,
     /// Tension-mediated Rac1 inhibition as a multiple of baseline Rac1 inactivation rate.
-    pub tension_inhib: f64,
+    pub tension_inhib: f32,
     /// Baseline RhoA activation rate.
-    pub kgtp_rho: f64,
+    pub kgtp_rho: f32,
     /// RhoA auto-activation rate as a multiple of baseline RhoA activation rate.
-    pub kgtp_rho_auto: f64,
+    pub kgtp_rho_auto: f32,
     /// Baseline RhoA inactivation rate.
-    pub kdgtp_rho: f64,
+    pub kdgtp_rho: f32,
     /// Rac1 mediated inhibition of RhoA as a multiple of baseline RhoA inactivation rate.
-    pub kdgtp_rac_on_rho: f64,
+    pub kdgtp_rac_on_rho: f32,
     /// Enable randomization of bursts in Rac1 activity?
     pub randomization: bool,
     /// Average time between random events, in timesteps.
-    pub rand_avg_t: f64,
+    pub rand_avg_t: f32,
     /// Standard deviation of time between random events, in timesteps.
-    pub rand_std_t: f64,
+    pub rand_std_t: f32,
     /// Magnitude of factor randomly applied to Rac1 activation rate.
-    pub rand_mag: f64,
+    pub rand_mag: f32,
     /// Number of vertices to be selected for random Rac1 activity boost.
     pub num_rand_vs: usize,
     /// Total Rho GTPase "fraction" compared to "baseline" fraction of Rho GTPase activity.
@@ -431,14 +431,14 @@ pub struct Parameters {
     /// At a vertex, assume that we are only at 5% of the halfmax:
     /// 0.05 * 1.0 = 0.05
     //TODO: should this be removed?
-    pub total_rgtp: f64,
+    pub total_rgtp: f32,
 }
 
 impl RawParameters {
     pub fn gen_parameters(&self, bq: &CharQuantities) -> Parameters {
         let cell_r = self.cell_diam.mul_number(0.5);
         let rel =
-            self.cell_diam.mul_number((PI / (NVERTS as f64)).sin());
+            self.cell_diam.mul_number((PI / (NVERTS as f32)).sin());
         let ra = Length(1.0)
             .pow(2.0)
             .mul_number(calc_init_cell_area(cell_r.number(), NVERTS));
@@ -448,12 +448,12 @@ impl RawParameters {
         let const_retractive =
             const_protrusive.mul_number(self.rho_friction);
         let halfmax_vertex_rgtp_act =
-            (self.halfmax_rgtp_frac / bq.frac_rgtp) / NVERTS as f64;
+            (self.halfmax_rgtp_frac / bq.frac_rgtp) / NVERTS as f32;
         let halfmax_vertex_rgtp_conc =
             rel.pow(-1.0).mul_number(halfmax_vertex_rgtp_act);
         let stiffness_edge = self.stiffness_cortex.g() * bq.l3d.g();
         let stiffness_cyto =
-            self.stiffness_ctyo.g().mul_number(1.0 / NVERTS as f64);
+            self.stiffness_ctyo.g().mul_number(1.0 / NVERTS as f32);
 
         Parameters {
             cell_r: bq.normalize(&cell_r),
@@ -464,7 +464,7 @@ impl RawParameters {
             const_retractive: bq.normalize(&const_retractive),
             stiffness_ctyo: bq.normalize(&stiffness_cyto),
             k_mem_on_vertex: bq.normalize(&bq.k_mem_on)
-                / NVERTS as f64,
+                / NVERTS as f32,
             k_mem_off: bq.normalize(&bq.k_mem_off),
             diffusion_rgtp: bq.normalize(&self.diffusion_rgtp),
             init_rac: self.init_rac,
@@ -498,7 +498,7 @@ impl RawParameters {
             rand_avg_t: bq.normalize(&self.rand_avg_t).ceil(),
             rand_std_t: bq.normalize(&self.rand_std_t).ceil(),
             rand_mag: self.rand_mag,
-            num_rand_vs: (self.rand_vs * NVERTS as f64) as usize,
+            num_rand_vs: (self.rand_vs * NVERTS as f32) as usize,
             total_rgtp: 1.0 / bq.frac_rgtp,
         }
     }

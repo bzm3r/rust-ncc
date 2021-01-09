@@ -13,20 +13,20 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 
 #[derive(Clone, Copy)]
-pub struct Dist(f64);
+pub struct Dist(f32);
 #[derive(Clone, Copy, Serialize, Deserialize)]
-pub struct LineSegParam(f64);
+pub struct LineSegParam(f32);
 
 #[derive(Clone, Copy, Serialize, Deserialize)]
 pub enum ClosePoint {
     Vertex {
         vector_to: V2D,
-        smooth_factor: f64,
+        smooth_factor: f32,
     },
     OnEdge {
-        edge_point_param: f64,
+        edge_point_param: f32,
         vector_to: V2D,
-        smooth_factor: f64,
+        smooth_factor: f32,
     },
     None,
 }
@@ -37,7 +37,7 @@ pub struct ClosePointInfo {
 }
 
 impl ClosePointInfo {
-    pub fn get_vector_to_mag(&self) -> f64 {
+    pub fn get_vector_to_mag(&self) -> f32 {
         match self.cp {
             ClosePoint::Vertex { vector_to, .. } => vector_to,
             ClosePoint::OnEdge { vector_to, .. } => vector_to,
@@ -146,8 +146,8 @@ pub struct PhysicalContactGenerator {
 
 pub struct PhysContactFactors {
     pub adh: Vec<[V2D; NVERTS]>,
-    pub cil: Vec<[f64; NVERTS]>,
-    pub cal: Vec<[f64; NVERTS]>,
+    pub cil: Vec<[f32; NVERTS]>,
+    pub cal: Vec<[f32; NVERTS]>,
 }
 
 impl PhysicalContactGenerator {
@@ -242,17 +242,20 @@ impl PhysicalContactGenerator {
                     edge_point_param,
                 } => {
                     //TODO: confirm that we don't want:
-                    // let edge_rgtp = (1.0 - t) * cell_rgtps[oci][ovi]
-                    //     + t * cell_rgtps[oci]
+                    // let edge_rgtp = (1.0 - edge_point_param) * cell_rgtps[oci][ovi]
+                    //     + edge_point_param * cell_rgtps[oci]
                     //         [circ_ix_plus(ovi, NVERTS)];
-                    let edge_rgtp = (rel_rgtps_per_cell[oci][ovi]
-                        + rel_rgtps_per_cell[oci]
-                            [circ_ix_plus(ovi, NVERTS)])
-                        / 2.0;
+                    let edge_rgtp = RelativeRgtpActivity::mix_rel_rgtp_act_across_edge(
+                        rel_rgtps_per_cell[oci][ovi],
+                        rel_rgtps_per_cell[oci]
+                            [circ_ix_plus(ovi, NVERTS)], edge_point_param,
+                    );
                     Some(CloseEdge {
                         cell_ix: oci,
                         vert_ix: ovi,
-                        crl: CrlEffect::calc(v_rgtp, edge_rgtp),
+                        crl: CrlEffect::calc_crl_on_focus(
+                            v_rgtp, edge_rgtp,
+                        ),
                         vector_to,
                         edge_point_param,
                         smooth_factor,
@@ -264,7 +267,7 @@ impl PhysicalContactGenerator {
                 } => Some(CloseEdge {
                     cell_ix: oci,
                     vert_ix: ovi,
-                    crl: CrlEffect::calc(
+                    crl: CrlEffect::calc_crl_on_focus(
                         v_rgtp,
                         rel_rgtps_per_cell[oci][ovi],
                     ),
@@ -403,8 +406,8 @@ impl PhysicalContactGenerator {
         let num_cells = self.contacts.num_cells;
         let mut adh_per_cell =
             vec![[V2D::default(); NVERTS]; num_cells];
-        let mut cal_per_cell = vec![[0.0f64; NVERTS]; num_cells];
-        let mut cil_per_cell = vec![[0.0f64; NVERTS]; num_cells];
+        let mut cal_per_cell = vec![[0.0f32; NVERTS]; num_cells];
+        let mut cil_per_cell = vec![[0.0f32; NVERTS]; num_cells];
         for ci in 0..num_cells {
             let x_cals = &mut cal_per_cell[ci];
             let x_cils = &mut cil_per_cell[ci];
@@ -474,13 +477,17 @@ pub enum CrlEffect {
 }
 
 impl CrlEffect {
-    pub fn calc(
-        a: RelativeRgtpActivity,
-        b: RelativeRgtpActivity,
+    //TODO: should CIL/CAL be modelled with a "relative strength"?
+    pub fn calc_crl_on_focus(
+        focus_vertex: RelativeRgtpActivity,
+        other: RelativeRgtpActivity,
     ) -> CrlEffect {
-        match (a > 0.0, b > 0.0) {
-            (false, true) | (true, false) => CrlEffect::Cal,
-            (_, _) => CrlEffect::Cil,
+        use RelativeRgtpActivity::{RacDominant, RhoDominant};
+        match (focus_vertex, other) {
+            (RacDominant(_), RhoDominant(_)) => CrlEffect::Cal,
+            (RhoDominant(_), RacDominant(_))
+            | (RhoDominant(_), RhoDominant(_))
+            | (RacDominant(_), RacDominant(_)) => CrlEffect::Cil,
         }
     }
 }
@@ -501,6 +508,6 @@ pub struct CloseEdge {
     /// Let the position of `vert_ix` be `p0`, and the position of `vert_ix + 1` be `p1`. Let `p`
     /// be the point on the close edge closest to the focus vertex. Then, `t` is such that
     /// `(p1 - p0)*t + p0 = p`.
-    pub edge_point_param: f64,
-    pub smooth_factor: f64,
+    pub edge_point_param: f32,
+    pub smooth_factor: f32,
 }

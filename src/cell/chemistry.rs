@@ -28,7 +28,7 @@ pub enum DistributionType {
 }
 
 pub struct DistributionScheme {
-    pub frac: f64,
+    pub frac: f32,
     pub ty: DistributionType,
 }
 
@@ -37,20 +37,20 @@ impl DistributionScheme {
     /// go thru each and divide by 20 = [0.05, 0.5, 0.2, 0.25]
     /// if we now sum up everything in the new array, sum = 1.0
     fn scaled_unitize(
-        frac: f64,
-        mut distrib: [f64; NVERTS as usize],
-    ) -> [f64; NVERTS as usize] {
-        let sum: f64 = distrib.iter().sum();
+        frac: f32,
+        mut distrib: [f32; NVERTS as usize],
+    ) -> [f32; NVERTS as usize] {
+        let sum: f32 = distrib.iter().sum();
         distrib.iter_mut().for_each(|e| *e = *e * frac / sum);
         distrib
     }
 
     fn gen_random(
         rng: &mut Pcg32,
-        frac: f64,
-    ) -> [f64; NVERTS as usize] {
+        frac: f32,
+    ) -> [f32; NVERTS as usize] {
         let mut r = [0.0; NVERTS as usize];
-        let prob_distrib: Uniform<f64> =
+        let prob_distrib: Uniform<f32> =
             Uniform::new_inclusive(0.0, 1.0);
         r.iter_mut().for_each(|e| {
             *e = rng.sample(prob_distrib);
@@ -59,9 +59,9 @@ impl DistributionScheme {
     }
 
     fn gen_specific(
-        frac: f64,
+        frac: f32,
         marked_verts: &[bool; NVERTS as usize],
-    ) -> [f64; NVERTS as usize] {
+    ) -> [f32; NVERTS as usize] {
         //println!("marking in gen_specific: {:?}", &marked_verts);
         let mut r = [0.0; NVERTS as usize];
         marked_verts.iter().zip(r.iter_mut()).for_each(
@@ -74,7 +74,7 @@ impl DistributionScheme {
         Self::scaled_unitize(frac, r)
     }
 
-    pub fn generate(&self, rng: &mut Pcg32) -> [f64; NVERTS] {
+    pub fn generate(&self, rng: &mut Pcg32) -> [f32; NVERTS] {
         match &self.ty {
             DistributionType::Random => {
                 Self::gen_random(rng, self.frac)
@@ -88,8 +88,8 @@ impl DistributionScheme {
 
 #[derive(Clone, Copy, Deserialize, Serialize)]
 pub struct RgtpDistribution {
-    pub active: [f64; NVERTS as usize],
-    pub inactive: [f64; NVERTS as usize],
+    pub active: [f32; NVERTS as usize],
+    pub inactive: [f32; NVERTS as usize],
 }
 
 impl RgtpDistribution {
@@ -110,11 +110,11 @@ impl RgtpDistribution {
 }
 
 fn calc_directed_fluxes(
-    edge_lens: &[f64; NVERTS],
-    rgtp_d: f64,
-    conc_rgtps: &[f64; NVERTS],
-) -> [f64; NVERTS] {
-    let mut r = [0.0_f64; NVERTS];
+    edge_lens: &[f32; NVERTS],
+    rgtp_d: f32,
+    conc_rgtps: &[f32; NVERTS],
+) -> [f32; NVERTS] {
+    let mut r = [0.0_f32; NVERTS];
     for i in 0..NVERTS {
         let plus_i = circ_ix_plus(i, NVERTS);
         r[i] = -1.0 * rgtp_d * (conc_rgtps[plus_i] - conc_rgtps[i])
@@ -124,13 +124,13 @@ fn calc_directed_fluxes(
 }
 
 pub fn calc_net_fluxes(
-    edge_lens: &[f64; NVERTS],
-    rgtp_d: f64,
-    conc_rgtps: &[f64; NVERTS],
-) -> [f64; NVERTS] {
+    edge_lens: &[f32; NVERTS],
+    rgtp_d: f32,
+    conc_rgtps: &[f32; NVERTS],
+) -> [f32; NVERTS] {
     let directed_fluxes =
         calc_directed_fluxes(edge_lens, rgtp_d, conc_rgtps);
-    let mut r = [0.0_f64; NVERTS];
+    let mut r = [0.0_f32; NVERTS];
     (0..NVERTS).for_each(|i| {
         let min_i = circ_ix_minus(i, NVERTS);
         r[i] = directed_fluxes[min_i] - directed_fluxes[i];
@@ -140,10 +140,10 @@ pub fn calc_net_fluxes(
 
 /// Calculate approximate concentration of a Rho GTPase at a vertex.
 pub fn calc_conc_rgtps(
-    avg_edge_lens: &[f64; NVERTS],
-    rgtps: &[f64; NVERTS],
-) -> [f64; NVERTS] {
-    let mut r = [0.0_f64; NVERTS];
+    avg_edge_lens: &[f32; NVERTS],
+    rgtps: &[f32; NVERTS],
+) -> [f32; NVERTS] {
+    let mut r = [0.0_f32; NVERTS];
     (0..NVERTS).for_each(|i| r[i] = rgtps[i] / avg_edge_lens[i]);
     r
 }
@@ -151,18 +151,18 @@ pub fn calc_conc_rgtps(
 //TODO(ES): make this better.
 /// Calculates Rac1 activation rates, as discussed in SI.
 pub fn calc_kgtps_rac(
-    rac_acts: &[f64; NVERTS],
-    conc_rac_acts: &[f64; NVERTS],
-    x_rands: &[f64; NVERTS],
-    x_coas: &[f64; NVERTS],
-    x_chemoas: &[f64; NVERTS],
-    x_cals: &[f64; NVERTS],
-    kgtp_rac_base: f64,
-    kgtp_rac_auto: f64,
-    halfmax_rac_conc: f64,
-) -> [f64; NVERTS] {
+    rac_acts: &[f32; NVERTS],
+    conc_rac_acts: &[f32; NVERTS],
+    x_rands: &[f32; NVERTS],
+    x_coas: &[f32; NVERTS],
+    x_chemoas: &[f32; NVERTS],
+    x_cals: &[f32; NVERTS],
+    kgtp_rac_base: f32,
+    kgtp_rac_auto: f32,
+    halfmax_rac_conc: f32,
+) -> [f32; NVERTS] {
     let nvs = rac_acts.len();
-    let mut kgtps_rac = [0.0_f64; NVERTS];
+    let mut kgtps_rac = [0.0_f32; NVERTS];
 
     for i in 0..nvs {
         // Base activation rate of Rac1 is increased (not multiplied!)
@@ -195,16 +195,16 @@ pub fn calc_kgtps_rac(
 
 /// Calculates Rac1 inactivation rates, as discussed in SI.
 pub fn calc_kdgtps_rac(
-    rac_acts: &[f64; NVERTS],
-    conc_rho_acts: &[f64; NVERTS],
-    x_cils: &[f64; NVERTS],
-    x_tens: f64,
-    kdgtp_rac_base: f64,
-    kdgtp_rho_on_rac: f64,
-    halfmax_conc_rho: f64,
-) -> [f64; NVERTS] {
+    rac_acts: &[f32; NVERTS],
+    conc_rho_acts: &[f32; NVERTS],
+    x_cils: &[f32; NVERTS],
+    x_tens: f32,
+    kdgtp_rac_base: f32,
+    kdgtp_rho_on_rac: f32,
+    halfmax_conc_rho: f32,
+) -> [f32; NVERTS] {
     let nvs = rac_acts.len();
-    let mut kdgtps_rac = [0.0_f64; NVERTS];
+    let mut kdgtps_rac = [0.0_f32; NVERTS];
 
     for i in 0..nvs {
         // Baseline is affected by tension inhibition, and CIL.
@@ -226,15 +226,15 @@ pub fn calc_kdgtps_rac(
 
 /// Calculates RhoA activation rates, as discussed in SI.
 pub fn calc_kgtps_rho(
-    rho_acts: &[f64; NVERTS],
-    conc_rho_acts: &[f64; NVERTS],
-    x_cils: &[f64; NVERTS],
-    kgtp_rho_base: f64,
-    halfmax_rho_thresh: f64,
-    kgtp_rho_auto: f64,
-) -> [f64; NVERTS] {
+    rho_acts: &[f32; NVERTS],
+    conc_rho_acts: &[f32; NVERTS],
+    x_cils: &[f32; NVERTS],
+    kgtp_rho_base: f32,
+    halfmax_rho_thresh: f32,
+    kgtp_rho_auto: f32,
+) -> [f32; NVERTS] {
     let nvs = rho_acts.len();
-    let mut kgtps_rho = [0.0_f64; NVERTS];
+    let mut kgtps_rho = [0.0_f32; NVERTS];
 
     for i in 0..nvs {
         let base = (1.0 + x_cils[i]) * kgtp_rho_base;
@@ -249,21 +249,20 @@ pub fn calc_kgtps_rho(
 
 /// Calculates RhoA inactivation rates, as discussed in SI.
 pub fn calc_kdgtps_rho(
-    rho_acts: &[f64; NVERTS],
-    conc_rac_acts: &[f64; NVERTS],
-    x_cals: &[f64; NVERTS],
-    kdgtp_rho_base: f64,
-    kdgtp_rac_on_rho: f64,
-    halfmax_conc_rac: f64,
-) -> [f64; NVERTS] {
+    rho_acts: &[f32; NVERTS],
+    conc_rac_acts: &[f32; NVERTS],
+    kdgtp_rho_base: f32,
+    kdgtp_rac_on_rho: f32,
+    halfmax_conc_rac: f32,
+) -> [f32; NVERTS] {
     let nvs = rho_acts.len();
-    let mut kdgtps_rho = [0.0_f64; NVERTS];
+    let mut kdgtps_rho = [0.0_f32; NVERTS];
 
     for i in 0..nvs {
         let mutual =
             hill_function3(halfmax_conc_rac, conc_rac_acts[i])
                 * kdgtp_rac_on_rho;
-        kdgtps_rho[i] = (1.0 + x_cals[i]) * kdgtp_rho_base + mutual;
+        kdgtps_rho[i] = kdgtp_rho_base + mutual;
     }
 
     kdgtps_rho
@@ -275,7 +274,7 @@ pub struct RacRandState {
     /// When does the next update occur?
     pub next_update: usize,
     /// Rac1 randomization factors per vertex.
-    pub x_rands: [f64; NVERTS],
+    pub x_rands: [f32; NVERTS],
     distrib: NormalDistrib,
 }
 
@@ -283,8 +282,8 @@ impl RacRandState {
     pub fn gen_rand_factors(
         rng: &mut Pcg32,
         num_rand_verts: usize,
-        rand_mag: f64,
-    ) -> [f64; NVERTS] {
+        rand_mag: f32,
+    ) -> [f32; NVERTS] {
         let vs = (0..NVERTS).collect::<Vec<usize>>();
         let mut r = [0.0; NVERTS];
         vs.choose_multiple(rng, num_rand_verts)

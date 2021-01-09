@@ -6,7 +6,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 pub mod hardio;
-#[cfg(feature = "validation")]
+#[cfg(feature = "validate")]
 use crate::cell::confirm_volume_exclusion;
 use crate::cell::core_state::CoreState;
 use crate::cell::CellState;
@@ -24,7 +24,7 @@ use rand::seq::SliceRandom;
 use rand::{RngCore, SeedableRng};
 use serde::{Deserialize, Serialize};
 use std::error::Error;
-use std::f64::consts::PI;
+use std::f32::consts::PI;
 use std::path::PathBuf;
 
 #[derive(Clone, Deserialize, Serialize)]
@@ -70,7 +70,7 @@ impl Cells {
                 &new_cell_state.core.poly,
             );
 
-            #[cfg(feature = "validation")]
+            #[cfg(feature = "validate")]
             confirm_volume_exclusion(
                 &new_cell_state.core.poly,
                 &interaction_generator.get_contact_data(ci),
@@ -95,7 +95,7 @@ pub struct Snapshot {
 }
 
 pub struct World {
-    tstep_length: f64,
+    tstep_length: f32,
     tstep: usize,
     world_params: WorldParameters,
     group_params: Vec<Parameters>,
@@ -107,10 +107,10 @@ pub struct World {
     file_name: String,
 }
 
-fn gen_poly(centroid: &V2D, radius: f64) -> [V2D; NVERTS] {
+fn gen_poly(centroid: &V2D, radius: f32) -> [V2D; NVERTS] {
     let mut r = [V2D::default(); NVERTS];
     (0..NVERTS).for_each(|vix| {
-        let vf = (vix as f64) / (NVERTS as f64);
+        let vf = (vix as f32) / (NVERTS as f32);
         let theta = 2.0 * PI * vf;
         r[vix] = V2D {
             x: centroid.x + theta.cos() * radius,
@@ -242,7 +242,7 @@ impl World {
 
     pub fn simulate(
         &mut self,
-        final_tpoint: f64,
+        final_tpoint: f32,
         save_frequency: usize,
     ) {
         let num_tsteps =
@@ -374,8 +374,8 @@ fn gen_cell_centroids(cg: &CellGroup) -> Result<Vec<V2D>, String> {
             let row = ix / layout.width;
             let col = ix - layout.width * row;
             let cg = first_cell_centroid
-                + (row as f64) * row_delta
-                + (col as f64) * col_delta;
+                + (row as f32) * row_delta
+                + (col as f32) * col_delta;
             r.push(cg);
         }
         Ok(r)

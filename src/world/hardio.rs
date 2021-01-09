@@ -26,9 +26,9 @@ pub fn get_file(
         Format::Bincode => "binc".to_string(),
     };
 
-    #[cfg(features = "validation")]
+    #[cfg(features = "validate")]
     path.push(format!("history_valid_{}.{}", title, ext));
-    #[cfg(not(features = "validation"))]
+    #[cfg(not(features = "validate"))]
     path.push(format!("history_{}.{}", title, ext));
 
     OpenOptions::new()

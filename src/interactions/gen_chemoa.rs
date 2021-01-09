@@ -6,8 +6,8 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Deserialize, Serialize)]
 pub struct ChemAttrGenerator {
-    center_mag: f64,
-    slope: f64,
+    center_mag: f32,
+    slope: f32,
     center: V2D,
 }
 
@@ -28,11 +28,11 @@ impl ChemAttrGenerator {
     pub fn generate(
         &self,
         cell_polys: &[Poly],
-    ) -> Vec<[f64; NVERTS]> {
+    ) -> Vec<[f32; NVERTS]> {
         cell_polys
             .iter()
             .map(|poly| {
-                let mut x_chemoas = [0.0f64; NVERTS];
+                let mut x_chemoas = [0.0f32; NVERTS];
                 poly.verts.iter().zip(x_chemoas.iter_mut()).for_each(
                     |(&v, x)| {
                         let r = self.center_mag
