@@ -1,16 +1,20 @@
 use lazy_static::lazy_static;
-use nannou::color::gradient::Gradient;
-use nannou::color::LinSrgba;
+use nannou::color::{Gradient, LinSrgba};
 use nannou::event::WindowEvent::{KeyPressed, MousePressed};
-use nannou::event::{Key, MouseButton, WindowEvent};
-use nannou::geom::{Point2, Rect, Vector2};
-use nannou::{color, LoopMode};
-use nannou::{App, Draw, Frame};
+use nannou::event::{Key, MouseButton, Update, WindowEvent};
+use nannou::geom::{Point2, Rect};
+use nannou::ui::prelude::*;
+use nannou::{App, Draw, Frame, LoopMode};
 use rust_ncc::cell::Cell;
-use rust_ncc::parameters::Parameters;
-use rust_ncc::world::hardio::load_compact;
+use rust_ncc::math::v2d::V2D;
+use rust_ncc::parameters::{CharQuantities, Parameters};
+use rust_ncc::utils::circ_ix_plus;
+use rust_ncc::world::hardio::{load_compact, Format};
+use rust_ncc::world::{History, Snapshot};
+use rust_ncc::NVERTS;
 use std::cmp::Ordering;
-use std::path::PathBuf;
+use std::ops::Mul;
+use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
 lazy_static! {
@@ -29,23 +33,15 @@ lazy_static! {
         ]);
 }
 
+widget_ids! {
+    struct Ids {
+        out_dir,
+        file_path,
+    }
+}
+
 fn main() {
     nannou::app(model).run();
-}
-
-impl From<V2D> for Vector2 {
-    fn from(v: V2D) -> Self {
-        Vector2 {
-            x: v.x as f32,
-            y: v.y as f32,
-        }
-    }
-}
-
-impl From<Point2<f32>> for V2D {
-    fn from(v: Point2) -> Self {
-        V2D { x: v.x, y: v.y }
-    }
 }
 
 // fn map_rgtp_act_to_gradient(
@@ -70,6 +66,10 @@ impl From<Point2<f32>> for V2D {
 //     }
 // }
 
+fn v2d_to_point2(v: V2D) -> Point2 {
+    Point2 { x: v.x, y: v.x }
+}
+
 fn map_rgtp_act_to_color(
     rel_rgtp_act: f32,
     rac_act: f32,
@@ -84,7 +84,7 @@ fn map_rgtp_act_to_color(
 }
 
 fn draw_crosshair(
-    view_center: V2D,
+    crosshair: Point2,
     win_rect: Rect<f32>,
     draw: &Draw<f32>,
 ) {
@@ -94,11 +94,11 @@ fn draw_crosshair(
         .color(LinSrgba::new(0.0, 0.0, 0.0, 0.5))
         .points(
             Point2 {
-                x: view_center.x,
+                x: crosshair.x,
                 y: win_rect.bottom(),
             },
             Point2 {
-                x: view_center.x,
+                x: crosshair.x,
                 y: win_rect.top(),
             },
         );
@@ -108,18 +108,18 @@ fn draw_crosshair(
         .points(
             Point2 {
                 x: win_rect.left(),
-                y: view_center.y,
+                y: crosshair.y,
             },
             Point2 {
                 x: win_rect.right(),
-                y: view_center.y,
+                y: crosshair.y,
             },
         );
 }
 
 fn draw_cell(
     scale: f32,
-    translation: V2D,
+    translation: Point2,
     cell: &Cell,
     rgtp_scale: f32,
     parameters: &Parameters,
@@ -185,15 +185,15 @@ fn draw_cell(
 
     let colored_vertices = (0..NVERTS)
         .flat_map(|ix| {
-            let v = cell.core.poly[ix];
-            let e = edge_vecs[ix];
+            let v = v2d_to_point2(cell.core.poly[ix]);
+            let e = v2d_to_point2(edge_vecs[ix]);
             let g = &edge_gradients[ix];
             (0..21).map(move |k| {
                 let t = k as f32 / 20.0_f32;
-                (((v - translation) + t * e).scale(scale), g.get(t))
+                (((v - translation) + e.mul(t)).mul(scale), g.get(t))
             })
         })
-        .collect::<Vec<(V2D, LinSrgba)>>();
+        .collect::<Vec<(Point2, LinSrgba)>>();
 
     // Draw the polyline as a stroked path.
     draw.polyline()
@@ -202,48 +202,64 @@ fn draw_cell(
         .points_colored(colored_vertices);
 }
 
-/// The application state
-struct Model {
-    ix: usize,
+struct Data {
+    snap_ix: usize,
+    char_quants: CharQuantities,
     cell_params: Vec<Parameters>,
     snapshots: Vec<Snapshot>,
-    char_quants: CharQuantities,
+}
+
+/// The application state
+struct Model {
+    data: Option<Data>,
     scale: f32,
-    translation: V2D,
-    crosshairs: V2D,
+    translation: Point2,
+    crosshairs: Point2,
     draw_crosshairs: bool,
+    ui: Ui,
+    ids: Ids,
+    file_path: Option<PathBuf>,
 }
 
 impl Model {
-    pub fn new() -> Model {
-        let out_dir = PathBuf::from_str("./output").unwrap();
-        let History {
-            char_quants,
-            cell_params,
-            snapshots,
-            ..
-        } = load_compact(&out_dir, Format::Bincode, "pair");
+    pub fn new(app: &App) -> Model {
+        // let out_dir = PathBuf::from_str("./output").unwrap();
+        // let History {
+        //     char_quants,
+        //     cell_params,
+        //     snapshots,
+        //     ..
+        // } = load_compact(&out_dir, Format::Bincode, "pair");
+        // Create the UI.
+        let mut ui = app.new_ui().build().unwrap();
+
+        // Generate some ids for our widgets.
+        let ids = Ids::new(ui.widget_id_generator());
+
         Model {
-            ix: 0,
-            char_quants,
-            cell_params,
-            snapshots,
             scale: 1.0,
-            translation: V2D::zeros(),
-            crosshairs: V2D::zeros(),
+            translation: Point2::zero(),
+            crosshairs: Point2::zero(),
             draw_crosshairs: true,
+            ui,
+            ids,
+            file_path: None,
+            data: None,
         }
     }
 }
 
 fn progress_drawing(model: &mut Model, delta: isize) {
-    let new_ix = model.ix as isize + delta;
-    if new_ix >= model.snapshots.len() as isize {
-        model.ix = new_ix as usize - model.snapshots.len();
-    } else if new_ix < 0 {
-        model.ix = (model.snapshots.len() as isize + new_ix) as usize;
-    } else {
-        model.ix = new_ix as usize;
+    if let Some(data) = model.data.as_mut() {
+        let new_ix = data.snap_ix as isize + delta;
+        if new_ix >= data.snapshots.len() as isize {
+            data.snap_ix = new_ix as usize - data.snapshots.len();
+        } else if new_ix < 0 {
+            data.snap_ix =
+                (data.snapshots.len() as isize + new_ix) as usize;
+        } else {
+            data.snap_ix = new_ix as usize;
+        }
     }
 }
 
@@ -257,6 +273,15 @@ fn event(app: &App, model: &mut Model, event: WindowEvent) {
     };
 }
 
+fn update(_app: &App, model: &mut Model, _update: Update) {
+    // Calling `set_widgets` allows us to instantiate some widgets.
+    let ui = &mut model.ui.set_widgets();
+
+    fn file_navigator<'a>() -> widget::FileNavigator<'a> {
+        widget::FileNavigator::directories(Path::new("../"))
+    }
+}
+
 fn key_pressed(model: &mut Model, key: Key) {
     match key {
         Key::M => progress_drawing(model, 10),
@@ -265,8 +290,8 @@ fn key_pressed(model: &mut Model, key: Key) {
         Key::Z => update_view_zone(model, -0.25),
         Key::H => model.draw_crosshairs = !model.draw_crosshairs,
         Key::R => {
-            model.crosshairs = V2D::zeros();
-            model.translation = V2D::zeros();
+            model.crosshairs = Point2::zero();
+            model.translation = Point2::zero();
             model.scale = 1.0;
             update_view_zone(model, 0.0);
         }
@@ -274,15 +299,9 @@ fn key_pressed(model: &mut Model, key: Key) {
     };
 }
 
-fn set_crosshairs(model: &mut Model, position: Point2<f32>) {
-    model.crosshairs = position.into();
-}
-
 fn update_view_zone(model: &mut Model, delta_scale: f32) {
     model.scale = (model.scale + delta_scale).max(0.25);
-    model.translation =
-        model.translation + model.crosshairs.scale(1.0 / model.scale);
-    model.crosshairs = V2D::zeros();
+    model.translation += model.crosshairs / model.scale;
 }
 
 fn mouse_pressed(
@@ -291,7 +310,7 @@ fn mouse_pressed(
     mouse_button: MouseButton,
 ) {
     if let MouseButton::Left = mouse_button {
-        set_crosshairs(model, app.mouse.position())
+        model.crosshairs = app.mouse.position();
     };
 }
 
@@ -300,7 +319,7 @@ fn model(app: &App) -> Model {
     app.new_window().event(event).view(view).build().unwrap();
     app.set_loop_mode(LoopMode::Wait);
 
-    Model::new()
+    Model::new(app)
 }
 
 // /// Nannou app update
@@ -308,29 +327,42 @@ fn model(app: &App) -> Model {
 //     model.update();
 // }
 
-fn view(app: &App, model: &Model, frame: Frame) {
-    let draw = app.draw();
+fn draw_data(app: &App, model: &Model, draw: &Draw) {
     let win_rect = app.window_rect();
-    // Draw model
-    draw.background().color(color::WHITE);
+    // Draw data
+    draw.background().color(LinSrgba::new(1.0, 1.0, 1.0, 1.0));
     if model.draw_crosshairs {
         draw_crosshair(model.crosshairs, win_rect, &draw)
     }
-    model.snapshots[model.ix]
-        .cells
-        .states
-        .iter()
-        .enumerate()
-        .for_each(|(ci, c)| {
-            draw_cell(
-                model.scale,
-                model.translation,
-                c,
-                model.char_quants.frac_rgtp / 10.0,
-                &model.cell_params[ci],
-                &draw,
-            )
-        });
+    if let Some(data) = model.data.as_ref() {
+        data.snapshots[data.snap_ix]
+            .cells
+            .states
+            .iter()
+            .enumerate()
+            .for_each(|(ci, c)| {
+                draw_cell(
+                    model.scale,
+                    model.translation,
+                    c,
+                    data.char_quants.frac_rgtp / 10.0,
+                    &data.cell_params[ci],
+                    &draw,
+                )
+            });
+    }
+}
+
+fn view(app: &App, model: &Model, frame: Frame) {
+    let draw = app.draw();
+    // Draw data
+    if model.data.is_some() {
+        draw_data(app, model, &draw);
+        Some(model.crosshairs)
+    } else {
+        None
+    };
+
     // Render frame
     draw.to_frame(&app, &frame).unwrap();
 }
