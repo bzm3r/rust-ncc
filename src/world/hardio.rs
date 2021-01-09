@@ -1,4 +1,4 @@
-use crate::world::{DeepHistory, DeepSnapshot, History, Snapshot};
+use crate::world::{DeepHistory, History};
 use bincode::{deserialize_from, serialize_into};
 use std::error::Error;
 use std::fs::File;

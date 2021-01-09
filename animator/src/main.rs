@@ -1,19 +1,14 @@
-use crate::cell::Cell;
-use crate::math::v2d::V2D;
-use crate::parameters::{CharQuantities, Parameters};
-use crate::utils::circ_ix_plus;
-use crate::world::hardio::{load_compact, Format};
-use crate::world::{History, Snapshot};
-use crate::NVERTS;
 use lazy_static::lazy_static;
 use nannou::color::gradient::Gradient;
 use nannou::color::LinSrgba;
 use nannou::event::WindowEvent::{KeyPressed, MousePressed};
 use nannou::event::{Key, MouseButton, WindowEvent};
 use nannou::geom::{Point2, Rect, Vector2};
-
 use nannou::{color, LoopMode};
 use nannou::{App, Draw, Frame};
+use rust_ncc::cell::Cell;
+use rust_ncc::parameters::Parameters;
+use rust_ncc::world::hardio::load_compact;
 use std::cmp::Ordering;
 use std::path::PathBuf;
 use std::str::FromStr;
@@ -34,7 +29,7 @@ lazy_static! {
         ]);
 }
 
-pub fn animate() {
+fn main() {
     nannou::app(model).run();
 }
 
