@@ -1,15 +1,24 @@
 use lazy_static::lazy_static;
 use nannou::color::{Gradient, LinSrgba};
+use nannou::conrod_core::event::DoubleClick;
+use nannou::conrod_core::widget::file_navigator::Event;
+use nannou::conrod_core::widget::{file_navigator, FileNavigator};
+use nannou::conrod_core::{
+    input, widget, Color, Positionable, Widget,
+};
 use nannou::event::WindowEvent::{KeyPressed, MousePressed};
 use nannou::event::{Key, MouseButton, Update, WindowEvent};
 use nannou::geom::{Point2, Rect};
+use nannou::mesh::Clear;
 use nannou::ui::prelude::*;
 use nannou::{App, Draw, Frame, LoopMode};
 use rust_ncc::cell::Cell;
 use rust_ncc::math::v2d::V2D;
 use rust_ncc::parameters::{CharQuantities, Parameters};
 use rust_ncc::utils::circ_ix_plus;
-use rust_ncc::world::hardio::{load_compact, Format};
+use rust_ncc::world::hardio::{
+    load_binc_from_path, load_compact, Format,
+};
 use rust_ncc::world::{History, Snapshot};
 use rust_ncc::NVERTS;
 use std::cmp::Ordering;
@@ -35,13 +44,12 @@ lazy_static! {
 
 widget_ids! {
     struct Ids {
-        out_dir,
-        file_path,
+        file_selector,
     }
 }
 
 fn main() {
-    nannou::app(model).run();
+    nannou::app(model).update(update).run();
 }
 
 // fn map_rgtp_act_to_gradient(
@@ -209,6 +217,23 @@ struct Data {
     snapshots: Vec<Snapshot>,
 }
 
+impl Data {
+    pub fn new(data: History) -> Data {
+        let History {
+            char_quants,
+            cell_params,
+            snapshots,
+            ..
+        } = data;
+        Data {
+            snap_ix: 0,
+            char_quants,
+            cell_params,
+            snapshots,
+        }
+    }
+}
+
 /// The application state
 struct Model {
     data: Option<Data>,
@@ -218,7 +243,9 @@ struct Model {
     draw_crosshairs: bool,
     ui: Ui,
     ids: Ids,
-    file_path: Option<PathBuf>,
+    directory: PathBuf,
+    file_path: PathBuf,
+    show_ui: bool,
 }
 
 impl Model {
@@ -243,8 +270,10 @@ impl Model {
             draw_crosshairs: true,
             ui,
             ids,
-            file_path: None,
+            directory: PathBuf::from("../"),
+            file_path: PathBuf::from(""),
             data: None,
+            show_ui: true,
         }
     }
 }
@@ -273,12 +302,30 @@ fn event(app: &App, model: &mut Model, event: WindowEvent) {
     };
 }
 
-fn update(_app: &App, model: &mut Model, _update: Update) {
+fn update(app: &App, model: &mut Model, _update: Update) {
     // Calling `set_widgets` allows us to instantiate some widgets.
-    let ui = &mut model.ui.set_widgets();
-
-    fn file_navigator<'a>() -> widget::FileNavigator<'a> {
-        widget::FileNavigator::directories(Path::new("../"))
+    if model.show_ui {
+        let ui = &mut model.ui.set_widgets();
+        for event in
+            FileNavigator::with_extension(&model.directory, &["binc"])
+                .top_left_with_margin(20.0)
+                .set(model.ids.file_selector, ui)
+        {
+            if let file_navigator::Event::DoubleClick(
+                DoubleClick {
+                    button: input::MouseButton::Left,
+                    ..
+                },
+                paths,
+            ) = event
+            {
+                model.file_path = paths[0].clone();
+                model.data = Some(Data::new(
+                    load_binc_from_path(&model.file_path).unwrap(),
+                ));
+                model.show_ui = false;
+            }
+        }
     }
 }
 
@@ -312,12 +359,13 @@ fn mouse_pressed(
     if let MouseButton::Left = mouse_button {
         model.crosshairs = app.mouse.position();
     };
+    model.ui.draw_if_changed();
 }
 
 /// Nannou app model
 fn model(app: &App) -> Model {
     app.new_window().event(event).view(view).build().unwrap();
-    app.set_loop_mode(LoopMode::Wait);
+    app.set_loop_mode(LoopMode::RefreshSync);
 
     Model::new(app)
 }
@@ -365,4 +413,7 @@ fn view(app: &App, model: &Model, frame: Frame) {
 
     // Render frame
     draw.to_frame(&app, &frame).unwrap();
+
+    // Draw the state of the `Ui` to the frame.
+    model.ui.draw_to_frame(app, &frame).unwrap();
 }

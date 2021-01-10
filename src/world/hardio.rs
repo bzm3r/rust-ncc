@@ -54,7 +54,7 @@ pub fn get_file_write(
         .open(&path)
 }
 
-pub fn get_file_read(
+pub fn read_file(
     compact: bool,
     out_dir: &PathBuf,
     title: &str,
@@ -113,7 +113,7 @@ pub fn load_compact(
     format: Format,
     title: &str,
 ) -> History {
-    let mut f = get_file_read(true, out_dir, title, format).unwrap();
+    let mut f = read_file(true, out_dir, title, format).unwrap();
 
     match format {
         Format::Cbor => serde_cbor::from_reader(&mut f).unwrap(),
@@ -122,12 +122,35 @@ pub fn load_compact(
     }
 }
 
+pub fn load_binc_from_path(file_path: &PathBuf) -> Option<History> {
+    if let Some(ext) = file_path.extension() {
+        match ext.to_str().unwrap() {
+            "binc" => {
+                let mut f = OpenOptions::new()
+                    .read(true)
+                    .open(&file_path)
+                    .unwrap();
+                deserialize_from(&mut f).unwrap()
+            }
+            _ => panic!(
+                "file path has unknown extension: {}",
+                ext.to_str().unwrap()
+            ),
+        }
+    } else {
+        panic!(
+            "no file extension in path: {}",
+            file_path.to_str().unwrap()
+        )
+    }
+}
+
 pub fn load_full(
     out_dir: &PathBuf,
     format: Format,
     title: &str,
 ) -> DeepHistory {
-    let mut f = get_file_read(false, out_dir, title, format).unwrap();
+    let mut f = read_file(false, out_dir, title, format).unwrap();
 
     match format {
         Format::Cbor => serde_cbor::from_reader(&mut f).unwrap(),
