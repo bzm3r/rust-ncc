@@ -18,8 +18,17 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="6e867186-6d46-442a-9050-0ad2ade12596" name="Default Changelist" comment="">
-      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/output/probe.py" beforeDir="false" afterPath="$PROJECT_DIR$/output/probe.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/cell/core_state.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/cell/core_state.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/experiments/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/experiments/mod.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/experiments/pair.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/experiments/pair.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/experiments/separated_pair.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/experiments/separated_pair.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/interactions/gen_phys.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/interactions/gen_phys.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/interactions/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/interactions/mod.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/main.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/parameters/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/parameters/mod.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/world/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/world/mod.rs" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -365,8 +374,14 @@
         <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
           <dependency master-id="0" />
           <url>file://$PROJECT_DIR$/src/interactions/gen_phys.rs</url>
-          <line>375</line>
+          <line>433</line>
           <option name="timeStamp" value="53" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
+          <dependency id="0" />
+          <url>file://$PROJECT_DIR$/src/world/mod.rs</url>
+          <line>296</line>
+          <option name="timeStamp" value="60" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>

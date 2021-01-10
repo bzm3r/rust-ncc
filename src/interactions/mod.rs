@@ -23,6 +23,9 @@ use crate::interactions::gen_coa::CoaGenerator;
 use crate::interactions::gen_phys::{
     PhysContactFactors, PhysicalContactGenerator,
 };
+use crate::interactions::RelativeRgtpActivity::{
+    RacDominant, RhoDominant,
+};
 use crate::math::geometry::{BBox, Poly};
 use crate::math::v2d::V2D;
 use crate::parameters::InteractionParams;
@@ -31,7 +34,41 @@ use serde::{Deserialize, Serialize};
 
 /// The relative Rho GTPase activity at a cell is positive if Rac1
 /// dominates, otherwise it is negative.
-pub type RelativeRgtpActivity = f32;
+#[derive(Copy, Clone, Debug, Deserialize, Serialize)]
+pub enum RelativeRgtpActivity {
+    RhoDominant(f32),
+    RacDominant(f32),
+}
+
+impl RelativeRgtpActivity {
+    pub fn to_f32(&self) -> f32 {
+        match self {
+            RelativeRgtpActivity::RacDominant(value) => *value,
+            RelativeRgtpActivity::RhoDominant(value) => *value,
+        }
+    }
+
+    pub fn from_f32(value: f32) -> Self {
+        if value > 0.0 {
+            RacDominant(value)
+        } else {
+            RhoDominant(value)
+        }
+    }
+
+    /// Edges are always defined as going from the smaller indexed
+    /// vertex to the bigger indexed vertex.
+    pub fn mix_rel_rgtp_act_across_edge(
+        smaller_vertex: RelativeRgtpActivity,
+        bigger_vertex: RelativeRgtpActivity,
+        t: f32,
+    ) -> RelativeRgtpActivity {
+        RelativeRgtpActivity::from_f32(
+            smaller_vertex.to_f32() * (1.0 - t)
+                + bigger_vertex.to_f32() * t,
+        )
+    }
+}
 
 #[derive(Copy, Clone, Debug, Default, Deserialize, Serialize)]
 pub struct Interactions {

@@ -450,7 +450,6 @@ impl CoreState {
         let kdgtps_rho = calc_kdgtps_rho(
             &self.rho_acts,
             &conc_rac_acts,
-            &inter_state.x_cals,
             parameters.kdgtp_rho,
             parameters.kdgtp_rac_on_rho,
             parameters.halfmax_vertex_rgtp_conc,
@@ -766,18 +765,20 @@ impl CoreState {
         &self,
         parameters: &Parameters,
     ) -> [RelativeRgtpActivity; NVERTS] {
-        let mut r = [0.0; NVERTS];
+        let mut r = [RelativeRgtpActivity::RhoDominant(0.0); NVERTS];
         self.rac_acts
             .iter()
             .zip(self.rho_acts.iter())
             .enumerate()
             .for_each(|(ix, (&rac, &rho))| {
-                r[ix] = hill_function3(
-                    parameters.halfmax_vertex_rgtp_act,
-                    rac,
-                ) - hill_function3(
-                    parameters.halfmax_vertex_rgtp_act,
-                    rho,
+                r[ix] = RelativeRgtpActivity::from_f32(
+                    hill_function3(
+                        parameters.halfmax_vertex_rgtp_act,
+                        rac,
+                    ) - hill_function3(
+                        parameters.halfmax_vertex_rgtp_act,
+                        rho,
+                    ),
                 );
             });
         r

@@ -189,17 +189,20 @@ impl PhysicalContactGenerator {
                     edge_point_param,
                 } => {
                     //TODO: confirm that we don't want:
-                    // let edge_rgtp = (1.0 - t) * cell_rgtps[oci][ovi]
-                    //     + t * cell_rgtps[oci]
+                    // let edge_rgtp = (1.0 - edge_point_param) * cell_rgtps[oci][ovi]
+                    //     + edge_point_param * cell_rgtps[oci]
                     //         [circ_ix_plus(ovi, NVERTS)];
-                    let edge_rgtp = (rel_rgtps_per_cell[oci][ovi]
-                        + rel_rgtps_per_cell[oci]
-                            [circ_ix_plus(ovi, NVERTS)])
-                        / 2.0;
+                    let edge_rgtp = RelativeRgtpActivity::mix_rel_rgtp_act_across_edge(
+                        rel_rgtps_per_cell[oci][ovi],
+                        rel_rgtps_per_cell[oci]
+                            [circ_ix_plus(ovi, NVERTS)], edge_point_param,
+                    );
                     Some(CloseEdge {
                         cell_ix: oci,
                         vert_ix: ovi,
-                        crl: CrlEffect::calc(v_rgtp, edge_rgtp),
+                        crl: CrlEffect::calc_crl_on_focus(
+                            v_rgtp, edge_rgtp,
+                        ),
                         vector_to,
                         edge_point_param,
                         smooth_factor,
@@ -211,7 +214,7 @@ impl PhysicalContactGenerator {
                 } => Some(CloseEdge {
                     cell_ix: oci,
                     vert_ix: ovi,
-                    crl: CrlEffect::calc(
+                    crl: CrlEffect::calc_crl_on_focus(
                         v_rgtp,
                         rel_rgtps_per_cell[oci][ovi],
                     ),
@@ -416,13 +419,17 @@ pub enum CrlEffect {
 }
 
 impl CrlEffect {
-    pub fn calc(
-        a: RelativeRgtpActivity,
-        b: RelativeRgtpActivity,
+    //TODO: should CIL/CAL be modelled with a "relative strength"?
+    pub fn calc_crl_on_focus(
+        focus_vertex: RelativeRgtpActivity,
+        other: RelativeRgtpActivity,
     ) -> CrlEffect {
-        match (a > 0.0, b > 0.0) {
-            (false, true) | (true, false) => CrlEffect::Cal,
-            (_, _) => CrlEffect::Cil,
+        use RelativeRgtpActivity::{RacDominant, RhoDominant};
+        match (focus_vertex, other) {
+            (RacDominant(_), RhoDominant(_)) => CrlEffect::Cal,
+            (RhoDominant(_), RacDominant(_))
+            | (RhoDominant(_), RhoDominant(_))
+            | (RacDominant(_), RacDominant(_)) => CrlEffect::Cil,
         }
     }
 }

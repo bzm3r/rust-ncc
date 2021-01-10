@@ -5,12 +5,16 @@ import json
 import cbor2
 
 output = None
-file_name = "history_pair.cbor"
+file_name = "history_four_cells.cbor"
 with open(file_name, mode='rb') as sf:
     output = cbor2.load(sf)
 
 tsteps = [o[0] for o in output]
+frequency = tsteps[1] - tsteps[0]
 state_recs = [o[1] for o in output]
+
+def lookup_tstep_ix(tstep):
+    return int(np.floor(tstep/frequency))
 
 def p2ds_to_numpy(p2ds):
     vs = []
@@ -133,8 +137,8 @@ def paint(delta):
     global num_tsteps
     ax.cla()
     ax.set_aspect('equal')
-    ax.set_xlim([-40, 80])
-    ax.set_ylim([-40, 160])
+    ax.set_xlim([-40, 200])
+    ax.set_ylim([-40, 200])
     for (ci, poly) in enumerate(poly_per_cell_per_tstep[tstep_ix]):
         if ci == 0:
             poly_color = "k"
@@ -152,13 +156,13 @@ def paint(delta):
             rac_act_arrows_per_cell_per_tstep[tstep_ix]
     ):
         for p, rac_arrow in zip(poly, rac_act_arrows):
-            ax.arrow(p[0], p[1], 3*rac_arrow[0], 3*rac_arrow[1], color="b",
+            ax.arrow(p[0], p[1], 1*rac_arrow[0], 1*rac_arrow[1], color="b",
                      length_includes_head=True, head_width=0.0)
 
     for poly, rho_act_arrows in zip(poly_per_cell_per_tstep[tstep_ix],
                                     rho_act_arrows_per_cell_per_tstep[tstep_ix]):
         for p, rho_arrow in zip(poly, rho_act_arrows):
-            ax.arrow(p[0], p[1], 3*rho_arrow[0], 3*rho_arrow[1], color="r",
+            ax.arrow(p[0], p[1], 1*rho_arrow[0], 1*rho_arrow[1], color="r",
                      length_includes_head=True, head_width=0.0)
 
     for poly_ix, poly, adhs in zip(np.arange(0, len(poly_per_cell_per_tstep[0])), poly_per_cell_per_tstep[tstep_ix], adhs_per_cell_per_tstep[tstep_ix]):
@@ -200,13 +204,13 @@ def on_press(event):
     elif event.key == 'z':
         paint(-1)
     if event.key == 'c':
-        paint(-10)
+        paint(-5)
     elif event.key == 'v':
-        paint(10)
+        paint(5)
     elif event.key == 'n':
-        paint(-100)
+        paint(-10)
     elif event.key == 'm':
-        paint(100)
+        paint(10)
     fig.canvas.draw()
 
 

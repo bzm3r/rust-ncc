@@ -26,9 +26,6 @@ use crate::NVERTS;
 use serde::{Deserialize, Serialize};
 use std::f32::consts::PI;
 
-#[cfg(feature = "validate")]
-use crate::math::v2d::poly_to_string;
-
 /// Cell state structure.
 #[derive(Copy, Clone, Deserialize, Serialize)]
 pub struct Cell {

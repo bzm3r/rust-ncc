@@ -248,7 +248,6 @@ pub fn calc_kgtps_rho(
 pub fn calc_kdgtps_rho(
     rho_acts: &[f32; NVERTS],
     conc_rac_acts: &[f32; NVERTS],
-    x_cals: &[f32; NVERTS],
     kdgtp_rho_base: f32,
     kdgtp_rac_on_rho: f32,
     halfmax_conc_rac: f32,
@@ -260,7 +259,7 @@ pub fn calc_kdgtps_rho(
         let mutual =
             hill_function3(halfmax_conc_rac, conc_rac_acts[i])
                 * kdgtp_rac_on_rho;
-        kdgtps_rho[i] = (1.0 + x_cals[i]) * kdgtp_rho_base + mutual;
+        kdgtps_rho[i] = kdgtp_rho_base + mutual;
     }
 
     kdgtps_rho

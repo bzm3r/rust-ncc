@@ -310,6 +310,7 @@ impl World {
                 });
 
             self.cells = new_cells;
+            self.tstep += 1;
             if self.tstep % save_frequency == 0 {
                 self.history.push(self.take_snapshot());
             }
