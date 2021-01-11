@@ -109,6 +109,7 @@ impl DeepSnapshot {
 
 #[derive(Deserialize, Serialize, Clone)]
 pub struct History {
+    pub snap_freq: u32,
     pub char_quants: CharQuantities,
     pub world_params: WorldParameters,
     pub cell_params: Vec<Parameters>,
@@ -117,15 +118,17 @@ pub struct History {
 
 #[derive(Deserialize, Serialize, Clone)]
 pub struct DeepHistory {
-    char_quants: CharQuantities,
-    world_params: WorldParameters,
-    cell_params: Vec<Parameters>,
-    snapshots: Vec<DeepSnapshot>,
+    pub snap_freq: u32,
+    pub char_quants: CharQuantities,
+    pub world_params: WorldParameters,
+    pub cell_params: Vec<Parameters>,
+    pub snapshots: Vec<DeepSnapshot>,
 }
 
 impl DeepHistory {
     pub fn to_history(&self) -> History {
         History {
+            snap_freq: self.snap_freq,
             char_quants: self.char_quants,
             world_params: self.world_params.clone(),
             cell_params: self.cell_params.clone(),
@@ -149,6 +152,7 @@ pub struct World {
     pub rng: Pcg32,
     out_dir: PathBuf,
     file_name: String,
+    snap_freq: u32,
 }
 
 fn gen_poly(centroid: &V2D, radius: f32) -> [V2D; NVERTS] {
@@ -165,7 +169,11 @@ fn gen_poly(centroid: &V2D, radius: f32) -> [V2D; NVERTS] {
 }
 
 impl World {
-    pub fn new(experiment: Experiment, output_dir: PathBuf) -> World {
+    pub fn new(
+        experiment: Experiment,
+        output_dir: PathBuf,
+        snap_freq: u32,
+    ) -> World {
         // Unpack relevant info from `Experiment` data structure.
         let Experiment {
             char_quants,
@@ -271,6 +279,7 @@ impl World {
             rng,
             out_dir: output_dir,
             file_name: experiment.file_name,
+            snap_freq,
         }
     }
 
@@ -283,11 +292,7 @@ impl World {
         }
     }
 
-    pub fn simulate(
-        &mut self,
-        final_tpoint: f32,
-        save_frequency: u32,
-    ) {
+    pub fn simulate(&mut self, final_tpoint: f32) {
         let num_tsteps =
             (final_tpoint / self.char_quants.time()).ceil() as u32;
         while self.tstep < num_tsteps {
@@ -311,14 +316,15 @@ impl World {
 
             self.cells = new_cells;
             self.tstep += 1;
-            if self.tstep % save_frequency == 0 {
+            if self.tstep % self.snap_freq == 0 {
                 self.history.push(self.take_snapshot());
             }
         }
     }
 
-    pub fn get_full_history(&self) -> DeepHistory {
+    pub fn deep_history(&self) -> DeepHistory {
         DeepHistory {
+            snap_freq: self.snap_freq,
             char_quants: self.char_quants,
             world_params: self.world_params.clone(),
             cell_params: self
@@ -331,8 +337,9 @@ impl World {
         }
     }
 
-    pub fn get_history(&self) -> History {
+    pub fn history(&self) -> History {
         History {
+            snap_freq: self.snap_freq,
             char_quants: self.char_quants,
             world_params: self.world_params.clone(),
             cell_params: self
@@ -354,16 +361,18 @@ impl World {
         compact: bool,
         formats: Vec<Format>,
     ) -> Result<(), Box<dyn Error>> {
+        let history = self.history();
+        println!("num snapshots: {}", history.snapshots.len());
         if compact {
             save_compact(
-                self.get_history(),
+                history,
                 &self.out_dir,
                 formats,
                 &self.file_name,
             )?;
         } else {
             save_full(
-                self.get_full_history(),
+                self.deep_history(),
                 &self.out_dir,
                 formats,
                 &self.file_name,

@@ -9,14 +9,15 @@ fn main() {
     let exp = experiments::four_cells::generate(Some(3));
 
     let output_dir = PathBuf::from(DEFAULT_OUTPUT_DIR);
-    let mut w = world::World::new(exp, output_dir.clone());
+    let mut w = world::World::new(exp, output_dir.clone(), 10);
 
     let now = Instant::now();
-    w.simulate(3.0 * 3600.0, 10);
+    w.simulate(3.0 * 3600.0);
 
     println!("Simulation complete. {} s.", now.elapsed().as_secs());
     let now = Instant::now();
-    w.save_history(true, vec![Format::Bincode]).unwrap();
+    w.save_history(true, vec![Format::Bincode, Format::Cbor])
+        .unwrap();
     println!(
         "Finished saving history. {} s.",
         now.elapsed().as_secs()

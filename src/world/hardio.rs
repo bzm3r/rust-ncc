@@ -122,7 +122,7 @@ pub fn load_compact(
     }
 }
 
-pub fn load_binc_from_path(file_path: &PathBuf) -> Option<History> {
+pub fn load_binc_from_path(file_path: &PathBuf) -> History {
     if let Some(ext) = file_path.extension() {
         match ext.to_str().unwrap() {
             "binc" => {

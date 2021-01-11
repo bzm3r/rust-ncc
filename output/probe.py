@@ -5,13 +5,14 @@ import json
 import cbor2
 
 output = None
-file_name = "history_four_cells.cbor"
+file_name = "history_compact_four_cells.cbor"
 with open(file_name, mode='rb') as sf:
     output = cbor2.load(sf)
 
-tsteps = [o[0] for o in output]
-frequency = tsteps[1] - tsteps[0]
-state_recs = [o[1] for o in output]
+snapshots = [s for s in output["snapshots"]]
+tsteps = [s["tstep"] for s in snapshots]
+state_recs = [s["cells"] for s in snapshots]
+frequency = output["snap_freq"]
 
 def lookup_tstep_ix(tstep):
     return int(np.floor(tstep/frequency))
@@ -27,7 +28,7 @@ def extract_p2ds_from_cell_states(state_key, dat_key, state_recs):
     dat_per_cell_per_tstep = []
     for rec in state_recs:
         dat_per_cell = []
-        for cell_rec in rec['cell_states']:
+        for cell_rec in rec['states']:
             dat_per_cell.append(p2ds_to_numpy(cell_rec[state_key][dat_key]))
         dat_per_cell_per_tstep.append(np.array(dat_per_cell))
     return np.array(dat_per_cell_per_tstep)
@@ -45,7 +46,7 @@ def extract_scalars(state_key, dat_key, state_recs):
     dat_per_cell_per_tstep = []
     for rec in state_recs:
         dat_per_cell = []
-        for cell_rec in rec['cell_states']:
+        for cell_rec in rec['states']:
             dat_per_cell.append(np.array(cell_rec[state_key][dat_key]))
         dat_per_cell_per_tstep.append(np.array(dat_per_cell))
     return np.array(dat_per_cell_per_tstep)
