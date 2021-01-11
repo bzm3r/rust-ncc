@@ -176,13 +176,13 @@ fn draw_cell(
             let next_ix = circ_ix_plus(ix, NVERTS);
             Gradient::new(vec![
                 map_rgtp_act_to_color(
-                    relative_rgtp_activity[ix],
+                    relative_rgtp_activity[ix].to_f32(),
                     cell.core.rac_acts[ix],
                     cell.core.rho_acts[ix],
                     rgtp_scale,
                 ),
                 map_rgtp_act_to_color(
-                    relative_rgtp_activity[next_ix],
+                    relative_rgtp_activity[next_ix].to_f32(),
                     cell.core.rac_acts[next_ix],
                     cell.core.rho_acts[next_ix],
                     rgtp_scale,

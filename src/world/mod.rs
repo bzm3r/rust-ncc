@@ -314,7 +314,6 @@ impl World {
             if self.tstep % save_frequency == 0 {
                 self.history.push(self.take_snapshot());
             }
-            self.tstep += 1;
         }
     }
 
