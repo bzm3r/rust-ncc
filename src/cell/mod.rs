@@ -27,16 +27,21 @@ use serde::{Deserialize, Serialize};
 use std::f32::consts::PI;
 
 /// Cell state structure.
-#[derive(Copy, Clone, Deserialize, Serialize)]
+#[derive(Copy, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct Cell {
     /// Index of cell within world.
     pub ix: usize,
     /// Index of group that cell belongs to.
     pub group_ix: usize,
+    /// Core state of the cell (position, Rho GTPases).
     pub core: CoreState,
+    /// Random Rac1 activity.
     pub rac_rand: RacRandState,
+    /// Mechanical activity (forces).
     pub mech: MechState,
+    /// Geometry (unit inward vecs, etc.).
     pub geom: GeomState,
+    /// Chemical state (various reaction rates).
     pub chem: ChemState,
 }
 

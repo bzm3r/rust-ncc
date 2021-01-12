@@ -22,7 +22,9 @@ use std::ops::{Add, Div, Mul, Sub};
 /// geometric updates. That is, they are modelled using ODEs which
 /// are then integrated using either the Euler method or
 /// Runge-Kutta Dormand-Prince 5 (Matlab's `ode45`).
-#[derive(Copy, Clone, Debug, Default, Deserialize, Serialize)]
+#[derive(
+    Copy, Clone, Debug, Default, Deserialize, Serialize, PartialEq, Eq,
+)]
 pub struct CoreState {
     /// Polygon representing cell shape.
     pub poly: [V2D; NVERTS],

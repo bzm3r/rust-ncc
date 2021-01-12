@@ -29,7 +29,7 @@ use std::error::Error;
 use std::f32::consts::PI;
 use std::path::PathBuf;
 
-#[derive(Clone, Deserialize, Serialize)]
+#[derive(Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct Cells {
     pub states: Vec<Cell>,
     pub interactions: Vec<Interactions>,
@@ -92,7 +92,7 @@ pub struct DeepSnapshot {
     pub cells: Cells,
 }
 
-#[derive(Deserialize, Serialize, Clone)]
+#[derive(Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct Snapshot {
     pub tstep: u32,
     pub cells: Cells,
