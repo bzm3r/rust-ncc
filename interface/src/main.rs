@@ -11,7 +11,7 @@ pub fn main() {
         .title("Todo Tutorial")
         .window_size((400.0, 400.0));
 
-    let initial_state = AppState {};
+    let initial_state = AppState::new();
 
     AppLauncher::with_window(main_window)
         .launch(initial_state)

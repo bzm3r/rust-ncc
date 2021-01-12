@@ -23,7 +23,7 @@ use std::ops::{Add, Div, Mul, Sub};
 /// are then integrated using either the Euler method or
 /// Runge-Kutta Dormand-Prince 5 (Matlab's `ode45`).
 #[derive(
-    Copy, Clone, Debug, Default, Deserialize, Serialize, PartialEq, Eq,
+    Copy, Clone, Debug, Default, Deserialize, Serialize, PartialEq,
 )]
 pub struct CoreState {
     /// Polygon representing cell shape.
@@ -151,7 +151,9 @@ impl Mul<CoreState> for f32 {
 }
 
 /// Records the mechanical state of a cell.
-#[derive(Copy, Clone, Debug, Default, Deserialize, Serialize)]
+#[derive(
+    Copy, Clone, Debug, Default, Deserialize, Serialize, PartialEq,
+)]
 pub struct MechState {
     /// Strain each edge is under, where resting edge length is
     /// defined in the cell's parameters.
@@ -182,7 +184,9 @@ pub struct MechState {
 ///     * `x_tens`: "tension" factor that affects Rac1 activation
 /// rate, calculated based on average tensile strain in cell (i.e.
 /// how stretched the cell is).
-#[derive(Copy, Clone, Debug, Default, Deserialize, Serialize)]
+#[derive(
+    Copy, Clone, Debug, Default, Deserialize, Serialize, PartialEq,
+)]
 pub struct ChemState {
     pub kdgtps_rac: [f32; NVERTS],
     pub kgtps_rac: [f32; NVERTS],
@@ -197,7 +201,9 @@ pub struct ChemState {
     pub x_tens: f32,
 }
 
-#[derive(Copy, Clone, Debug, Default, Deserialize, Serialize)]
+#[derive(
+    Copy, Clone, Debug, Default, Deserialize, Serialize, PartialEq,
+)]
 pub struct GeomState {
     /// Unit edge vectors which point from position of vertex `vi`
     /// to position of vertex `vi + 1`, where `vi + 1` is calculated

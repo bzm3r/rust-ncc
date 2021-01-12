@@ -6,19 +6,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 pub mod chemistry;
-pub mod core_state;
+pub mod states;
 // pub mod geometry;
 pub mod mechanics;
 pub mod rkdp5;
 
 use crate::cell::chemistry::RacRandState;
-use crate::cell::core_state::{
+use crate::cell::rkdp5::AuxArgs;
+use crate::cell::states::{
     ChemState, CoreState, GeomState, MechState,
 };
-use crate::cell::rkdp5::AuxArgs;
 use crate::interactions::{ContactData, Interactions};
 use crate::math::geometry::{calc_poly_area, LineSeg2D};
-use crate::math::v2d::V2D;
+use crate::math::v2d::{poly_to_string, V2D};
 use crate::parameters::{Parameters, WorldParameters};
 use crate::utils::pcg32::Pcg32;
 use crate::utils::{circ_ix_minus, circ_ix_plus};
@@ -27,7 +27,7 @@ use serde::{Deserialize, Serialize};
 use std::f32::consts::PI;
 
 /// Cell state structure.
-#[derive(Copy, Clone, Deserialize, Serialize, PartialEq, Eq)]
+#[derive(Copy, Clone, Deserialize, Serialize, PartialEq)]
 pub struct Cell {
     /// Index of cell within world.
     pub ix: usize,

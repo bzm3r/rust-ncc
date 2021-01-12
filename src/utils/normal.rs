@@ -123,3 +123,9 @@ impl<'de> Deserialize<'de> for NormalDistrib {
         )
     }
 }
+
+impl PartialEq for NormalDistrib {
+    fn eq(&self, other: &Self) -> bool {
+        self.mean == other.mean && self.std == other.std
+    }
+}

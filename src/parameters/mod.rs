@@ -20,7 +20,7 @@ use serde::{Deserialize, Serialize};
 use std::f32::consts::PI;
 
 /// Characteristic quantities used for normalization.
-#[derive(Clone, Copy, Deserialize, Serialize)]
+#[derive(Clone, Copy, Deserialize, Serialize, PartialEq)]
 pub struct CharQuantities {
     pub eta: Viscosity,
     pub f: Force,
@@ -188,7 +188,7 @@ pub struct RawWorldParameters {
     pub interactions: RawInteractionParams,
 }
 
-#[derive(Clone, Copy, Deserialize, Serialize)]
+#[derive(Clone, Copy, Deserialize, Serialize, PartialEq)]
 pub struct CloseBounds {
     pub zero_at: f32,
     pub one_at: f32,
@@ -203,7 +203,7 @@ impl CloseBounds {
     }
 }
 
-#[derive(Clone, Copy, Deserialize, Serialize)]
+#[derive(Clone, Copy, Deserialize, Serialize, PartialEq)]
 pub struct PhysicalContactParams {
     /// Maximum distance between two points, for them to be considered
     /// in contact. This is usually set to 0.5 micrometers.
@@ -219,7 +219,7 @@ pub struct PhysicalContactParams {
     pub cil_mag: f32,
 }
 
-#[derive(Clone, Copy, Deserialize, Serialize)]
+#[derive(Clone, Copy, Deserialize, Serialize, PartialEq)]
 pub struct CoaParams {
     //TODO: Expand upon LOS system.
     /// Factor controlling to what extent line-of-sight blockage
@@ -242,7 +242,7 @@ pub struct CoaParams {
     pub distrib_exp: f32,
 }
 
-#[derive(Clone, Copy, Deserialize, Serialize)]
+#[derive(Clone, Copy, Deserialize, Serialize, PartialEq)]
 pub struct ChemAttrParams {
     /// Location of the chemoattractant center.
     pub center: V2D,
@@ -254,7 +254,7 @@ pub struct ChemAttrParams {
     pub slope: f32,
 }
 
-#[derive(Clone, Deserialize, Serialize)]
+#[derive(Clone, Deserialize, Serialize, PartialEq)]
 pub struct BdryParams {
     /// Shape of the boundary.
     pub shape: Vec<V2D>,
@@ -267,7 +267,7 @@ pub struct BdryParams {
     pub mag: f32,
 }
 
-#[derive(Clone, Deserialize, Serialize)]
+#[derive(Clone, Deserialize, Serialize, PartialEq)]
 pub struct InteractionParams {
     pub phys_contact: PhysicalContactParams,
     pub coa: Option<CoaParams>,
@@ -275,7 +275,7 @@ pub struct InteractionParams {
     pub bdry: Option<BdryParams>,
 }
 
-#[derive(Clone, Deserialize, Serialize)]
+#[derive(Clone, Deserialize, Serialize, PartialEq)]
 pub struct WorldParameters {
     /// Viscosity value used to calculate change in position of a
     /// vertex due to calculated forces on it.
@@ -356,7 +356,7 @@ pub struct RawParameters {
     pub rand_vs: f32,
 }
 
-#[derive(Clone, Deserialize, Serialize)]
+#[derive(Clone, Deserialize, Serialize, PartialEq)]
 pub struct Parameters {
     /// Resting cell radius.
     pub cell_r: f32,

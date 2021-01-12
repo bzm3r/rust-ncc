@@ -53,7 +53,7 @@ pub fn calc_poly_area(xys: &[V2D]) -> f32 {
     area * 0.5
 }
 
-#[derive(Copy, Clone, Deserialize, Serialize)]
+#[derive(Copy, Clone, Deserialize, Serialize, PartialEq)]
 pub struct BBox {
     pub xmin: f32,
     pub ymin: f32,

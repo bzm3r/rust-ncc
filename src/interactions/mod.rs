@@ -70,7 +70,9 @@ impl RelativeRgtpActivity {
     }
 }
 
-#[derive(Copy, Clone, Debug, Default, Deserialize, Serialize)]
+#[derive(
+    Copy, Clone, Debug, Default, Deserialize, Serialize, PartialEq,
+)]
 pub struct Interactions {
     pub x_cals: [f32; NVERTS],
     pub x_cils: [f32; NVERTS],

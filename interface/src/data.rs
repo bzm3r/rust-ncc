@@ -1,18 +1,40 @@
-use druid::Data;
+use druid::{Data, Env, EventCtx};
 use rust_ncc::parameters::quantity::Quantity;
 use rust_ncc::parameters::{
     CharQuantities, Parameters, WorldParameters,
 };
 use rust_ncc::world::Snapshot;
 
-#[derive(Clone, Data)]
+#[derive(Clone, Data, Lens)]
 pub struct AppState {
     terminal: Terminal,
-    simulation: Simulation,
+    simulation: Option<Simulation>,
     drawing: Drawing,
 }
 
-#[derive(Clone, Data)]
+impl AppState {
+    pub fn load(_ctx: &mut EventCtx, data: &mut Self, _env: &Env) {
+        unimplemented!();
+    }
+
+    pub fn click_term_in(
+        _ctx: &mut EventCtx,
+        data: &mut Self,
+        _env: &Env,
+    ) {
+        unimplemented!()
+    }
+
+    pub fn input_term_in(
+        _ctx: &mut EventCtx,
+        data: &mut Self,
+        _env: &Env,
+    ) {
+        unimplemented!()
+    }
+}
+
+#[derive(Clone, Data, Lens)]
 pub struct Terminal {
     u_in: UserInput,
     out: TermOut,
@@ -21,7 +43,7 @@ pub struct Terminal {
 pub type UserInput = String;
 pub type TermOut = String;
 
-#[derive(Clone, Data)]
+#[derive(Clone, PartialEq, Lens)]
 pub struct Simulation {
     tstep: u32,
     snap_freq: u32,
@@ -33,27 +55,22 @@ pub struct Simulation {
     snapshots: Vec<Snapshot>,
 }
 
-impl Data for CharQuantities {
+impl Data for Simulation {
     fn same(&self, other: &Self) -> bool {
-        unimplemented!()
-    }
-}
-
-impl Data for WorldParameters {
-    fn same(&self, other: &Self) -> bool {
-        unimplemented!()
-    }
-}
-
-impl Data for Parameters {
-    fn same(&self, other: &Self) -> bool {
-        unimplemented!()
-    }
-}
-
-impl Data for Snapshot {
-    fn same(&self, other: &Self) -> bool {
-        unimplemented!()
+        self.tstep == other.tstep
+            && self.snap_freq == other.snap_freq
+            && self.char_quants == other.char_quants
+            && self.world_params == other.world_params
+            && self
+                .cell_params
+                .iter()
+                .zip(other.cell_params.iter())
+                .all(|(s, o)| s == 0)
+            && self
+                .snapshots
+                .iter()
+                .zip(other.snapshots.iter())
+                .all(|(s, o)| s == o)
     }
 }
 
@@ -62,13 +79,19 @@ pub type Seconds = f32;
 impl Simulation {
     pub fn state_around(&self, time: Seconds) -> Snapshot {
         let t = (time / self.char_quants.t.number()).floor() as u32;
-        self.state_at(t / self.snap_freq);
+        self.state_at(t / self.snap_freq)
     }
 
-    pub fn state_at(tstep: u32) -> Snapshot {
+    pub fn state_at(&self, tstep: u32) -> Snapshot {
         self.snapshot[tstep]
     }
 }
 
-#[derive(Clone, Data)]
-pub struct Drawing {}
+#[derive(Clone, Data, Lens)]
+pub struct Drawing {
+    hide_crosshair: bool,
+    translation: [f32; 2],
+    zoom: f32,
+    cross_hair: [f32; 2],
+    // should cell poly related stuff go here?
+}

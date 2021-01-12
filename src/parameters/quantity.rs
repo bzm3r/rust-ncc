@@ -22,7 +22,7 @@ use std::ops::{Div, Mul};
 /// need to use some concept of mass, it comes in the form
 /// of a force. That is, recall that force has units
 /// M^1 L^1 T^-2 (mass * acceleration).
-#[derive(Deserialize, Serialize, Clone, Copy)]
+#[derive(Deserialize, Serialize, Clone, Copy, PartialEq)]
 pub struct Units {
     /// Exponent for force.
     pub f: f32,
@@ -212,7 +212,7 @@ pub trait Quantity {
 }
 
 /// A general quantity.
-#[derive(Deserialize, Serialize, Clone, Copy)]
+#[derive(Deserialize, Serialize, Clone, Copy, PartialEq)]
 pub struct General {
     /// Numerical value of this quantity.
     n: f32,
@@ -364,7 +364,7 @@ impl Quantity for Force {
     }
 }
 
-#[derive(Deserialize, Serialize, Clone, Copy)]
+#[derive(Deserialize, Serialize, Clone, Copy, PartialEq)]
 pub struct Length(pub f32);
 
 impl Quantity for Length {
@@ -404,7 +404,7 @@ impl Quantity for Length {
     }
 }
 
-#[derive(Deserialize, Serialize, Clone, Copy)]
+#[derive(Deserialize, Serialize, Clone, Copy, PartialEq)]
 pub struct Time(pub f32);
 
 impl Quantity for Time {
@@ -444,7 +444,7 @@ impl Quantity for Time {
     }
 }
 
-#[derive(Deserialize, Serialize, Clone, Copy)]
+#[derive(Deserialize, Serialize, Clone, Copy, PartialEq)]
 pub struct Tinv(pub f32);
 
 impl Quantity for Tinv {
@@ -484,7 +484,7 @@ impl Quantity for Tinv {
     }
 }
 
-#[derive(Deserialize, Serialize, Clone, Copy)]
+#[derive(Deserialize, Serialize, Clone, Copy, PartialEq)]
 pub struct Diffusion(pub f32);
 
 impl Quantity for Diffusion {
@@ -524,7 +524,7 @@ impl Quantity for Diffusion {
     }
 }
 
-#[derive(Deserialize, Serialize, Clone, Copy)]
+#[derive(Deserialize, Serialize, Clone, Copy, PartialEq)]
 pub struct Stress(pub f32);
 
 impl Quantity for Stress {
@@ -564,7 +564,7 @@ impl Quantity for Stress {
     }
 }
 
-#[derive(Deserialize, Serialize, Clone, Copy)]
+#[derive(Deserialize, Serialize, Clone, Copy, PartialEq)]
 pub struct Viscosity(pub f32);
 
 impl Quantity for Viscosity {
@@ -604,7 +604,7 @@ impl Quantity for Viscosity {
     }
 }
 
-#[derive(Deserialize, Clone, Copy)]
+#[derive(Deserialize, Clone, Copy, PartialEq)]
 pub struct Unitless(pub f32);
 
 impl Quantity for Unitless {

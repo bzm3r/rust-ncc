@@ -8,7 +8,7 @@
 pub mod hardio;
 #[cfg(feature = "validate")]
 use crate::cell::confirm_volume_exclusion;
-use crate::cell::core_state::CoreState;
+use crate::cell::states::CoreState;
 use crate::cell::Cell;
 use crate::experiments::{CellGroup, Experiment};
 use crate::interactions::{
@@ -29,7 +29,7 @@ use std::error::Error;
 use std::f32::consts::PI;
 use std::path::PathBuf;
 
-#[derive(Clone, Deserialize, Serialize, PartialEq, Eq)]
+#[derive(Clone, Deserialize, Serialize, PartialEq)]
 pub struct Cells {
     pub states: Vec<Cell>,
     pub interactions: Vec<Interactions>,
@@ -92,7 +92,7 @@ pub struct DeepSnapshot {
     pub cells: Cells,
 }
 
-#[derive(Clone, Deserialize, Serialize, PartialEq, Eq)]
+#[derive(Clone, Deserialize, Serialize, PartialEq)]
 pub struct Snapshot {
     pub tstep: u32,
     pub cells: Cells,
@@ -107,7 +107,7 @@ impl DeepSnapshot {
     }
 }
 
-#[derive(Deserialize, Serialize, Clone)]
+#[derive(Deserialize, Serialize, Clone, PartialEq)]
 pub struct History {
     pub snap_freq: u32,
     pub char_quants: CharQuantities,

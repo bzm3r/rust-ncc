@@ -6,7 +6,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use crate::cell::core_state::fmt_var_arr;
+use crate::cell::states::fmt_var_arr;
 use crate::math::hill_function3;
 use crate::parameters::Parameters;
 use crate::utils::normal::NormalDistrib;
@@ -265,7 +265,7 @@ pub fn calc_kdgtps_rho(
     kdgtps_rho
 }
 
-#[derive(Copy, Clone, Deserialize, Serialize)]
+#[derive(Copy, Clone, Deserialize, Serialize, PartialEq)]
 pub struct RacRandState {
     pub enabled: bool,
     /// When does the next update occur?
