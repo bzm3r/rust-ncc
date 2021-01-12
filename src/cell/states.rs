@@ -169,7 +169,7 @@ pub struct MechState {
     pub avg_tens_strain: f32,
     /// Sum of all forces that are acting on a vertex, except for
     /// adhesion, which comes from interaction information.
-    pub sum_fs: [V2D; NVERTS],
+    pub sum_forces: [V2D; NVERTS],
 }
 
 /// Calculates the various rates necessary to define the ODEs
@@ -267,7 +267,7 @@ impl Display for MechState {
         writeln!(f, "avg_tens_strain: {}", self.avg_tens_strain)?;
         fmt_var_arr(f, "edge_forces", &self.edge_forces)?;
         fmt_var_arr(f, "cyto_forces", &self.cyto_forces)?;
-        fmt_var_arr(f, "tot_forces", &self.sum_fs)
+        fmt_var_arr(f, "tot_forces", &self.sum_forces)
     }
 }
 
@@ -384,7 +384,7 @@ impl CoreState {
             cyto_forces,
             edge_forces,
             avg_tens_strain,
-            sum_fs,
+            sum_forces: sum_fs,
         }
     }
 
@@ -577,7 +577,7 @@ impl CoreState {
                 + vertex_rho_inact_flux
                 - delta_rho_activated;
             delta.poly[i] = (1.0 / world_parameters.vertex_eta)
-                * (mech_state.sum_fs[i] + inter_state.x_adhs[i]);
+                * (mech_state.sum_forces[i] + inter_state.x_adhs[i]);
         }
         delta
     }

@@ -1,9 +1,12 @@
 use druid::{AppLauncher, WindowDesc};
 
-mod data;
-use data::AppState;
+mod app_state;
+use app_state::AppState;
 
+mod scene;
+mod sim_data;
 mod view;
+
 use view::build_ui;
 
 pub fn main() {

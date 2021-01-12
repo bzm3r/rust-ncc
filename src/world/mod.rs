@@ -28,6 +28,8 @@ use serde::{Deserialize, Serialize};
 use std::error::Error;
 use std::f32::consts::PI;
 use std::path::PathBuf;
+use tracing::stdlib::iter::Zip;
+use tracing::stdlib::slice::Iter;
 
 #[derive(Clone, Deserialize, Serialize, PartialEq)]
 pub struct Cells {
@@ -138,6 +140,14 @@ impl DeepHistory {
                 .map(|fs| fs.to_mini())
                 .collect::<Vec<Snapshot>>(),
         }
+    }
+}
+
+impl Iterator for Cells {
+    type Item = ();
+
+    fn next(&mut self) -> Option<Self::Item> {
+        unimplemented!()
     }
 }
 

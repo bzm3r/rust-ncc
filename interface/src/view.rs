@@ -1,6 +1,6 @@
 use druid::{widget::Label, Widget};
 
-use crate::data::*;
+use crate::app_state::*;
 
 pub fn build_ui() -> impl Widget<AppState> {
     Label::new("Hello")
