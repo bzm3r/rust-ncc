@@ -1,16 +1,21 @@
-mod view;
-mod scene;
 mod animator;
+mod scene;
+mod view;
 
+use crate::scene::Scene;
 use crate::view::build_ui;
 use druid::{AppLauncher, Data, WindowDesc};
 
-#[derive(Clone, Copy, Data, Default)]
-pub struct AppState {}
+#[derive(Clone, Data, Default)]
+pub struct AppState {
+    scene: Scene,
+}
 
 impl AppState {
     pub fn new() -> AppState {
-        AppState {}
+        AppState {
+            scene: Scene::new(),
+        }
     }
 }
 

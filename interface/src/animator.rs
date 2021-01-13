@@ -1,15 +1,20 @@
 use crate::AppState;
 use druid::{
-    BoxConstraints, Data, Env, Event, EventCtx, LayoutCtx, LifeCycle,
-    LifeCycleCtx, PaintCtx, Size, UpdateCtx, Widget,
+    BoxConstraints, Color, Data, Env, Event, EventCtx, LayoutCtx,
+    LifeCycle, LifeCycleCtx, PaintCtx, Point, Rect, RenderContext,
+    Size, UpdateCtx, Widget,
 };
 
 #[derive(Copy, Clone, Data)]
-pub struct Animator {}
+pub struct Animator {
+    pub size: Size,
+}
 
 impl Animator {
     pub fn new() -> Animator {
-        Animator {}
+        Animator {
+            size: Size::new(800.0, 600.0),
+        }
     }
 }
 
@@ -48,14 +53,18 @@ impl Widget<AppState> for Animator {
         _data: &AppState,
         _env: &Env,
     ) -> Size {
-        Size::new(800.0, 450.0)
+        self.size
     }
 
     fn paint(
         &mut self,
-        _ctx: &mut PaintCtx,
-        _data: &AppState,
+        ctx: &mut PaintCtx,
+        data: &AppState,
         _env: &Env,
     ) {
+        ctx.fill(
+            Rect::from_origin_size(Point::new(0.0, 0.0), self.size),
+            &Color::BLUE,
+        )
     }
 }
