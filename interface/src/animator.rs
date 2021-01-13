@@ -1,4 +1,4 @@
-use crate::scene::Scene;
+use crate::AppState;
 use druid::{
     BoxConstraints, Data, Env, Event, EventCtx, LayoutCtx, LifeCycle,
     LifeCycleCtx, PaintCtx, Size, UpdateCtx, Widget,
@@ -7,14 +7,18 @@ use druid::{
 #[derive(Copy, Clone, Data)]
 pub struct Animator {}
 
-impl Animator {}
+impl Animator {
+    pub fn new() -> Animator {
+        Animator {}
+    }
+}
 
-impl Widget<Scene> for Animator {
+impl Widget<AppState> for Animator {
     fn event(
         &mut self,
         _ctx: &mut EventCtx,
         _event: &Event,
-        _data: &mut Scene,
+        _data: &mut AppState,
         _env: &Env,
     ) {
     }
@@ -23,7 +27,7 @@ impl Widget<Scene> for Animator {
         &mut self,
         _ctx: &mut LifeCycleCtx,
         _event: &LifeCycle,
-        _data: &Scene,
+        _data: &AppState,
         _env: &Env,
     ) {
     }
@@ -31,8 +35,8 @@ impl Widget<Scene> for Animator {
     fn update(
         &mut self,
         _ctx: &mut UpdateCtx,
-        _old_data: &Scene,
-        _data: &Scene,
+        _old_data: &AppState,
+        _data: &AppState,
         _env: &Env,
     ) {
     }
@@ -41,7 +45,7 @@ impl Widget<Scene> for Animator {
         &mut self,
         _ctx: &mut LayoutCtx,
         _bc: &BoxConstraints,
-        _data: &Scene,
+        _data: &AppState,
         _env: &Env,
     ) -> Size {
         Size::new(800.0, 450.0)
@@ -50,7 +54,7 @@ impl Widget<Scene> for Animator {
     fn paint(
         &mut self,
         _ctx: &mut PaintCtx,
-        _data: &Scene,
+        _data: &AppState,
         _env: &Env,
     ) {
     }

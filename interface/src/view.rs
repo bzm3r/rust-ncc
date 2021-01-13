@@ -1,5 +1,6 @@
+use crate::animator::Animator;
 use crate::AppState;
-use druid::widget::Button;
+use druid::widget::{Button, Flex};
 use druid::{Command, FileDialogOptions, FileSpec, Target, Widget};
 
 pub fn build_ui() -> impl Widget<AppState> {
@@ -20,7 +21,8 @@ pub fn build_ui() -> impl Widget<AppState> {
             ))
         });
 
-    open_button
+    let animator = Animator::new();
+    Flex::column().with_child(open_button).with_child(animator)
     // let canvas = Canvas::default();
     //
     // let mut app_widget = Flex::column();
