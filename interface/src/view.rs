@@ -1,5 +1,5 @@
 use crate::AppState;
-use druid::widget::{Button, Flex};
+use druid::widget::Button;
 use druid::{Command, FileDialogOptions, FileSpec, Target, Widget};
 
 pub fn build_ui() -> impl Widget<AppState> {

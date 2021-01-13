@@ -1,4 +1,6 @@
 mod view;
+mod scene;
+mod animator;
 
 use crate::view::build_ui;
 use druid::{AppLauncher, Data, WindowDesc};
