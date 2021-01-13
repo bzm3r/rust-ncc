@@ -4,7 +4,7 @@ use std::error::Error;
 use std::fs::File;
 use std::fs::OpenOptions;
 use std::io;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 #[allow(unused)]
 #[derive(Clone, Copy)]
@@ -122,7 +122,7 @@ pub fn load_compact(
     }
 }
 
-pub fn load_binc_from_path(file_path: &PathBuf) -> History {
+pub fn load_binc_from_path(file_path: &Path) -> History {
     if let Some(ext) = file_path.extension() {
         match ext.to_str().unwrap() {
             "binc" => {

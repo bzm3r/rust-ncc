@@ -28,8 +28,6 @@ use serde::{Deserialize, Serialize};
 use std::error::Error;
 use std::f32::consts::PI;
 use std::path::PathBuf;
-use tracing::stdlib::iter::Zip;
-use tracing::stdlib::slice::Iter;
 
 #[derive(Clone, Deserialize, Serialize, PartialEq)]
 pub struct Cells {
@@ -109,7 +107,7 @@ impl DeepSnapshot {
     }
 }
 
-#[derive(Deserialize, Serialize, Clone, PartialEq)]
+#[derive(Deserialize, Serialize, Clone, Default)]
 pub struct History {
     pub snap_freq: u32,
     pub char_quants: CharQuantities,

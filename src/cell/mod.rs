@@ -18,7 +18,7 @@ use crate::cell::states::{
 };
 use crate::interactions::{ContactData, Interactions};
 use crate::math::geometry::{calc_poly_area, LineSeg2D};
-use crate::math::v2d::{poly_to_string, V2D};
+use crate::math::v2d::V2D;
 use crate::parameters::{Parameters, WorldParameters};
 use crate::utils::pcg32::Pcg32;
 use crate::utils::{circ_ix_minus, circ_ix_plus};
@@ -93,6 +93,7 @@ pub fn confirm_volume_exclusion(
     contacts: &[ContactData],
     msg: &str,
 ) -> Result<(), String> {
+    use crate::math::v2d::V2D::poly_to_string;
     for (vi, v) in vs.iter().enumerate() {
         let u = &vs[circ_ix_minus(vi, NVERTS)];
         let w = &vs[circ_ix_plus(vi, NVERTS)];

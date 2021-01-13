@@ -1,22 +1,25 @@
-use druid::{AppLauncher, WindowDesc};
-
-mod app_state;
-use app_state::AppState;
-
-mod scene;
-mod sim_data;
 mod view;
 
-use view::build_ui;
+use crate::view::build_ui;
+use druid::{AppLauncher, Data, WindowDesc};
+
+#[derive(Clone, Copy, Data, Default)]
+pub struct AppState {}
+
+impl AppState {
+    pub fn new() -> AppState {
+        AppState {}
+    }
+}
 
 pub fn main() {
     let main_window = WindowDesc::new(build_ui)
-        .title("Todo Tutorial")
-        .window_size((400.0, 400.0));
+        .title("Rust NCC")
+        .window_size((800.0, 600.0));
 
-    let initial_state = AppState::new();
+    let app_state = AppState::new();
 
     AppLauncher::with_window(main_window)
-        .launch(initial_state)
+        .launch(app_state)
         .expect("Failed to launch application");
 }

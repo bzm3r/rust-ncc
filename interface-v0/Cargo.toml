@@ -1,5 +1,5 @@
 [package]
-name = "interface"
+name = "interface-v0"
 version = "0.1.0"
 authors = ["bhmerchant@gmail.com <bhmerchant@gmail.com>"]
 edition = "2018"
@@ -9,3 +9,6 @@ edition = "2018"
 [dependencies]
 druid = { version = "0.7.0", features = ["im"]}
 rust-ncc = { version = "0.1", path = "../" }
+
+
+

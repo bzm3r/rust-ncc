@@ -20,7 +20,7 @@ use serde::{Deserialize, Serialize};
 use std::f32::consts::PI;
 
 /// Characteristic quantities used for normalization.
-#[derive(Clone, Copy, Deserialize, Serialize, PartialEq)]
+#[derive(Clone, Copy, Deserialize, Serialize, Default)]
 pub struct CharQuantities {
     pub eta: Viscosity,
     pub f: Force,
@@ -188,7 +188,7 @@ pub struct RawWorldParameters {
     pub interactions: RawInteractionParams,
 }
 
-#[derive(Clone, Copy, Deserialize, Serialize, PartialEq)]
+#[derive(Clone, Copy, Deserialize, Serialize, PartialEq, Default)]
 pub struct CloseBounds {
     pub zero_at: f32,
     pub one_at: f32,
@@ -203,7 +203,7 @@ impl CloseBounds {
     }
 }
 
-#[derive(Clone, Copy, Deserialize, Serialize, PartialEq)]
+#[derive(Clone, Copy, Deserialize, Serialize, PartialEq, Default)]
 pub struct PhysicalContactParams {
     /// Maximum distance between two points, for them to be considered
     /// in contact. This is usually set to 0.5 micrometers.
@@ -267,7 +267,7 @@ pub struct BdryParams {
     pub mag: f32,
 }
 
-#[derive(Clone, Deserialize, Serialize, PartialEq)]
+#[derive(Clone, Deserialize, Serialize, PartialEq, Default)]
 pub struct InteractionParams {
     pub phys_contact: PhysicalContactParams,
     pub coa: Option<CoaParams>,
@@ -275,7 +275,7 @@ pub struct InteractionParams {
     pub bdry: Option<BdryParams>,
 }
 
-#[derive(Clone, Deserialize, Serialize, PartialEq)]
+#[derive(Clone, Deserialize, Serialize, PartialEq, Default)]
 pub struct WorldParameters {
     /// Viscosity value used to calculate change in position of a
     /// vertex due to calculated forces on it.
@@ -356,7 +356,7 @@ pub struct RawParameters {
     pub rand_vs: f32,
 }
 
-#[derive(Clone, Deserialize, Serialize, PartialEq)]
+#[derive(Clone, Deserialize, Serialize)]
 pub struct Parameters {
     /// Resting cell radius.
     pub cell_r: f32,

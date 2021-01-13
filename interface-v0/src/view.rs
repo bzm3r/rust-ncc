@@ -1,6 +1,12 @@
-use crate::AppState;
-use druid::widget::{Button, Flex};
-use druid::{Command, FileDialogOptions, FileSpec, Target, Widget};
+use druid::{
+    widget::{Button, Label},
+    Command, FileDialogOptions, FileSpec, Target, Widget,
+};
+
+use crate::app_state::*;
+use crate::artist::Artist;
+use crate::canvas::Canvas;
+use druid::widget::Flex;
 
 pub fn build_ui() -> impl Widget<AppState> {
     let binc = FileSpec::new("Bincode", &["binc"]);
@@ -20,11 +26,10 @@ pub fn build_ui() -> impl Widget<AppState> {
             ))
         });
 
-    open_button
-    // let canvas = Canvas::default();
-    //
-    // let mut app_widget = Flex::column();
-    // app_widget.add_child(open_button);
-    // app_widget.add_child(canvas);
-    // app_widget
+    let canvas = Canvas::default();
+
+    let mut app_widget = Flex::column();
+    app_widget.add_child(open_button);
+    app_widget.add_child(canvas);
+    app_widget
 }
