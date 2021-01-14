@@ -59,6 +59,7 @@ impl Widget<AppState> for Animator {
         app: &AppState,
         _env: &Env,
     ) {
-        app.paint_scene(ctx);
+        let canvas = ctx.size().to_rect();
+        app.paint_scene(ctx, canvas);
     }
 }

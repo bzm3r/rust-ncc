@@ -5,7 +5,7 @@ mod delegate;
 
 use crate::scene::Scene;
 use crate::view::build_ui;
-use druid::{AppLauncher, Data, WindowDesc, PaintCtx};
+use druid::{AppLauncher, Data, WindowDesc, PaintCtx, Rect};
 use rust_ncc::world::History;
 use std::sync::Arc;
 use log::info;
@@ -19,14 +19,14 @@ pub struct AppState {
 }
 
 impl AppState {
-    pub fn paint_scene(&self, ctx: &mut PaintCtx) {
+    pub fn paint_scene(&self, ctx: &mut PaintCtx, canvas: Rect) {
         let snapshot = if self.sim_history.snapshots.len() > 0 {
             Some(&self.sim_history.snapshots[self.frame])
         } else {
             None
         };
 
-        self.scene.draw_snapshot(ctx, snapshot);
+        self.scene.draw_snapshot(ctx, snapshot, canvas);
     }
 }
 
