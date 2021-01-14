@@ -1,22 +1,18 @@
 mod animator;
 mod scene;
 mod view;
+mod delegate;
 
 use crate::scene::Scene;
 use crate::view::build_ui;
 use druid::{AppLauncher, Data, WindowDesc};
+use rust_ncc::world::History;
+use std::sync::Arc;
 
 #[derive(Clone, Data, Default)]
 pub struct AppState {
     scene: Scene,
-}
-
-impl AppState {
-    pub fn new() -> AppState {
-        AppState {
-            scene: Scene::new(),
-        }
-    }
+    sim_history: Arc<History>,
 }
 
 pub fn main() {
@@ -24,7 +20,7 @@ pub fn main() {
         .title("Rust NCC")
         .window_size((800.0, 600.0));
 
-    let app_state = AppState::new();
+    let app_state = AppState::default();
 
     AppLauncher::with_window(main_window)
         .launch(app_state)
