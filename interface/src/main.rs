@@ -26,7 +26,7 @@ impl AppState {
             None
         };
 
-        self.scene.draw_snapshot(ctx, snapshot, canvas);
+        self.scene.draw_snapshot(ctx, snapshot, &self.sim_history.cell_params, canvas);
     }
 }
 
