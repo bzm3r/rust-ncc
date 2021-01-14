@@ -9,3 +9,5 @@ edition = "2018"
 [dependencies]
 druid = { version = "0.7.0", features = ["im"]}
 rust-ncc = { version = "0.1", path = "../" }
+log = "0.4.11"
+simple_logger = { version = "1.9.0", default-features = false }

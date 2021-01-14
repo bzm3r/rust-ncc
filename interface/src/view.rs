@@ -9,7 +9,6 @@ pub fn build_ui() -> impl Widget<AppState> {
         .allowed_types(vec![binc])
         .name_label("Simulation file")
         .title("Load simulation data")
-        .force_starting_directory("../output")
         .button_text("Load");
 
     let open_button =
@@ -23,9 +22,4 @@ pub fn build_ui() -> impl Widget<AppState> {
 
     let animator = Animator::new();
     Flex::column().with_child(open_button).with_flex_child(animator, 1.0)
-
-    // let mut app_widget = Flex::column();
-    // app_widget.add_child(open_button);
-    // app_widget.add_child(canvas);
-    // app_widget
 }

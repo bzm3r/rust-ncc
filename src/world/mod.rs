@@ -77,9 +77,10 @@ impl Cells {
 
             new_cell_states[ci] = new_cell_state;
         }
+        let rel_rgtps = new_cell_states.iter().map(|c|c.core.calc_relative_rgtp_activity(&group_parameters[c.group_ix])).collect::<Vec<[RelativeRgtpActivity; NVERTS]>>();
         Ok(Cells {
             states: new_cell_states,
-            interactions: interaction_generator.generate(),
+            interactions: interaction_generator.generate(&rel_rgtps),
         })
     }
 }
@@ -245,7 +246,7 @@ impl World {
             world_params.interactions.clone(),
         );
         // Generate initial cell interactions.
-        let cell_interactions = interaction_generator.generate();
+        let cell_interactions = interaction_generator.generate(&cell_rgtps);
         // Create `Cell` structures to represent each cell, and the random number generator associated per cell.
         let mut cell_states = vec![];
         for (cell_ix, group_ix) in

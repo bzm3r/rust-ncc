@@ -148,11 +148,11 @@ impl InteractionGenerator {
             .update(cell_ix, &self.cell_polys);
     }
 
-    pub fn generate(&self) -> Vec<Interactions> {
+    pub fn generate(&self, rel_rgtps: &Vec<[RelativeRgtpActivity; NVERTS]>) -> Vec<Interactions> {
         let num_cells = self.cell_polys.len();
         let PhysContactFactors { adh, cil, cal } = self
             .phys_contact_generator
-            .generate(self.all_rgtps.as_slice());
+            .generate(rel_rgtps);
         let r_coas = self
             .coa_generator
             .as_ref()

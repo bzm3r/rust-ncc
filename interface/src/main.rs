@@ -8,6 +8,8 @@ use crate::view::build_ui;
 use druid::{AppLauncher, Data, WindowDesc, PaintCtx};
 use rust_ncc::world::History;
 use std::sync::Arc;
+use log::info;
+use crate::delegate::Delegate;
 
 #[derive(Clone, Data, Default)]
 pub struct AppState {
@@ -35,7 +37,13 @@ pub fn main() {
 
     let app_state = AppState::default();
 
+    simple_logger::SimpleLogger::new()
+        .init()
+        .expect("Failed to initialize logger.");
+    info!("Successfully initialized logger.");
+
     AppLauncher::with_window(main_window)
+        .delegate(Delegate)
         .launch(app_state)
         .expect("Failed to launch application");
 }
