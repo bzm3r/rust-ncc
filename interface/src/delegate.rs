@@ -2,7 +2,6 @@ use crate::AppState;
 use druid::{AppDelegate, DelegateCtx, Target, Command, Env, Handled, commands};
 use std::sync::Arc;
 use rust_ncc::world::hardio::load_binc_from_path;
-use log::info;
 
 pub struct Delegate;
 
