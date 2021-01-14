@@ -17,6 +17,7 @@ impl AppDelegate<AppState> for Delegate {
         if let Some(file_info) = cmd.get(commands::OPEN_FILE) {
             app.sim_history =
                 Arc::new(load_binc_from_path(file_info.path()));
+            app.frame = 0;
             return Handled::Yes;
         }
         Handled::No

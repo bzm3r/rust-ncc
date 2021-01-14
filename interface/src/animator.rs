@@ -1,5 +1,5 @@
 use crate::AppState;
-use druid::{BoxConstraints, Data, Env, Event, EventCtx, LayoutCtx, LifeCycle, LifeCycleCtx, PaintCtx, RenderContext, Size, UpdateCtx, Widget};
+use druid::{BoxConstraints, Data, Env, Event, EventCtx, LayoutCtx, LifeCycle, LifeCycleCtx, PaintCtx, Size, UpdateCtx, Widget};
 
 #[derive(Copy, Clone, Data)]
 pub struct Animator {
@@ -33,11 +33,14 @@ impl Widget<AppState> for Animator {
 
     fn update(
         &mut self,
-        _ctx: &mut UpdateCtx,
-        _old_data: &AppState,
-        _data: &AppState,
+        ctx: &mut UpdateCtx,
+        old_data: &AppState,
+        data: &AppState,
         _env: &Env,
     ) {
+        if !old_data.same(data) {
+            ctx.request_paint();
+        }
     }
 
     fn layout(
@@ -56,10 +59,6 @@ impl Widget<AppState> for Animator {
         app: &AppState,
         _env: &Env,
     ) {
-        let rect = ctx.size().to_rect();
-        ctx.fill(
-            rect,
-            &app.scene.color,
-        )
+        app.paint_scene(ctx);
     }
 }

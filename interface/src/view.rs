@@ -23,7 +23,7 @@ pub fn build_ui() -> impl Widget<AppState> {
 
     let animator = Animator::new();
     Flex::column().with_child(open_button).with_flex_child(animator, 1.0)
-    //
+
     // let mut app_widget = Flex::column();
     // app_widget.add_child(open_button);
     // app_widget.add_child(canvas);
