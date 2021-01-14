@@ -1,5 +1,5 @@
 use crate::AppState;
-use druid::{BoxConstraints, Data, Env, Event, EventCtx, LayoutCtx, LifeCycle, LifeCycleCtx, PaintCtx, Size, UpdateCtx, Widget};
+use druid::{BoxConstraints, Data, Env, Event, EventCtx, LayoutCtx, LifeCycle, LifeCycleCtx, PaintCtx, Size, UpdateCtx, Widget, KeyEvent, Code};
 
 #[derive(Copy, Clone, Data)]
 pub struct Animator {
@@ -14,11 +14,41 @@ impl Animator {
 impl Widget<AppState> for Animator {
     fn event(
         &mut self,
-        _ctx: &mut EventCtx,
-        _event: &Event,
-        _data: &mut AppState,
+        ctx: &mut EventCtx,
+        event: &Event,
+        app: &mut AppState,
         _env: &Env,
     ) {
+        match event {
+            Event::KeyDown(KeyEvent { code, ..}) => {
+                match code {
+                    Code::KeyM => {
+                        app.frame = {
+                            let new_frame = app.frame as isize + 1;
+                            if new_frame < app.sim_history.snapshots.len() as isize {
+                                new_frame
+                            } else {
+                                0
+                            }
+                        } as usize;
+                        ctx.request_paint();
+                    },
+                    Code::KeyN => {
+                        app.frame = {
+                            let new_frame = app.frame as isize - 1;
+                            if new_frame < 0 {
+                                app.sim_history.snapshots.len() - 1
+                            } else {
+                                new_frame as usize
+                            }
+                        } as usize;
+                        ctx.request_paint();
+                    },
+                    _ => {}
+                }
+            },
+            _ => {}
+        }
     }
 
     fn lifecycle(
@@ -34,11 +64,11 @@ impl Widget<AppState> for Animator {
     fn update(
         &mut self,
         ctx: &mut UpdateCtx,
-        old_data: &AppState,
-        data: &AppState,
+        old_state: &AppState,
+        new_state: &AppState,
         _env: &Env,
     ) {
-        if !old_data.same(data) {
+        if !old_state.same(new_state) {
             ctx.request_paint();
         }
     }
