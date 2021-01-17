@@ -1,5 +1,6 @@
 use crate::NVERTS;
 use serde::{Deserialize, Serialize};
+use std::fmt::Debug;
 
 // /// `CcVvDat` allows storage of (cell, vertex)-(cell, vertex) data
 // /// indexed by `(ci, vi, oci, ovi)`, (`ci` for "cell index", `oci` for
@@ -102,8 +103,8 @@ use serde::{Deserialize, Serialize};
 /// a particular vertex on it. All data stored must have
 /// the same type. However, the structure is generic over different
 /// data types as long as they implement `Copy` and `Default`.
-#[derive(Clone, Serialize, Deserialize)]
-pub struct CvCvDat<T: Copy> {
+#[derive(Clone, Serialize, Deserialize, PartialEq, Default, Debug)]
+pub struct CvCvDat<T: Copy + Default + Debug + PartialEq> {
     pub num_cells: usize,
     c_stride: usize,
     cv_stride: usize,
@@ -111,7 +112,7 @@ pub struct CvCvDat<T: Copy> {
     undefined: T,
 }
 
-impl<T: Copy> CvCvDat<T> {
+impl<T: Copy + Debug + Default + PartialEq> CvCvDat<T> {
     /// Generate an empty `CvCvDat` structure.
     pub fn empty(num_cells: usize, undefined: T) -> CvCvDat<T> {
         let cv_stride = (num_cells - 1) * NVERTS;

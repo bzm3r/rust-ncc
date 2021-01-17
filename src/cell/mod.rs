@@ -27,7 +27,9 @@ use serde::{Deserialize, Serialize};
 use std::f32::consts::PI;
 
 /// Cell state structure.
-#[derive(Copy, Clone, Deserialize, Serialize, PartialEq)]
+#[derive(
+    Copy, Clone, Deserialize, Serialize, PartialEq, Default, Debug,
+)]
 pub struct Cell {
     /// Index of cell within world.
     pub ix: usize,
@@ -93,7 +95,7 @@ pub fn confirm_volume_exclusion(
     contacts: &[ContactData],
     msg: &str,
 ) -> Result<(), String> {
-    use crate::math::v2d::V2D::poly_to_string;
+    use crate::math::v2d::poly_to_string;
     for (vi, v) in vs.iter().enumerate() {
         let u = &vs[circ_ix_minus(vi, NVERTS)];
         let w = &vs[circ_ix_plus(vi, NVERTS)];

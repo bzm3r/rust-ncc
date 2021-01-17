@@ -1,51 +1,41 @@
-use crate::world::{DeepHistory, History};
+use crate::world::{Snapshot, WorldInfo};
 use bincode::{deserialize_from, serialize_into};
-use std::error::Error;
+use serde::Serialize;
+use serde_cbor::ser::IoWrite;
+use std::borrow::Borrow;
 use std::fs::File;
 use std::fs::OpenOptions;
-use std::io;
 use std::path::{Path, PathBuf};
+use std::sync::mpsc::{channel, Receiver, Sender};
+use std::thread::JoinHandle;
+use std::{io, thread};
 
 #[allow(unused)]
 #[derive(Clone, Copy)]
 pub enum Format {
     Cbor,
-    Json,
     Bincode,
 }
 
-pub fn get_file_name(
-    compact: bool,
-    format: Format,
-    title: &str,
-) -> String {
+pub fn get_file_name(format: Format, name: &str) -> String {
     let ext = match format {
         Format::Cbor => "cbor".to_string(),
-        Format::Json => "json".to_string(),
         Format::Bincode => "binc".to_string(),
     };
-
-    let dat_ty = if compact {
-        "compact".to_string()
-    } else {
-        "full".to_string()
-    };
-
     if cfg!(features = "validate") {
-        format!("history_validated_{}_{}.{}", dat_ty, title, ext)
+        format!("history_validated_{}.{}", name, ext)
     } else {
-        format!("history_{}_{}.{}", dat_ty, title, ext)
+        format!("history_{}.{}", name, ext)
     }
 }
 
-pub fn write_file(
-    compact: bool,
+pub fn get_clean_file(
     out_dir: &PathBuf,
-    title: &str,
+    name: &str,
     format: Format,
 ) -> io::Result<File> {
     let mut path = out_dir.clone();
-    path.push(get_file_name(compact, format, title));
+    path.push(get_file_name(format, name));
 
     OpenOptions::new()
         .write(true)
@@ -54,75 +44,155 @@ pub fn write_file(
         .open(&path)
 }
 
-pub fn read_file(
-    compact: bool,
+pub fn get_read_file(
     out_dir: &PathBuf,
-    title: &str,
+    name: &str,
     format: Format,
 ) -> io::Result<File> {
     let mut path = out_dir.clone();
-    path.push(get_file_name(compact, format, title));
+    path.push(get_file_name(format, name));
 
     OpenOptions::new().read(true).open(&path)
 }
 
-pub fn save_compact(
-    data: History,
-    out_dir: &PathBuf,
-    formats: Vec<Format>,
-    title: &str,
-) -> Result<(), Box<dyn Error>> {
-    for format in formats {
-        let mut f = write_file(true, out_dir, title, format)?;
+pub fn save_binc_to_cbor(binc_path: &PathBuf, cbor_path: &PathBuf) {
+    let mut src =
+        OpenOptions::new().read(true).open(binc_path).unwrap();
+    let dst = OpenOptions::new()
+        .write(true)
+        .create(true)
+        .truncate(true)
+        .open(cbor_path)
+        .unwrap();
+    let mut serializer =
+        serde_cbor::Serializer::new(IoWrite::new(dst));
+    let world_info: WorldInfo = deserialize_from(&mut src).unwrap();
+    world_info.serialize(&mut serializer).unwrap();
 
-        match format {
-            Format::Cbor => {
-                serde_cbor::to_writer(&mut f, &data)?;
+    loop {
+        let rd: bincode::Result<Vec<Snapshot>> =
+            deserialize_from(&mut src);
+        match rd {
+            Ok(snaps) => {
+                snaps.serialize(&mut serializer).unwrap();
             }
-            Format::Json => serde_json::to_writer(&mut f, &data)?,
-            Format::Bincode => serialize_into(&mut f, &data)?,
-        };
+            Err(err) => {
+                if let bincode::ErrorKind::Io(std_err) = err.borrow()
+                {
+                    if let io::ErrorKind::UnexpectedEof =
+                        std_err.kind()
+                    {
+                        break;
+                    }
+                }
+                panic!("{}", err);
+            }
+        }
     }
-
-    Ok(())
 }
 
-pub fn save_deep(
-    data: DeepHistory,
-    out_dir: &PathBuf,
-    formats: Vec<Format>,
-    title: &str,
-) -> Result<(), Box<dyn Error>> {
-    for format in formats {
-        let mut f = write_file(false, out_dir, title, format)?;
+pub struct AsyncBincoder {
+    pub output_dir: PathBuf,
+    pub file_name: String,
+    sender: Sender<Vec<Snapshot>>,
+    buf: Vec<Snapshot>,
+    max_capacity: usize,
+    thread_handle: JoinHandle<()>,
+    pub file_path: PathBuf,
+}
 
-        match format {
-            Format::Cbor => {
-                serde_cbor::to_writer(&mut f, &data)?;
+impl AsyncBincoder {
+    pub fn new(
+        output_dir: PathBuf,
+        file_name: String,
+        max_capacity: usize,
+        truncate: bool,
+        history_info: WorldInfo,
+    ) -> AsyncBincoder {
+        let path = output_dir
+            .clone()
+            .join(get_file_name(Format::Bincode, &file_name));
+        let (sender, receiver): (
+            Sender<Vec<Snapshot>>,
+            Receiver<Vec<Snapshot>>,
+        ) = channel();
+        let mut file = OpenOptions::new()
+            .create(true)
+            .write(true)
+            .append(!truncate)
+            .truncate(truncate)
+            .open(&path)
+            .unwrap();
+
+        if truncate {
+            serialize_into(&mut file, &history_info).unwrap();
+        }
+
+        let thread_handle = thread::spawn(move || {
+            let mut f = file;
+            let r = receiver;
+            while let Ok(data_vec) = &r.recv() {
+                serialize_into(&mut f, &data_vec).unwrap();
             }
-            Format::Json => serde_json::to_writer(&mut f, &data)?,
-            Format::Bincode => serialize_into(&mut f, &data)?,
-        };
+        });
+
+        AsyncBincoder {
+            output_dir,
+            file_name,
+            sender,
+            buf: Vec::with_capacity(max_capacity),
+            max_capacity,
+            thread_handle,
+            file_path: path.clone(),
+        }
     }
 
-    Ok(())
+    pub fn push(&mut self, data: Snapshot) {
+        self.buf.push(data);
+        if self.buf.len() == self.max_capacity {
+            self.drain();
+        }
+    }
+
+    pub fn drain(&mut self) {
+        self.sender.send(self.buf.drain(..).collect()).unwrap();
+    }
+
+    pub fn finish(mut self, save_cbor: bool) {
+        self.drain();
+        let Self {
+            sender,
+            thread_handle,
+            output_dir,
+            file_name,
+            file_path,
+            ..
+        } = self;
+        drop(sender);
+        thread_handle.join().unwrap();
+        if save_cbor {
+            let cbor_path = output_dir
+                .clone()
+                .join(get_file_name(Format::Cbor, &file_name));
+            save_binc_to_cbor(&file_path, &cbor_path);
+        }
+    }
 }
 
 pub fn load(
     out_dir: &PathBuf,
     format: Format,
-    title: &str,
-) -> History {
-    let mut f = read_file(true, out_dir, title, format).unwrap();
+    name: &str,
+) -> WorldInfo {
+    let mut f = get_read_file(out_dir, name, format).unwrap();
 
     match format {
         Format::Cbor => serde_cbor::from_reader(&mut f).unwrap(),
-        Format::Json => serde_json::from_reader(&mut f).unwrap(),
         Format::Bincode => deserialize_from(&mut f).unwrap(),
     }
 }
 
-pub fn load_binc_from_path(file_path: &Path) -> History {
+pub fn load_binc_from_path(file_path: &Path) -> WorldInfo {
     if let Some(ext) = file_path.extension() {
         match ext.to_str().unwrap() {
             "binc" => {
@@ -142,19 +212,5 @@ pub fn load_binc_from_path(file_path: &Path) -> History {
             "no file extension in path: {}",
             file_path.to_str().unwrap()
         )
-    }
-}
-
-pub fn load_deep(
-    out_dir: &PathBuf,
-    format: Format,
-    title: &str,
-) -> DeepHistory {
-    let mut f = read_file(false, out_dir, title, format).unwrap();
-
-    match format {
-        Format::Cbor => serde_cbor::from_reader(&mut f).unwrap(),
-        Format::Json => serde_json::from_reader(&mut f).unwrap(),
-        Format::Bincode => deserialize_from(&mut f).unwrap(),
     }
 }

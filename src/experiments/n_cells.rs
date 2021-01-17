@@ -29,10 +29,10 @@ fn group_layout(
         x: char_quants.normalize(&Length(0.0)),
         y: char_quants.normalize(&Length(0.0)),
     };
-    let side_len = (num_cells as f64).sqrt() as usize;
+    let side_len = (num_cells as f64).sqrt();
     let r = GroupBBox {
-        width: side_len,
-        height: side_len,
+        width: side_len.ceil() as usize,
+        height: (num_cells as f64 / side_len).ceil() as usize,
         bottom_left: centroid,
     };
     if r.width * r.height > num_cells {
@@ -121,7 +121,7 @@ pub fn generate(seed: Option<u64>, num_cells: usize) -> Experiment {
     let cell_groups =
         cell_groups(&mut rng, &char_quants, vec![num_cells]);
     Experiment {
-        file_name: "four_cells".to_string(),
+        file_name: "n_cells".to_string(),
         char_quants,
         world_parameters,
         cell_groups,

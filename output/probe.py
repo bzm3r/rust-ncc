@@ -4,15 +4,21 @@ import numpy as np
 import json
 import cbor2
 
-output = None
-file_name = "history_compact_four_cells.cbor"
+world_history = None
+snapshots = []
+file_name = "history_n_cells.cbor"
 with open(file_name, mode='rb') as sf:
-    output = cbor2.load(sf)
+    world_history = cbor2.load(sf)
+    success = True
+    while success:
+        try:
+            snapshots += cbor2.load(sf)
+        except:
+            success = False
 
-snapshots = [s for s in output["snapshots"]]
 tsteps = [s["tstep"] for s in snapshots]
 state_recs = [s["cells"] for s in snapshots]
-frequency = output["snap_freq"]
+frequency = world_history["snap_freq"]
 
 def lookup_tstep_ix(tstep):
     return int(np.floor(tstep/frequency))

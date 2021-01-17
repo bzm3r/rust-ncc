@@ -1,15 +1,16 @@
 use crate::interactions::dat_utils::{sort_ixs, sym_sum};
 use serde::{Deserialize, Serialize};
+use std::fmt::Debug;
 
-#[derive(Clone, Default, Deserialize, Serialize, PartialEq)]
-pub struct SymCcDat<T: Copy + Default + PartialEq> {
+#[derive(Clone, Deserialize, Serialize, PartialEq, Default, Debug)]
+pub struct SymCcDat<T: Copy + Default + PartialEq + Debug> {
     pub num_cells: usize,
     unique_elements: usize,
     dat: Vec<T>,
     undefined: T,
 }
 
-impl<T: Copy + Default + PartialEq> SymCcDat<T> {
+impl<T: Copy + Default + PartialEq + Debug> SymCcDat<T> {
     pub fn new(num_cells: usize, undefined: T) -> SymCcDat<T> {
         let sym_sum_nc = sym_sum(num_cells);
         SymCcDat {

@@ -6,19 +6,13 @@ use std::path::PathBuf;
 use std::time::Instant;
 
 fn main() {
-    let exp = experiments::n_cells::generate(Some(3), 49);
+    let exp = experiments::n_cells::generate(Some(3), 16);
 
     let output_dir = PathBuf::from(DEFAULT_OUTPUT_DIR);
-    let mut w = world::World::new(exp, Some(output_dir.clone()), 10);
+    let mut w = world::World::new(exp, None, 10, 100);
 
     let now = Instant::now();
-    w.simulate(3.0 * 3600.0);
+    w.simulate(3.0 * 3600.0, true);
 
     println!("Simulation complete. {} s.", now.elapsed().as_secs());
-    let now = Instant::now();
-    w.save_history(true, vec![]).unwrap();
-    println!(
-        "Finished saving history. {} s.",
-        now.elapsed().as_secs()
-    );
 }

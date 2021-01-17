@@ -193,7 +193,7 @@ impl CoaGenerator {
                             } = self.dat.get(ci, vi, oci, ovi);
                             *x_coa = mag * (distrib_exp * dist).exp()
                                 / (num_intersects + 1.0)
-                                    .powf(los_penalty);
+                                    .powf(los_penalty as f32);
                         }
                     }
                 }

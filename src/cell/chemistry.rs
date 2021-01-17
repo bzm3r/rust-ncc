@@ -18,7 +18,7 @@ use rand::Rng;
 use rand_distr::{Distribution, Uniform};
 use serde::{Deserialize, Serialize};
 use std::fmt;
-use std::fmt::Display;
+use std::fmt::{Debug, Display};
 
 pub enum DistributionType {
     /// Distribute Rho GTPase randomly over all vertices.
@@ -83,7 +83,9 @@ impl DistributionScheme {
     }
 }
 
-#[derive(Clone, Copy, Deserialize, Serialize)]
+#[derive(
+    Clone, Copy, Deserialize, Serialize, Default, Debug, PartialEq,
+)]
 pub struct RgtpDistribution {
     pub active: [f32; NVERTS],
     pub inactive: [f32; NVERTS],
@@ -273,6 +275,12 @@ pub struct RacRandState {
     /// Rac1 randomization factors per vertex.
     pub x_rands: [f32; NVERTS],
     distrib: NormalDistrib,
+}
+
+impl Debug for RacRandState {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "RacRandState {{ enabled: {}, next_update: {}, x_rands: [{}], distrib: <skipped> }}", self.enabled, self.next_update, self.x_rands.iter().map(|x| x.to_string()).collect::<Vec<String>>().join(", "))
+    }
 }
 
 impl RacRandState {

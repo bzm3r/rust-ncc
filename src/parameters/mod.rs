@@ -20,7 +20,7 @@ use serde::{Deserialize, Serialize};
 use std::f32::consts::PI;
 
 /// Characteristic quantities used for normalization.
-#[derive(Clone, Copy, Deserialize, Serialize, Default)]
+#[derive(Clone, Copy, Deserialize, Serialize, Default, Debug)]
 pub struct CharQuantities {
     pub eta: Viscosity,
     pub f: Force,
@@ -51,7 +51,7 @@ impl CharQuantities {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct RawCloseBounds {
     pub zero_at: Length,
     pub one_at: Length,
@@ -63,7 +63,7 @@ impl RawCloseBounds {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct RawPhysicalContactParams {
     pub range: RawCloseBounds,
     pub adh_mag: Option<Force>,
@@ -90,7 +90,7 @@ impl RawPhysicalContactParams {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct RawCoaParams {
     /// Factor controlling to what extent line-of-sight blockage should be penalized.
     pub los_penalty: f32,
@@ -112,7 +112,7 @@ impl RawCoaParams {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct RawChemAttrParams {
     center: [Length; 2],
     center_mag: f32,
@@ -133,7 +133,7 @@ impl RawChemAttrParams {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct RawBdryParams {
     shape: Vec<[Length; 2]>,
     skip_bb_check: bool,
@@ -160,7 +160,7 @@ impl RawBdryParams {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct RawInteractionParams {
     pub coa: Option<RawCoaParams>,
     pub chem_attr: Option<RawChemAttrParams>,
@@ -182,13 +182,15 @@ impl RawInteractionParams {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct RawWorldParameters {
     pub vertex_eta: Viscosity,
     pub interactions: RawInteractionParams,
 }
 
-#[derive(Clone, Copy, Deserialize, Serialize, PartialEq, Default)]
+#[derive(
+    Clone, Copy, Deserialize, Serialize, PartialEq, Default, Debug,
+)]
 pub struct CloseBounds {
     pub zero_at: f32,
     pub one_at: f32,
@@ -203,7 +205,9 @@ impl CloseBounds {
     }
 }
 
-#[derive(Clone, Copy, Deserialize, Serialize, PartialEq, Default)]
+#[derive(
+    Clone, Copy, Deserialize, Serialize, PartialEq, Default, Debug,
+)]
 pub struct PhysicalContactParams {
     /// Maximum distance between two points, for them to be considered
     /// in contact. This is usually set to 0.5 micrometers.
@@ -219,7 +223,7 @@ pub struct PhysicalContactParams {
     pub cil_mag: f32,
 }
 
-#[derive(Clone, Copy, Deserialize, Serialize, PartialEq)]
+#[derive(Clone, Copy, Deserialize, Serialize, PartialEq, Debug)]
 pub struct CoaParams {
     //TODO: Expand upon LOS system.
     /// Factor controlling to what extent line-of-sight blockage
@@ -242,7 +246,7 @@ pub struct CoaParams {
     pub distrib_exp: f32,
 }
 
-#[derive(Clone, Copy, Deserialize, Serialize, PartialEq)]
+#[derive(Clone, Copy, Deserialize, Serialize, PartialEq, Debug)]
 pub struct ChemAttrParams {
     /// Location of the chemoattractant center.
     pub center: V2D,
@@ -254,7 +258,7 @@ pub struct ChemAttrParams {
     pub slope: f32,
 }
 
-#[derive(Clone, Deserialize, Serialize, PartialEq)]
+#[derive(Clone, Deserialize, Serialize, PartialEq, Debug)]
 pub struct BdryParams {
     /// Shape of the boundary.
     pub shape: Vec<V2D>,
@@ -267,7 +271,7 @@ pub struct BdryParams {
     pub mag: f32,
 }
 
-#[derive(Clone, Deserialize, Serialize, PartialEq, Default)]
+#[derive(Clone, Deserialize, Serialize, PartialEq, Default, Debug)]
 pub struct InteractionParams {
     pub phys_contact: PhysicalContactParams,
     pub coa: Option<CoaParams>,
@@ -275,7 +279,7 @@ pub struct InteractionParams {
     pub bdry: Option<BdryParams>,
 }
 
-#[derive(Clone, Deserialize, Serialize, PartialEq, Default)]
+#[derive(Clone, Deserialize, Serialize, PartialEq, Default, Debug)]
 pub struct WorldParameters {
     /// Viscosity value used to calculate change in position of a
     /// vertex due to calculated forces on it.
@@ -356,7 +360,7 @@ pub struct RawParameters {
     pub rand_vs: f32,
 }
 
-#[derive(Clone, Deserialize, Serialize)]
+#[derive(Clone, Deserialize, Serialize, Default, Debug, PartialEq)]
 pub struct Parameters {
     /// Resting cell radius.
     pub cell_r: f32,

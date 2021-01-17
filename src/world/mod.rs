@@ -21,15 +21,14 @@ use crate::parameters::{
 use crate::NVERTS;
 //use rand_core::SeedableRng;
 use crate::utils::pcg32::Pcg32;
-use crate::world::hardio::{save_compact, save_deep, Format};
+use crate::world::hardio::AsyncBincoder;
 use rand::seq::SliceRandom;
 use rand::{RngCore, SeedableRng};
 use serde::{Deserialize, Serialize};
-use std::error::Error;
 use std::f32::consts::PI;
 use std::path::PathBuf;
 
-#[derive(Clone, Deserialize, Serialize, PartialEq)]
+#[derive(Clone, Deserialize, Serialize, PartialEq, Default, Debug)]
 pub struct Cells {
     pub states: Vec<Cell>,
     pub interactions: Vec<Interactions>,
@@ -92,61 +91,19 @@ impl Cells {
     }
 }
 
-#[derive(Deserialize, Serialize, Clone)]
-pub struct DeepSnapshot {
-    pub tstep: u32,
-    pub interaction_generator: InteractionGenerator,
-    pub rng: Pcg32,
-    pub cells: Cells,
-}
-
-#[derive(Clone, Deserialize, Serialize, PartialEq)]
+#[derive(Clone, Deserialize, Serialize, PartialEq, Debug)]
 pub struct Snapshot {
     pub tstep: u32,
     pub cells: Cells,
+    pub rng: Pcg32,
 }
 
-impl DeepSnapshot {
-    pub fn to_mini(&self) -> Snapshot {
-        Snapshot {
-            tstep: self.tstep,
-            cells: self.cells.clone(),
-        }
-    }
-}
-
-#[derive(Deserialize, Serialize, Clone, Default)]
-pub struct History {
+#[derive(Deserialize, Serialize, Clone, Default, Debug)]
+pub struct WorldInfo {
     pub snap_freq: u32,
     pub char_quants: CharQuantities,
     pub world_params: WorldParameters,
     pub cell_params: Vec<Parameters>,
-    pub snapshots: Vec<Snapshot>,
-}
-
-#[derive(Deserialize, Serialize, Clone)]
-pub struct DeepHistory {
-    pub snap_freq: u32,
-    pub char_quants: CharQuantities,
-    pub world_params: WorldParameters,
-    pub cell_params: Vec<Parameters>,
-    pub snapshots: Vec<DeepSnapshot>,
-}
-
-impl DeepHistory {
-    pub fn to_history(&self) -> History {
-        History {
-            snap_freq: self.snap_freq,
-            char_quants: self.char_quants,
-            world_params: self.world_params.clone(),
-            cell_params: self.cell_params.clone(),
-            snapshots: self
-                .snapshots
-                .iter()
-                .map(|fs| fs.to_mini())
-                .collect::<Vec<Snapshot>>(),
-        }
-    }
 }
 
 impl Iterator for Cells {
@@ -162,12 +119,10 @@ pub struct World {
     tstep: u32,
     world_params: WorldParameters,
     group_params: Vec<Parameters>,
-    pub history: Vec<DeepSnapshot>,
+    history_writer: Option<AsyncBincoder>,
     cells: Cells,
     interaction_generator: InteractionGenerator,
     pub rng: Pcg32,
-    out_dir: Option<PathBuf>,
-    file_name: String,
     snap_freq: u32,
 }
 
@@ -189,6 +144,7 @@ impl World {
         experiment: Experiment,
         out_dir: Option<PathBuf>,
         snap_freq: u32,
+        max_on_ram: usize,
     ) -> World {
         // Unpack relevant info from `Experiment` data structure.
         let Experiment {
@@ -279,37 +235,47 @@ impl World {
             states: cell_states,
             interactions: cell_interactions.clone(),
         };
-        let history = vec![DeepSnapshot {
-            tstep: 0,
-            interaction_generator: interaction_generator.clone(),
-            rng,
-            cells: cells.clone(),
-        }];
+        let history_writer = if let Some(out_dir) = out_dir {
+            Some(Self::init_history_writer(
+                out_dir,
+                experiment.file_name,
+                WorldInfo {
+                    snap_freq,
+                    char_quants,
+                    world_params: world_params.clone(),
+                    cell_params: cells
+                        .states
+                        .iter()
+                        .map(|s| group_params[s.group_ix].clone())
+                        .collect::<Vec<Parameters>>(),
+                },
+                max_on_ram,
+            ))
+        } else {
+            None
+        };
         World {
             tstep: 0,
             char_quants,
             world_params,
             group_params,
-            history,
             cells,
             interaction_generator,
             rng,
-            out_dir,
-            file_name: experiment.file_name,
             snap_freq,
+            history_writer,
         }
     }
 
-    pub fn take_snapshot(&self) -> DeepSnapshot {
-        DeepSnapshot {
+    pub fn take_snapshot(&self) -> Snapshot {
+        Snapshot {
             tstep: self.tstep,
-            interaction_generator: self.interaction_generator.clone(),
             rng: self.rng,
             cells: self.cells.clone(),
         }
     }
 
-    pub fn simulate(&mut self, final_tpoint: f32) {
+    pub fn simulate(&mut self, final_tpoint: f32, save_cbor: bool) {
         let num_tsteps =
             (final_tpoint / self.char_quants.time()).ceil() as u32;
         while self.tstep < num_tsteps {
@@ -323,24 +289,28 @@ impl World {
                     &mut self.interaction_generator,
                 )
                 .unwrap_or_else(|e| {
-                    self.save_history(
-                        true,
-                        vec![Format::Cbor, Format::Bincode],
-                    )
-                    .unwrap();
+                    self.finish_saving_history(save_cbor);
                     panic!("tstep: {}\n{}", self.tstep, e);
                 });
 
             self.cells = new_cells;
             self.tstep += 1;
-            if self.tstep % self.snap_freq == 0 {
-                self.history.push(self.take_snapshot());
+            if self.tstep % self.snap_freq == 0
+                && self.history_writer.is_some()
+            {
+                let snapshot = self.take_snapshot();
+                if let Some(hw) = self.history_writer.as_mut() {
+                    if self.tstep % self.snap_freq == 0 {
+                        hw.push(snapshot);
+                    }
+                }
             }
         }
+        self.finish_saving_history(save_cbor);
     }
 
-    pub fn deep_history(&self) -> DeepHistory {
-        DeepHistory {
+    pub fn history_info(&self) -> WorldInfo {
+        WorldInfo {
             snap_freq: self.snap_freq,
             char_quants: self.char_quants,
             world_params: self.world_params.clone(),
@@ -350,54 +320,28 @@ impl World {
                 .iter()
                 .map(|s| self.group_params[s.group_ix].clone())
                 .collect::<Vec<Parameters>>(),
-            snapshots: self.history.clone(),
         }
     }
 
-    pub fn history(&self) -> History {
-        History {
-            snap_freq: self.snap_freq,
-            char_quants: self.char_quants,
-            world_params: self.world_params.clone(),
-            cell_params: self
-                .cells
-                .states
-                .iter()
-                .map(|s| self.group_params[s.group_ix].clone())
-                .collect::<Vec<Parameters>>(),
-            snapshots: self
-                .history
-                .iter()
-                .map(|fs| fs.to_mini())
-                .collect::<Vec<Snapshot>>(),
-        }
+    pub fn init_history_writer(
+        output_dir: PathBuf,
+        file_name: String,
+        history_info: WorldInfo,
+        max_capacity: usize,
+    ) -> AsyncBincoder {
+        AsyncBincoder::new(
+            output_dir,
+            file_name,
+            max_capacity,
+            true,
+            history_info,
+        )
     }
 
-    pub fn save_history(
-        &self,
-        compact: bool,
-        formats: Vec<Format>,
-    ) -> Result<(), Box<dyn Error>> {
-        let history = self.history();
-        println!("num snapshots: {}", history.snapshots.len());
-        if let Some(out_dir) = &self.out_dir {
-            if compact {
-                save_compact(
-                    history,
-                    out_dir,
-                    formats,
-                    &self.file_name,
-                )?;
-            } else {
-                save_deep(
-                    self.deep_history(),
-                    out_dir,
-                    formats,
-                    &self.file_name,
-                )?;
-            }
+    pub fn finish_saving_history(&mut self, save_cbor: bool) {
+        if let Some(hw) = self.history_writer.take() {
+            hw.finish(save_cbor);
         }
-        Ok(())
     }
 }
 

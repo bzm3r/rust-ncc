@@ -17,7 +17,7 @@ pub struct Dist(f32);
 #[derive(Clone, Copy, Serialize, Deserialize)]
 pub struct LineSegParam(f32);
 
-#[derive(Clone, Copy, Serialize, Deserialize)]
+#[derive(Clone, Copy, Serialize, Deserialize, Debug, PartialEq)]
 pub enum ClosePoint {
     Vertex {
         vector_to: V2D,
@@ -29,6 +29,12 @@ pub enum ClosePoint {
         smooth_factor: f32,
     },
     None,
+}
+
+impl Default for ClosePoint {
+    fn default() -> Self {
+        ClosePoint::None
+    }
 }
 
 impl ClosePoint {
@@ -112,7 +118,7 @@ impl fmt::Display for ClosePoint {
 /// Generates CIL/CAL/adhesion related interaction information. These
 /// are the interactions that require cells to engage in
 /// physical contact.
-#[derive(Clone, Deserialize, Serialize)]
+#[derive(Clone, Deserialize, Serialize, PartialEq, Default, Debug)]
 pub struct PhysicalContactGenerator {
     dat: CvCvDat<ClosePoint>,
     pub contact_bbs: Vec<BBox>,

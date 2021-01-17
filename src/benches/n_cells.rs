@@ -4,8 +4,8 @@ use std::time::Duration;
 
 fn n_cells() {
     let exp = experiments::n_cells::generate(Some(123829), 9);
-    let mut w = world::World::new(exp, None, 10);
-    w.simulate(3.0 * 3600.0);
+    let mut w = world::World::new(exp, None, 10, 100);
+    w.simulate(3.0 * 3600.0, false);
 }
 
 fn criterion_benchmark(c: &mut Criterion) {
