@@ -26,4 +26,4 @@ Cargo.lock
 **/*.cbor
 out.txt
 out_*.txt
-
+**/*.dat

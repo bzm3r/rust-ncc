@@ -21,7 +21,7 @@ use crate::parameters::{
 use crate::NVERTS;
 //use rand_core::SeedableRng;
 use crate::utils::pcg32::Pcg32;
-use crate::world::hardio::{save_compact, save_full, Format};
+use crate::world::hardio::{save_compact, save_deep, Format};
 use rand::seq::SliceRandom;
 use rand::{RngCore, SeedableRng};
 use serde::{Deserialize, Serialize};
@@ -389,7 +389,7 @@ impl World {
                     &self.file_name,
                 )?;
             } else {
-                save_full(
+                save_deep(
                     self.deep_history(),
                     out_dir,
                     formats,

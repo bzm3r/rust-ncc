@@ -38,7 +38,7 @@ pub fn get_file_name(
     }
 }
 
-pub fn get_file_write(
+pub fn write_file(
     compact: bool,
     out_dir: &PathBuf,
     title: &str,
@@ -73,7 +73,7 @@ pub fn save_compact(
     title: &str,
 ) -> Result<(), Box<dyn Error>> {
     for format in formats {
-        let mut f = get_file_write(true, out_dir, title, format)?;
+        let mut f = write_file(true, out_dir, title, format)?;
 
         match format {
             Format::Cbor => {
@@ -87,14 +87,14 @@ pub fn save_compact(
     Ok(())
 }
 
-pub fn save_full(
+pub fn save_deep(
     data: DeepHistory,
     out_dir: &PathBuf,
     formats: Vec<Format>,
     title: &str,
 ) -> Result<(), Box<dyn Error>> {
     for format in formats {
-        let mut f = get_file_write(false, out_dir, title, format)?;
+        let mut f = write_file(false, out_dir, title, format)?;
 
         match format {
             Format::Cbor => {
@@ -108,7 +108,7 @@ pub fn save_full(
     Ok(())
 }
 
-pub fn load_compact(
+pub fn load(
     out_dir: &PathBuf,
     format: Format,
     title: &str,
@@ -145,7 +145,7 @@ pub fn load_binc_from_path(file_path: &Path) -> History {
     }
 }
 
-pub fn load_full(
+pub fn load_deep(
     out_dir: &PathBuf,
     format: Format,
     title: &str,
