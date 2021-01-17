@@ -1,15 +1,17 @@
 mod animator;
+mod delegate;
 mod scene;
 mod view;
-mod delegate;
 
+use crate::delegate::Delegate;
 use crate::scene::Scene;
 use crate::view::build_ui;
-use druid::{AppLauncher, Data, WindowDesc, PaintCtx, Rect};
+use druid::{
+    AppLauncher, Data, PaintCtx, Point, Rect, Vec2, WindowDesc,
+};
+use log::info;
 use rust_ncc::world::History;
 use std::sync::Arc;
-use log::info;
-use crate::delegate::Delegate;
 
 #[derive(Clone, Data, Default)]
 pub struct AppState {
@@ -19,14 +21,27 @@ pub struct AppState {
 }
 
 impl AppState {
-    pub fn paint_scene(&self, ctx: &mut PaintCtx, canvas: Rect) {
+    pub fn paint_scene(
+        &self,
+        ctx: &mut PaintCtx,
+        canvas: Rect,
+        zoom: f64,
+        translation: Vec2,
+    ) {
         let snapshot = if self.sim_history.snapshots.len() > 0 {
             Some(&self.sim_history.snapshots[self.frame])
         } else {
             None
         };
 
-        self.scene.draw_snapshot(ctx, snapshot, &self.sim_history.cell_params, canvas);
+        self.scene.draw_snapshot(
+            ctx,
+            snapshot,
+            &self.sim_history.cell_params,
+            canvas,
+            zoom,
+            translation,
+        );
     }
 }
 

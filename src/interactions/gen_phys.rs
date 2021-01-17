@@ -4,7 +4,7 @@ use crate::interactions::{generate_contacts, RelativeRgtpActivity};
 use crate::math::geometry::{BBox, Poly};
 use crate::math::v2d::V2D;
 use crate::math::{
-    capped_linear_fn, close_to_zero, in_unit_interval,
+    capped_linear_fn, close_to_zero, in_unit_interval, InUnitInterval,
 };
 use crate::parameters::{CloseBounds, PhysicalContactParams};
 use crate::utils::circ_ix_plus;
@@ -59,24 +59,25 @@ impl ClosePoint {
             let t = ab.dot(&ap) / ab.mag_squared();
             // Is `t` in the interval `[0, 1)`? If yes, then the close
             // point lies on the edge.
-            if in_unit_interval(t) {
-                let c = t * (ab) + a;
-                let pc = c - p;
-                if pc.mag() < range.zero_at {
-                    ClosePoint::OnEdge {
-                        edge_point_param: t,
-                        vector_to: pc,
-                        smooth_factor: capped_linear_fn(
-                            pc.mag(),
-                            range.zero_at,
-                            range.one_at,
-                        ),
+            match in_unit_interval(t) {
+                InUnitInterval::Zero | InUnitInterval::In => {
+                    let c = t * (ab) + a;
+                    let pc = c - p;
+                    if pc.mag() < range.zero_at {
+                        ClosePoint::OnEdge {
+                            edge_point_param: t,
+                            vector_to: pc,
+                            smooth_factor: capped_linear_fn(
+                                pc.mag(),
+                                range.zero_at,
+                                range.one_at,
+                            ),
+                        }
+                    } else {
+                        ClosePoint::None
                     }
-                } else {
-                    ClosePoint::None
                 }
-            } else {
-                ClosePoint::None
+                _ => ClosePoint::None,
             }
         }
     }

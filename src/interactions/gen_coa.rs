@@ -64,14 +64,17 @@ pub fn calc_pair_info(
     poly_b: &Poly,
     cell_polys: &[Poly],
 ) -> VertexPairInfo {
-    if !(lseg.intersects_poly(poly_a) || lseg.intersects_poly(poly_b))
+    if !(lseg.check_poly_intersect(poly_a)
+        || lseg.check_poly_intersect(poly_b))
     {
         let dist = lseg.mag();
         let clearance = cell_polys
             .iter()
             .enumerate()
             .map(|(pi, poly)| {
-                if pi != ci && pi != oci && lseg.intersects_poly(poly)
+                if pi != ci
+                    && pi != oci
+                    && lseg.check_poly_intersect(poly)
                 {
                     1.0
                 } else {

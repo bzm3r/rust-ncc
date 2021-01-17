@@ -53,7 +53,7 @@ impl Units {
     ///     f: 1.0,
     ///     t: -3.0,
     ///     l: 0.0,
-    /// }
+    /// };
     /// ```
     ///
     /// and `u.pow(n)` will give us the `u` to the nth
@@ -63,7 +63,7 @@ impl Units {
     ///     f: 1.0 * n,
     ///     t: -3.0 * n,
     ///     l: 0.0 * n,
-    /// }
+    /// };
     /// ```
     fn pow(&self, exp: f32) -> Units {
         Units {

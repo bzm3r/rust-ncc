@@ -34,7 +34,7 @@ pub struct DistributionScheme {
 
 impl DistributionScheme {
     /// [1.0, 10.0, 4.0, 5.0] (consider the relative fraction of rho gtpase), sum = 20.0,,
-    /// go thru each and divide by 20 = [0.05, 0.5, 0.2, 0.25]
+    /// go through each and divide by 20 = [0.05, 0.5, 0.2, 0.25]
     /// if we now sum up everything in the new array, sum = 1.0
     fn scaled_unitize(
         frac: f32,

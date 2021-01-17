@@ -57,7 +57,7 @@ pub fn violates_volume_exclusion(
     ];
     for lseg in lsegs.iter() {
         for cd in contacts.iter() {
-            if lseg.intersects_poly(&cd.poly) {
+            if lseg.check_poly_intersect(&cd.poly) {
                 return true;
             }
         }

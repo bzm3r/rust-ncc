@@ -29,9 +29,10 @@ fn group_layout(
         x: char_quants.normalize(&Length(0.0)),
         y: char_quants.normalize(&Length(0.0)),
     };
+    let side_len = (num_cells as f64).sqrt() as usize;
     let r = GroupBBox {
-        width: 3,
-        height: 3,
+        width: side_len,
+        height: side_len,
         bottom_left: centroid,
     };
     if r.width * r.height > num_cells {
@@ -47,14 +48,17 @@ fn group_layout(
 fn cell_groups(
     rng: &mut Pcg32,
     cq: &CharQuantities,
+    num_cells_per_group: Vec<usize>,
 ) -> Vec<CellGroup> {
-    let num_cells = 9;
-    vec![CellGroup {
-        num_cells,
-        layout: group_layout(num_cells, cq).unwrap(),
-        parameters: gen_default_raw_params(rng, true)
-            .gen_parameters(cq),
-    }]
+    num_cells_per_group
+        .iter()
+        .map(|&num_cells| CellGroup {
+            num_cells,
+            layout: group_layout(num_cells, cq).unwrap(),
+            parameters: gen_default_raw_params(rng, true)
+                .gen_parameters(cq),
+        })
+        .collect()
 }
 
 /// Generate CAL values between different cells.
@@ -106,7 +110,7 @@ fn raw_world_parameters(
 }
 
 /// Generate the experiment, so that it can be run.
-pub fn generate(seed: Option<u64>) -> Experiment {
+pub fn generate(seed: Option<u64>, num_cells: usize) -> Experiment {
     let mut rng = match seed {
         Some(s) => Pcg32::seed_from_u64(s),
         None => Pcg32::from_entropy(),
@@ -114,7 +118,8 @@ pub fn generate(seed: Option<u64>) -> Experiment {
     let char_quants = gen_default_char_quants();
     let world_parameters =
         raw_world_parameters(&char_quants).refine(&char_quants);
-    let cell_groups = cell_groups(&mut rng, &char_quants);
+    let cell_groups =
+        cell_groups(&mut rng, &char_quants, vec![num_cells]);
     Experiment {
         file_name: "four_cells".to_string(),
         char_quants,

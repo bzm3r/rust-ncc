@@ -8,6 +8,7 @@
 
 pub mod cil_test;
 pub mod four_cells;
+pub mod n_cells;
 pub mod pair;
 pub mod separated_pair;
 //pub mod single;

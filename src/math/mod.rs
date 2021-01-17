@@ -83,20 +83,29 @@ pub fn capped_linear_fn(x: f32, zero_at: f32, one_at: f32) -> f32 {
     }
 }
 
-#[inline]
 /// Return if the float `x` close to `0.0`.
+#[inline]
 pub fn close_to_zero(x: f32) -> bool {
-    x.abs() < f32::EPSILON
+    x.abs() < 1e-4
+}
+
+#[derive(Clone, Copy)]
+pub enum InUnitInterval {
+    In,
+    Zero,
+    One,
+    Out,
 }
 
 #[inline]
-pub fn in_unit_interval(x: f32) -> bool {
-    // Suppose `x` is a real number, then we can easily write
-    // `x == 1` and have it make sense to us. However, if `x` is an
-    // `f32`, we must test if it is sufficiently close to `0.0`, that is
-    // within `f32::EPSILON` of `0.0`.
-    // x.abs() < f32::EPSILON
-    //     || (x - 1.0).abs() < f32::EPSILON
-    //     || !(x < 0.0 || x > 1.0)
-    !(x < 0.0 || x > 1.0)
+pub fn in_unit_interval(x: f32) -> InUnitInterval {
+    if x > 0.0 && x < 1.0 {
+        InUnitInterval::In
+    } else if close_to_zero(x) {
+        InUnitInterval::Zero
+    } else if close_to_zero(1.0 - x) {
+        InUnitInterval::One
+    } else {
+        InUnitInterval::Out
+    }
 }

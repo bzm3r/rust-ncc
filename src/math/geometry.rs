@@ -9,11 +9,14 @@
 use crate::math::v2d::V2D;
 use crate::math::{
     close_to_zero, in_unit_interval, max_f32s, min_f32s,
+    InUnitInterval,
 };
 use crate::utils::{circ_ix_minus, circ_ix_plus};
 use crate::NVERTS;
 use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
+use std::fmt;
+use std::fmt::Display;
 
 #[derive(Clone, Copy, Deserialize, Serialize)]
 pub struct Poly {
@@ -82,6 +85,7 @@ impl BBox {
         }
     }
 
+    #[inline]
     pub fn expand_by(&self, l: f32) -> BBox {
         BBox {
             xmin: self.xmin - l,
@@ -91,23 +95,37 @@ impl BBox {
         }
     }
 
+    #[inline]
     pub fn intersects(&self, other: &BBox) -> bool {
-        !((self.xmin > other.xmax || self.xmax < other.xmin)
-            || (self.ymin > other.ymax || self.ymax < other.ymin))
+        self.xmax > other.xmin
+            && self.xmin < other.xmax
+            && self.ymin < other.ymax
+            && self.ymax > other.ymin
     }
 
+    #[inline]
     pub fn contains(&self, point: &V2D) -> bool {
-        !(point.x < self.xmin
-            || point.x > self.xmax
-            || point.y < self.ymin
-            || point.y > self.ymax)
+        point.x > self.xmin
+            && point.x < self.xmax
+            && point.y > self.ymin
+            && point.y < self.ymax
+    }
+}
+
+impl Display for BBox {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "BBox {{ bot_left: ({}, {}), top_right: ({}, {}) }}",
+            self.xmin, self.ymin, self.xmax, self.ymax
+        )
     }
 }
 
 pub enum PointSegRelation {
     Left,
     Right,
-    On,
+    Collinear,
 }
 
 pub fn is_left(p: &V2D, p0: &V2D, p1: &V2D) -> PointSegRelation {
@@ -116,7 +134,7 @@ pub fn is_left(p: &V2D, p0: &V2D, p1: &V2D) -> PointSegRelation {
     match 0.0.partial_cmp(&r) {
         Some(Ordering::Less) => PointSegRelation::Left,
         Some(Ordering::Greater) => PointSegRelation::Right,
-        Some(Ordering::Equal) => PointSegRelation::On,
+        Some(Ordering::Equal) => PointSegRelation::Collinear,
         None => panic!(
             "cannot compare point {} with line seg defined ({}, {})",
             p, p0, p1
@@ -164,9 +182,75 @@ pub struct LineSeg2D {
     /// Second point defining line segment.
     p1: V2D,
     /// `(p1 - p0)`, the vector generator of the line segment.
-    p: V2D,
+    pub vector: V2D,
     /// Bounding box of the segment.
     bbox: BBox,
+}
+
+impl Display for LineSeg2D {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "LineSeg2D {{ p0: {}, p1: {}, bbox: {} }}",
+            self.p0, self.p1, self.bbox
+        )
+    }
+}
+
+#[derive(Copy, Clone)]
+pub enum IntersectCalcResult {
+    Strict(f32, f32),
+    Weak(f32, f32),
+    TwoNonIdenticalPoints,
+    NoBBoxOverlap,
+    SelfIsPointNotOnOther,
+    SelfIsCollinearPointNotOnOther,
+    OtherIsCollinearPointNotOnSelf,
+    OtherIsPointNotOnSelf,
+    IntersectionPointNotOnSelf(f32),
+    IntersectionPointNotOnOther(f32),
+    ParallelLineSegs,
+}
+
+impl Display for IntersectCalcResult {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let s = match &self {
+            IntersectCalcResult::Strict(t, u) => {
+                format!("Intersection({}, {})", t, u)
+            }
+            IntersectCalcResult::Weak(t, u) => {
+                format!("WeakIntersection({}, {})", t, u)
+            }
+            IntersectCalcResult::IntersectionPointNotOnSelf(t) => {
+                format!("IntersectionPointNotOnSelf({})", t)
+            }
+            IntersectCalcResult::IntersectionPointNotOnOther(u) => {
+                format!("IntersectionPointNotOnSelf({})", u)
+            }
+            IntersectCalcResult::NoBBoxOverlap => {
+                "NoBBoxOverlap".to_string()
+            }
+            IntersectCalcResult::OtherIsPointNotOnSelf => {
+                "OtherIsPointNotOnSelf".to_string()
+            }
+            IntersectCalcResult::ParallelLineSegs => {
+                "ParallelLineSegs".to_string()
+            }
+            IntersectCalcResult::SelfIsPointNotOnOther => {
+                "SelfIsPointNotOnOther".to_string()
+            }
+            IntersectCalcResult::TwoNonIdenticalPoints => {
+                "TwoNonIdenticalPoints".to_string()
+            }
+            IntersectCalcResult::SelfIsCollinearPointNotOnOther => {
+                "SelfIsCollinearPointNotOnOther".to_string()
+            }
+            IntersectCalcResult::OtherIsCollinearPointNotOnSelf => {
+                "OtherIsCollinearPointNotOnSelf".to_string()
+            }
+        };
+        write!(f, "{}", s)
+    }
 }
 
 impl LineSeg2D {
@@ -176,7 +260,7 @@ impl LineSeg2D {
         LineSeg2D {
             p0: *p0,
             p1: *p1,
-            p,
+            vector: p,
             bbox: BBox::from_point_pair(p0, p1),
         }
     }
@@ -185,7 +269,7 @@ impl LineSeg2D {
     pub fn refresh(&mut self, p0: &V2D, p1: &V2D) {
         self.p0 = *p0;
         self.p1 = *p1;
-        self.p = p1 - p0;
+        self.vector = p1 - p0;
         self.bbox = BBox::from_point_pair(p0, p1);
     }
 
@@ -201,6 +285,47 @@ impl LineSeg2D {
     //     LineSeg2D::new(&V2D::new(a, b), &V2D::new(x, y))
     // }
 
+    /// Check to see if an intersection exists between this segment
+    /// and another. Does not calculate the exact location of the
+    /// intersection; for that, use `LineSeg2D::calc_lseg_intersect`.
+    pub fn check_strict_lseg_intersect(
+        &self,
+        other: &LineSeg2D,
+    ) -> bool {
+        // First check to make sure that the bounding boxes intersect.
+        if !self.bbox.intersects(&other.bbox) {
+            return false;
+        }
+
+        match (
+            is_left(&self.p0, &self.p1, &other.p0),
+            is_left(&self.p0, &self.p1, &other.p1),
+        ) {
+            (PointSegRelation::Collinear, _)
+            | (_, PointSegRelation::Collinear)
+            | (PointSegRelation::Left, PointSegRelation::Left)
+            | (PointSegRelation::Right, PointSegRelation::Right) => {
+                return false;
+            }
+            _ => {}
+        }
+
+        match (
+            is_left(&other.p0, &other.p1, &self.p0),
+            is_left(&other.p0, &other.p1, &self.p1),
+        ) {
+            (PointSegRelation::Collinear, _)
+            | (_, PointSegRelation::Collinear)
+            | (PointSegRelation::Left, PointSegRelation::Left)
+            | (PointSegRelation::Right, PointSegRelation::Right) => {
+                return false;
+            }
+            _ => {}
+        }
+
+        true
+    }
+
     /// Let this segment `self` be parametrized so that a point
     /// `p` lies on `self` if `p = t * self.p + self.p0` for
     /// `0 <= t <= 1`. Similarly, the `other` line segment be
@@ -208,13 +333,13 @@ impl LineSeg2D {
     /// `p = u * self.p + self.p0` for `0 <= u <= 1`.
     ///
     /// This function calculates `(t, u)`, if an intersection exists.
-    pub fn intersects_lseg(
+    pub fn calc_lseg_intersect(
         &self,
         other: &LineSeg2D,
-    ) -> Option<(f32, f32)> {
+    ) -> IntersectCalcResult {
         // First check to make sure that the bounding boxes intersect.
         if !self.bbox.intersects(&other.bbox) {
-            return None;
+            return IntersectCalcResult::NoBBoxOverlap;
         }
         // Let `s` be a point on this ("self") line segment, and let
         // `o` be a point on the "other" line segment, such that:
@@ -225,12 +350,12 @@ impl LineSeg2D {
         // Let `dx_s = p.x = self.p1.x - self.p0.x`; similarly, let
         // `dy_s = p.y`, `dx_o` and `dy_o` be defined analogously.
         // Also introduce `dx0_so = self.p0.x - other.p0.x` and let
-        // `dy0_so` be defined analgoously.
+        // `dy0_so` be defined analogously.
 
-        let dx_s = self.p.x;
-        let dx_o = other.p.x;
-        let dy_s = self.p.y;
-        let dy_o = other.p.y;
+        let dx_s = self.vector.x;
+        let dx_o = other.vector.x;
+        let dy_s = self.vector.y;
+        let dy_o = other.vector.y;
 
         // Let us quickly rule out some simple cases.
         let self_is_vertical = close_to_zero(dx_s);
@@ -248,23 +373,24 @@ impl LineSeg2D {
                 // they are indistinguishable from points. So, just check if points
                 // are the same.
                 if (self.p0 - self.p1).close_to_zero() {
-                    Some((0.0, 0.0))
+                    IntersectCalcResult::Strict(0.0, 0.0)
                 } else {
-                    None
+                    IntersectCalcResult::TwoNonIdenticalPoints
                 }
             }
             (true, true, _, _) => {
-                // `self` is a point, so just check if it lies
+                // `self` is a point, so just check if it lies on other
                 // `other`.
                 let ux = (self.p0.x - other.p0.x) / dx_o;
                 let uy = (self.p0.y - other.p0.y) / dy_o;
-                if in_unit_interval(ux)
-                    && in_unit_interval(uy)
-                    && close_to_zero(ux - uy)
-                {
-                    Some((0.0, ux))
+                if close_to_zero(ux - uy) {
+                    match in_unit_interval(ux) {
+                        InUnitInterval::In => IntersectCalcResult::Strict(0.0, ux),
+                        InUnitInterval::One | InUnitInterval::Zero => IntersectCalcResult::Weak(0.0, ux),
+                        InUnitInterval::Out => IntersectCalcResult::SelfIsCollinearPointNotOnOther,
+                    }
                 } else {
-                    None
+                    IntersectCalcResult::SelfIsPointNotOnOther
                 }
             }
             (_, _, true, true) => {
@@ -272,13 +398,14 @@ impl LineSeg2D {
                 // `self`.
                 let tx = (other.p0.x - self.p0.x) / dx_o;
                 let ty = (other.p0.y - self.p0.y) / dy_o;
-                if in_unit_interval(tx)
-                    && in_unit_interval(ty)
-                    && close_to_zero(tx - ty)
-                {
-                    Some((0.0, tx))
+                if close_to_zero(tx - ty) {
+                    match in_unit_interval(tx) {
+                        InUnitInterval::In => IntersectCalcResult::Strict(tx, 0.0),
+                        InUnitInterval::One | InUnitInterval::Zero => IntersectCalcResult::Weak(tx, 0.0),
+                        InUnitInterval::Out => IntersectCalcResult::OtherIsCollinearPointNotOnSelf,
+                    }
                 } else {
-                    None
+                    IntersectCalcResult::OtherIsPointNotOnSelf
                 }
             }
             (_, _, _, _) => {
@@ -309,13 +436,14 @@ impl LineSeg2D {
                 // let us check to see if that is the case.
                 let denominator = dx_s * dy_o - dy_s * dx_o;
                 if close_to_zero(denominator) {
-                    return None;
+                    return IntersectCalcResult::ParallelLineSegs;
                 }
                 let dx0_so = self.p0.x - other.p0.x;
                 let dy0_so = self.p0.y - other.p0.y;
                 let t = (dy0_so * dx_o - dx0_so * dy_o) / denominator;
-                if !in_unit_interval(t) {
-                    return None;
+                let t_in_unit_interval = in_unit_interval(t);
+                if let InUnitInterval::Out = t_in_unit_interval {
+                    return IntersectCalcResult::IntersectionPointNotOnSelf(t);
                 }
                 // Recalling that `u = t * (dx_s / dx_o) + (dx0_so / dx_o)`
                 // and `t * (dy_s / dy_o) + (dy0_so / dy_o)`. Which formula
@@ -327,52 +455,59 @@ impl LineSeg2D {
                     (_, false) => t * (dy_s / dy_o) + (dy0_so / dy_o),
                     (true, true) => {
                         panic!(
-                            "Did not expect to reach case where\
-                         `other` is a point. It should have been\
-                          handled by earlier match cases"
+                            "Unexpected: reached branch where other is point. Should have been handled earlier."
                         );
                     }
                 };
-                if !in_unit_interval(u) {
-                    return None;
+                let u_in_unit_interval = in_unit_interval(u);
+                if let InUnitInterval::Out = u_in_unit_interval {
+                    return IntersectCalcResult::IntersectionPointNotOnOther(u);
                 }
-                Some((t, u))
+                match (t_in_unit_interval, u_in_unit_interval) {
+                    (InUnitInterval::Zero, _)
+                    | (InUnitInterval::One, _)
+                    | (_, InUnitInterval::Zero)
+                    | (_, InUnitInterval::One) => {
+                        IntersectCalcResult::Weak(t, u)
+                    }
+                    (InUnitInterval::In, InUnitInterval::In) => {
+                        IntersectCalcResult::Strict(t, u)
+                    },
+                    (InUnitInterval::Out, _) => panic!("Reached case where t not in unit interval! Should have been handled earlier."),
+                    (_, InUnitInterval::Out) => panic!("Reached case where u not in unit interval! Should have been handled earlier."),
+                }
             }
         }
     }
-
-    // pub fn calc_intersect_point(
-    //     &self,
-    //     p0: &V2D,
-    //     p1: &V2D,
-    // ) -> Option<V2D> {
-    //     let other = LineSeg2D::new(p0, p1);
-    //     self.intersects_lseg(&other)
-    //         .map(|(t, _)| t * self.p + self.p0)
-    // }
 
     pub fn intersects_bbox(&self, bbox: &BBox) -> bool {
         self.bbox.intersects(bbox)
     }
 
-    pub fn intersects_poly(&self, poly: &Poly) -> bool {
+    pub fn check_poly_intersect(&self, poly: &Poly) -> bool {
         if !self.intersects_bbox(&poly.bbox) {
             return false;
         }
 
         for edge in poly.edges.iter() {
-            match self.intersects_lseg(&edge) {
-                Some((t, u)) => {
-                    match (t > 0.0, t < 1.0, u > 0.0, u < 1.0) {
-                        (true, true, true, true) => {
-                            return true;
-                        }
-                        _ => {
-                            continue;
-                        }
-                    }
+            if self.check_strict_lseg_intersect(&edge) {
+                return true;
+            }
+        }
+        false
+    }
+
+    pub fn old_check_poly_intersect(&self, poly: &Poly) -> bool {
+        if !self.intersects_bbox(&poly.bbox) {
+            return false;
+        }
+
+        for edge in poly.edges.iter() {
+            match self.calc_lseg_intersect(&edge) {
+                IntersectCalcResult::Strict(_, _) => {
+                    return true;
                 }
-                None => {
+                _ => {
                     continue;
                 }
             }
@@ -382,7 +517,7 @@ impl LineSeg2D {
 
     #[inline]
     pub fn mag(&self) -> f32 {
-        self.p.mag()
+        self.vector.mag()
     }
 }
 

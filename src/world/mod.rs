@@ -77,7 +77,14 @@ impl Cells {
 
             new_cell_states[ci] = new_cell_state;
         }
-        let rel_rgtps = new_cell_states.iter().map(|c|c.core.calc_relative_rgtp_activity(&group_parameters[c.group_ix])).collect::<Vec<[RelativeRgtpActivity; NVERTS]>>();
+        let rel_rgtps = new_cell_states
+            .iter()
+            .map(|c| {
+                c.core.calc_relative_rgtp_activity(
+                    &group_parameters[c.group_ix],
+                )
+            })
+            .collect::<Vec<[RelativeRgtpActivity; NVERTS]>>();
         Ok(Cells {
             states: new_cell_states,
             interactions: interaction_generator.generate(&rel_rgtps),
@@ -159,7 +166,7 @@ pub struct World {
     cells: Cells,
     interaction_generator: InteractionGenerator,
     pub rng: Pcg32,
-    out_dir: PathBuf,
+    out_dir: Option<PathBuf>,
     file_name: String,
     snap_freq: u32,
 }
@@ -180,7 +187,7 @@ fn gen_poly(centroid: &V2D, radius: f32) -> [V2D; NVERTS] {
 impl World {
     pub fn new(
         experiment: Experiment,
-        output_dir: PathBuf,
+        out_dir: Option<PathBuf>,
         snap_freq: u32,
     ) -> World {
         // Unpack relevant info from `Experiment` data structure.
@@ -246,7 +253,8 @@ impl World {
             world_params.interactions.clone(),
         );
         // Generate initial cell interactions.
-        let cell_interactions = interaction_generator.generate(&cell_rgtps);
+        let cell_interactions =
+            interaction_generator.generate(&cell_rgtps);
         // Create `Cell` structures to represent each cell, and the random number generator associated per cell.
         let mut cell_states = vec![];
         for (cell_ix, group_ix) in
@@ -286,7 +294,7 @@ impl World {
             cells,
             interaction_generator,
             rng,
-            out_dir: output_dir,
+            out_dir,
             file_name: experiment.file_name,
             snap_freq,
         }
@@ -372,20 +380,22 @@ impl World {
     ) -> Result<(), Box<dyn Error>> {
         let history = self.history();
         println!("num snapshots: {}", history.snapshots.len());
-        if compact {
-            save_compact(
-                history,
-                &self.out_dir,
-                formats,
-                &self.file_name,
-            )?;
-        } else {
-            save_full(
-                self.deep_history(),
-                &self.out_dir,
-                formats,
-                &self.file_name,
-            )?;
+        if let Some(out_dir) = &self.out_dir {
+            if compact {
+                save_compact(
+                    history,
+                    out_dir,
+                    formats,
+                    &self.file_name,
+                )?;
+            } else {
+                save_full(
+                    self.deep_history(),
+                    out_dir,
+                    formats,
+                    &self.file_name,
+                )?;
+            }
         }
         Ok(())
     }
