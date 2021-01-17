@@ -61,7 +61,7 @@ fn check_equivalence(lsegs: &[LineSeg2D]) {
 fn check_only(lsegs: &[LineSeg2D]) {
     for (i, lseg_a) in lsegs.iter().enumerate() {
         for lseg_b in lsegs[(i + 1)..].iter() {
-            let _ = lseg_a.check_strict_lseg_intersect(&lseg_b);
+            let _ = lseg_a.check_strict_lseg_intersect_v6(&lseg_b);
         }
     }
 }
@@ -77,7 +77,7 @@ fn calc(lsegs: &[LineSeg2D]) {
 fn criterion_benchmark(c: &mut Criterion) {
     let lsegs = random_lsegs(1000);
     let mut group = c.benchmark_group("g0");
-    group.measurement_time(Duration::from_secs(15));
+    group.measurement_time(Duration::from_secs(40));
     group.bench_function("check_only", |b| {
         b.iter(|| check_only(black_box(&lsegs)))
     });

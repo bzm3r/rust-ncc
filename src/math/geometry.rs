@@ -142,6 +142,19 @@ pub fn is_left(p: &V2D, p0: &V2D, p1: &V2D) -> PointSegRelation {
     }
 }
 
+#[inline]
+pub fn is_left_simple(p: &V2D, p0: &V2D, p1: &V2D) -> i32 {
+    let r =
+        (p1.x - p0.x) * (p.y - p0.y) - (p.x - p0.x) * (p1.y - p0.y);
+    if r > 0.0 {
+        1
+    } else if r < 0.0 {
+        -1
+    } else {
+        0
+    }
+}
+
 pub fn is_point_in_poly(
     p: &V2D,
     poly_bbox: Option<&BBox>,
@@ -326,6 +339,239 @@ impl LineSeg2D {
         true
     }
 
+    /// Check to see if an intersection exists between this segment
+    /// and another. Does not calculate the exact location of the
+    /// intersection; for that, use `LineSeg2D::calc_lseg_intersect`.
+    pub fn check_strict_lseg_intersect_v2(
+        &self,
+        other: &LineSeg2D,
+    ) -> bool {
+        // First check to make sure that the bounding boxes intersect.
+        if !self.bbox.intersects(&other.bbox) {
+            return false;
+        }
+
+        let is_left_op0 =
+            is_left_simple(&self.p0, &self.p1, &other.p0);
+        if is_left_op0 == 0 {
+            return false;
+        }
+        let is_left_op1 =
+            is_left_simple(&self.p0, &self.p1, &other.p1);
+        if is_left_op1 == 0 {
+            return false;
+        }
+        if is_left_op0 == is_left_op1 {
+            return false;
+        }
+
+        let is_left_sp0 =
+            is_left_simple(&other.p0, &other.p1, &self.p0);
+        if is_left_sp0 == 0 {
+            return false;
+        }
+        let is_left_sp1 =
+            is_left_simple(&other.p0, &other.p1, &self.p1);
+        if is_left_sp1 == 0 {
+            return false;
+        }
+        if is_left_sp0 == is_left_sp1 {
+            return false;
+        }
+
+        true
+    }
+
+    /// Check to see if an intersection exists between this segment
+    /// and another. Does not calculate the exact location of the
+    /// intersection; for that, use `LineSeg2D::calc_lseg_intersect`.
+    pub fn check_strict_lseg_intersect_v3(
+        &self,
+        other: &LineSeg2D,
+    ) -> bool {
+        // First check to make sure that the bounding boxes intersect.
+        if !self.bbox.intersects(&other.bbox) {
+            return false;
+        }
+        let p0 = self.p0;
+        let p1 = self.p1;
+        let q0 = other.p0;
+        let q1 = other.p1;
+
+        let is_left_q0 = (p1.x - p0.x) * (q0.y - p0.y)
+            - (q0.x - p0.x) * (p1.y - p0.y);
+        if is_left_q0.abs() < 1e-4 {
+            return false;
+        }
+        let is_left_q1 = (p1.x - p0.x) * (q1.y - p0.y)
+            - (q1.x - p0.x) * (p1.y - p0.y);
+        if is_left_q1.abs() < 1e-4
+            || (is_left_q0 - is_left_q1).abs() < 1e-4
+        {
+            return false;
+        }
+        let is_left_p0 = (q1.x - q0.x) * (p0.y - q0.y)
+            - (p0.x - q0.x) * (q1.y - q0.y);
+        if is_left_p0.abs() < 1e-4 {
+            return false;
+        }
+        let is_left_p1 = (q1.x - q0.x) * (p1.y - q0.y)
+            - (p1.x - q0.x) * (q1.y - q0.y);
+        if is_left_p1.abs() < 1e-4
+            || (is_left_p0 - is_left_p1).abs() < 1e-4
+        {
+            return false;
+        }
+        true
+    }
+
+    /// Check to see if an intersection exists between this segment
+    /// and another. Does not calculate the exact location of the
+    /// intersection; for that, use `LineSeg2D::calc_lseg_intersect`.
+    pub fn check_strict_lseg_intersect_v4(
+        &self,
+        other: &LineSeg2D,
+    ) -> bool {
+        // First check to make sure that the bounding boxes intersect.
+        if !self.bbox.intersects(&other.bbox) {
+            return false;
+        }
+        let p0 = self.p0;
+        let p1 = self.p1;
+        let q0 = other.p0;
+        let q1 = other.p1;
+
+        let delta_px = p1.x - p0.x;
+        let delta_py = p1.y - p0.y;
+        let delta0y = q0.y - p0.y;
+        let delta0x = q0.x - p0.x;
+        let is_left_q0 = delta_px * delta0y - delta0x * delta_py;
+        if is_left_q0.abs() < 1e-4 {
+            return false;
+        }
+        let is_left_q1 =
+            delta_px * (q1.y - p0.y) - (q1.x - p0.x) * delta_py;
+        if is_left_q1.abs() < 1e-4
+            || (is_left_q0 - is_left_q1).abs() < 1e-4
+        {
+            return false;
+        }
+        let delta_qx = q1.x - q0.x;
+        let delta_qy = q1.y - q0.y;
+        let is_left_p0 = delta0x * delta_qy - delta_qx * delta0y;
+        if is_left_p0.abs() < 1e-4 {
+            return false;
+        }
+        let is_left_p1 =
+            delta_qx * (p1.y - q0.y) - (p1.x - q0.x) * delta_qy;
+        if is_left_p1.abs() < 1e-4
+            || (is_left_p0 - is_left_p1).abs() < 1e-4
+        {
+            return false;
+        }
+        true
+    }
+
+    /// Check to see if an intersection exists between this segment
+    /// and another. Does not calculate the exact location of the
+    /// intersection; for that, use `LineSeg2D::calc_lseg_intersect`.
+    pub fn check_strict_lseg_intersect_v5(
+        &self,
+        other: &LineSeg2D,
+    ) -> bool {
+        // First check to make sure that the bounding boxes intersect.
+        if self.bbox.xmin > other.bbox.xmax
+            || self.bbox.xmax < other.bbox.xmin
+            || self.bbox.ymin > other.bbox.ymax
+            || self.bbox.ymax < other.bbox.ymin
+        {
+            return false;
+        }
+
+        let p0 = self.p0;
+        let p1 = self.p1;
+        let q0 = other.p0;
+
+        let delta_px = p1.x - p0.x;
+        let delta_py = p1.y - p0.y;
+        let delta0y = q0.y - p0.y;
+        let delta0x = q0.x - p0.x;
+
+        let is_left_q0 = delta_px * delta0y - delta0x * delta_py;
+        if is_left_q0.abs() < 1e-4 {
+            return false;
+        }
+
+        let q1 = other.p1;
+        let is_left_q1 =
+            delta_px * (q1.y - p0.y) - (q1.x - p0.x) * delta_py;
+        if is_left_q1.abs() < 1e-4
+            || (is_left_q0 - is_left_q1).abs() < 1e-4
+        {
+            return false;
+        }
+
+        let delta_qx = q1.x - q0.x;
+        let delta_qy = q1.y - q0.y;
+        let is_left_p0 = delta0x * delta_qy - delta_qx * delta0y;
+        if is_left_p0.abs() < 1e-4 {
+            return false;
+        }
+
+        let is_left_p1 =
+            delta_qx * (p1.y - q0.y) - (p1.x - q0.x) * delta_qy;
+        if is_left_p1.abs() < 1e-4
+            || (is_left_p0 - is_left_p1).abs() < 1e-4
+        {
+            return false;
+        }
+
+        true
+    }
+
+    /// Check to see if an intersection exists between this segment
+    /// and another. Does not calculate the exact location of the
+    /// intersection; for that, use `LineSeg2D::calc_lseg_intersect`.
+    pub fn check_strict_lseg_intersect_v6(
+        &self,
+        other: &LineSeg2D,
+    ) -> bool {
+        let p0 = self.p0;
+        let p1 = self.p1;
+        let q0 = other.p0;
+        let q1 = other.p1;
+
+        let delta_px = p1.x - p0.x;
+        let delta_py = p1.y - p0.y;
+        let delta0y = q0.y - p0.y;
+        let delta0x = q0.x - p0.x;
+        let is_left_q0 = delta_px * delta0y - delta0x * delta_py;
+        if is_left_q0.abs() < 1e-4 {
+            return false;
+        }
+        let is_left_q1 =
+            delta_px * (q1.y - p0.y) - (q1.x - p0.x) * delta_py;
+        if is_left_q1.abs() < 1e-4
+            || (is_left_q0 - is_left_q1).abs() < 1e-4
+        {
+            return false;
+        }
+        let delta_qx = q1.x - q0.x;
+        let delta_qy = q1.y - q0.y;
+        let is_left_p0 = delta0x * delta_qy - delta_qx * delta0y;
+        if is_left_p0.abs() < 1e-4 {
+            return false;
+        }
+        let is_left_p1 =
+            delta_qx * (p1.y - q0.y) - (p1.x - q0.x) * delta_qy;
+        if is_left_p1.abs() < 1e-4
+            || (is_left_p0 - is_left_p1).abs() < 1e-4
+        {
+            return false;
+        }
+        true
+    }
+
     /// Let this segment `self` be parametrized so that a point
     /// `p` lies on `self` if `p = t * self.p + self.p0` for
     /// `0 <= t <= 1`. Similarly, the `other` line segment be
@@ -490,7 +736,7 @@ impl LineSeg2D {
         }
 
         for edge in poly.edges.iter() {
-            if self.check_strict_lseg_intersect(&edge) {
+            if self.check_strict_lseg_intersect_v6(&edge) {
                 return true;
             }
         }

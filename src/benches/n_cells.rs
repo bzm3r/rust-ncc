@@ -10,6 +10,7 @@ fn n_cells() {
 
 fn criterion_benchmark(c: &mut Criterion) {
     let mut group = c.benchmark_group("g0");
+    group.sample_size(20);
     group.measurement_time(Duration::from_secs(120));
     group.bench_function("n_cells", |b| b.iter(|| n_cells()));
     group.finish();
