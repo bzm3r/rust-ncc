@@ -5,6 +5,8 @@ use serde_cbor::ser::IoWrite;
 use std::borrow::Borrow;
 use std::fs::File;
 use std::fs::OpenOptions;
+
+use std::io::{Seek, SeekFrom};
 use std::path::{Path, PathBuf};
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::thread::JoinHandle;
@@ -91,7 +93,7 @@ pub fn save_binc_to_cbor(binc_path: &PathBuf, cbor_path: &PathBuf) {
     }
 }
 
-pub struct AsyncBincoder {
+pub struct AsyncWriter {
     pub output_dir: PathBuf,
     pub file_name: String,
     sender: Sender<Vec<Snapshot>>,
@@ -101,16 +103,15 @@ pub struct AsyncBincoder {
     pub file_path: PathBuf,
 }
 
-impl AsyncBincoder {
+impl AsyncWriter {
     pub fn new(
         output_dir: PathBuf,
         file_name: String,
         max_capacity: usize,
         truncate: bool,
         history_info: WorldInfo,
-    ) -> AsyncBincoder {
+    ) -> AsyncWriter {
         let path = output_dir
-            .clone()
             .join(get_file_name(Format::Bincode, &file_name));
         let (sender, receiver): (
             Sender<Vec<Snapshot>>,
@@ -136,14 +137,14 @@ impl AsyncBincoder {
             }
         });
 
-        AsyncBincoder {
+        AsyncWriter {
             output_dir,
             file_name,
             sender,
             buf: Vec::with_capacity(max_capacity),
             max_capacity,
             thread_handle,
-            file_path: path.clone(),
+            file_path: path,
         }
     }
 
@@ -172,7 +173,6 @@ impl AsyncBincoder {
         thread_handle.join().unwrap();
         if save_cbor {
             let cbor_path = output_dir
-                .clone()
                 .join(get_file_name(Format::Cbor, &file_name));
             save_binc_to_cbor(&file_path, &cbor_path);
         }
@@ -192,15 +192,15 @@ pub fn load(
     }
 }
 
-pub fn load_binc_from_path(file_path: &Path) -> WorldInfo {
+pub fn load_binc_from_path(file_path: &Path) -> File {
     if let Some(ext) = file_path.extension() {
         match ext.to_str().unwrap() {
             "binc" => {
-                let mut f = OpenOptions::new()
+                let f = OpenOptions::new()
                     .read(true)
                     .open(&file_path)
                     .unwrap();
-                deserialize_from(&mut f).unwrap()
+                f
             }
             _ => panic!(
                 "file path has unknown extension: {}",

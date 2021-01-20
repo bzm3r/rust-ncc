@@ -1,3 +1,4 @@
+use crate::reader::{Msg, Request};
 use crate::AppState;
 use druid::kurbo::Line;
 use druid::{
@@ -6,6 +7,7 @@ use druid::{
     Rect, RenderContext, Size, UpdateCtx, Vec2, Widget,
 };
 use log::info;
+use rust_ncc::world::Snapshot;
 
 #[derive(Copy, Clone, Default, Data)]
 pub struct Crosshairs {
@@ -52,34 +54,20 @@ impl Widget<AppState> for Animator {
 
             Event::KeyDown(KeyEvent { code, .. }) => {
                 match code {
-                    Code::KeyN => {
-                        //decrement scene by one frame
-                        app.frame = {
-                            let new_frame = app.frame as isize - 1;
-                            if app.sim_history.snapshots.len() > 0 {
-                                app.sim_history.snapshots.len()
-                            } else if new_frame < 0 {
-                                app.sim_history.snapshots.len() - 1
-                            } else {
-                                new_frame as usize
-                            }
-                        };
-                        ctx.request_paint();
-                    }
                     Code::KeyM => {
                         // increment scene by one frame
-                        app.frame = {
-                            let new_frame = app.frame as isize + 1;
-                            if new_frame
-                                < app.sim_history.snapshots.len()
-                                    as isize
-                            {
-                                new_frame
-                            } else {
-                                0
-                            }
+                        if app.snap_offset == app.snapshots.len() {
+                            app.snapshots = match app
+                                .read_channel
+                                .tx_to_reader
+                                .send(Msg::FromApp(
+                                    Request::FetchNext,
+                                )) {
+                                Ok() => {}
+                                Err(_) => {}
+                            };
+                            app.snap_offset = 1;
                         }
-                            as usize;
                         ctx.request_paint();
                     }
                     Code::KeyH => {

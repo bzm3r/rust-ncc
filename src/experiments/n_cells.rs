@@ -35,7 +35,7 @@ fn group_layout(
         height: (num_cells as f64 / side_len).ceil() as usize,
         bottom_left: centroid,
     };
-    if r.width * r.height > num_cells {
+    if r.width * r.height < num_cells {
         Err(String::from(
             "Group layout area is too small to contain required number of cells.",
         ))
@@ -89,7 +89,7 @@ fn raw_world_parameters(
             coa: Some(RawCoaParams {
                 los_penalty: 2.0,
                 range: Length(110.0).micro(),
-                mag: 12.0,
+                mag: 24.0,
             }),
             chem_attr: None,
             bdry: None,
@@ -100,9 +100,9 @@ fn raw_world_parameters(
                 ),
                 adh_mag: Some(gen_default_adhesion_mag(
                     char_quants,
-                    40.0,
+                    0.0,
                 )),
-                cal_mag: Some(60.0),
+                cal_mag: Some(0.0),
                 cil_mag: 60.0,
             },
         },

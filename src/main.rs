@@ -6,7 +6,7 @@ use std::path::PathBuf;
 use std::time::Instant;
 
 fn main() {
-    let exp = experiments::n_cells::generate(Some(3), 16);
+    let exp = experiments::n_cells::generate(Some(3), 2);
 
     let output_dir = PathBuf::from(DEFAULT_OUTPUT_DIR);
     let mut w = world::World::new(exp, None, 10, 100);

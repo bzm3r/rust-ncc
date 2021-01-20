@@ -6,7 +6,7 @@ import cbor2
 
 world_history = None
 snapshots = []
-file_name = "history_n_cells.cbor"
+file_name = "../output/history_n_cells.cbor"
 with open(file_name, mode='rb') as sf:
     world_history = cbor2.load(sf)
     success = True

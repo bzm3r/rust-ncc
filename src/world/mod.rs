@@ -21,7 +21,7 @@ use crate::parameters::{
 use crate::NVERTS;
 //use rand_core::SeedableRng;
 use crate::utils::pcg32::Pcg32;
-use crate::world::hardio::AsyncBincoder;
+use crate::world::hardio::AsyncWriter;
 use rand::seq::SliceRandom;
 use rand::{RngCore, SeedableRng};
 use serde::{Deserialize, Serialize};
@@ -98,7 +98,7 @@ pub struct Snapshot {
     pub rng: Pcg32,
 }
 
-#[derive(Deserialize, Serialize, Clone, Default, Debug)]
+#[derive(Deserialize, Serialize, Clone, Default, Debug, PartialEq)]
 pub struct WorldInfo {
     pub snap_freq: u32,
     pub char_quants: CharQuantities,
@@ -119,7 +119,7 @@ pub struct World {
     tstep: u32,
     world_params: WorldParameters,
     group_params: Vec<Parameters>,
-    history_writer: Option<AsyncBincoder>,
+    history_writer: Option<AsyncWriter>,
     cells: Cells,
     interaction_generator: InteractionGenerator,
     pub rng: Pcg32,
@@ -328,8 +328,8 @@ impl World {
         file_name: String,
         history_info: WorldInfo,
         max_capacity: usize,
-    ) -> AsyncBincoder {
-        AsyncBincoder::new(
+    ) -> AsyncWriter {
+        AsyncWriter::new(
             output_dir,
             file_name,
             max_capacity,
