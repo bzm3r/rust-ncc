@@ -149,11 +149,10 @@ fn gen_default_raw_params(
 /// We take the viscosity of the world to be 0.29 N m^-2. We
 /// divide viscosity by the number of vertices, on a cell in
 /// order to scale it properly.
-///
-/// See SI for justification.
-//TODO: put justification here.
-fn gen_default_viscosity() -> Viscosity {
-    Viscosity(0.29).mul_number(1.0 / (NVERTS as f64))
+fn gen_default_vertex_viscosity(
+    char_quants: &CharQuantities,
+) -> Viscosity {
+    char_quants.eta.mul_number(2.9 / (NVERTS as f64))
 }
 
 fn gen_default_phys_contact_dist() -> Length {

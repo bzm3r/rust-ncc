@@ -5,7 +5,7 @@ use crate::cell::chemistry::{
 use crate::experiments::{
     gen_default_adhesion_mag, gen_default_char_quants,
     gen_default_phys_contact_dist, gen_default_raw_params,
-    gen_default_viscosity, CellGroup, Experiment, GroupBBox,
+    gen_default_vertex_viscosity, CellGroup, Experiment, GroupBBox,
 };
 use crate::interactions::dat_sym2d::SymCcDat;
 use crate::math::v2d::V2D;
@@ -84,7 +84,7 @@ fn raw_world_parameters(
     // })
     let one_at = gen_default_phys_contact_dist();
     RawWorldParameters {
-        vertex_eta: gen_default_viscosity(),
+        vertex_eta: gen_default_vertex_viscosity(char_quants),
         interactions: RawInteractionParams {
             coa: Some(RawCoaParams {
                 los_penalty: 2.0,
