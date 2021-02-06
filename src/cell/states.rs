@@ -346,7 +346,7 @@ impl CoreState {
             &self.poly,
             &uivs,
             parameters.rest_area,
-            parameters.stiffness_ctyo,
+            parameters.stiffness_cyto,
         );
         // Calculate strain in each edge.
         let mut edge_strains = [0.0_f32; NVERTS];

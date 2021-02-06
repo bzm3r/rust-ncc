@@ -24,7 +24,8 @@ pub enum DistributionType {
     /// Distribute Rho GTPase randomly over all vertices.
     Random,
     /// Mark vertices `true` if Rho GTPase is to be placed there.
-    Specific([bool; NVERTS]),
+    SpecificUniform([bool; NVERTS as usize]),
+    SpecificRandom([bool; NVERTS as usize]),
 }
 
 pub struct DistributionScheme {
@@ -34,19 +35,22 @@ pub struct DistributionScheme {
 
 impl DistributionScheme {
     /// [1.0, 10.0, 4.0, 5.0] (consider the relative fraction of rho gtpase), sum = 20.0,,
-    /// go through each and divide by 20 = [0.05, 0.5, 0.2, 0.25]
+    /// go thru each and divide by 20 = [0.05, 0.5, 0.2, 0.25]
     /// if we now sum up everything in the new array, sum = 1.0
     fn scaled_unitize(
         frac: f32,
-        mut distrib: [f32; NVERTS],
-    ) -> [f32; NVERTS] {
+        mut distrib: [f32; NVERTS as usize],
+    ) -> [f32; NVERTS as usize] {
         let sum: f32 = distrib.iter().sum();
         distrib.iter_mut().for_each(|e| *e = *e * frac / sum);
         distrib
     }
 
-    fn gen_random(rng: &mut Pcg32, frac: f32) -> [f32; NVERTS] {
-        let mut r = [0.0; NVERTS];
+    fn gen_random(
+        rng: &mut Pcg32,
+        frac: f32,
+    ) -> [f32; NVERTS as usize] {
+        let mut r = [0.0; NVERTS as usize];
         let prob_distrib: Uniform<f32> =
             Uniform::new_inclusive(0.0, 1.0);
         r.iter_mut().for_each(|e| {
@@ -55,16 +59,34 @@ impl DistributionScheme {
         Self::scaled_unitize(frac, r)
     }
 
-    fn gen_specific(
+    fn gen_specific_uniform(
         frac: f32,
-        marked_verts: &[bool; NVERTS],
-    ) -> [f32; NVERTS] {
+        marked_verts: &[bool; NVERTS as usize],
+    ) -> [f32; NVERTS as usize] {
         //println!("marking in gen_specific: {:?}", &marked_verts);
-        let mut r = [0.0; NVERTS];
+        let mut r = [0.0; NVERTS as usize];
         marked_verts.iter().zip(r.iter_mut()).for_each(
             |(&marked, e)| {
                 if marked {
                     *e = 1.0;
+                }
+            },
+        );
+        Self::scaled_unitize(frac, r)
+    }
+    fn gen_specific_random(
+        rng: &mut Pcg32,
+        frac: f32,
+        marked_verts: &[bool; NVERTS as usize],
+    ) -> [f32; NVERTS as usize] {
+        //println!("marking in gen_specific: {:?}", &marked_verts);
+        let mut r = [0.0; NVERTS as usize];
+        let prob_distrib: Uniform<f32> =
+            Uniform::new_inclusive(0.0, 1.0);
+        marked_verts.iter().zip(r.iter_mut()).for_each(
+            |(&marked, e)| {
+                if marked {
+                    *e = rng.sample(prob_distrib);
                 }
             },
         );
@@ -76,13 +98,15 @@ impl DistributionScheme {
             DistributionType::Random => {
                 Self::gen_random(rng, self.frac)
             }
-            DistributionType::Specific(marks) => {
-                Self::gen_specific(self.frac, marks)
+            DistributionType::SpecificUniform(marks) => {
+                Self::gen_specific_uniform(self.frac, marks)
+            }
+            DistributionType::SpecificRandom(marks) => {
+                Self::gen_specific_random(rng, self.frac, marks)
             }
         }
     }
 }
-
 #[derive(
     Clone, Copy, Deserialize, Serialize, Default, Debug, PartialEq,
 )]

@@ -64,13 +64,13 @@ fn cell_groups(
     ];
     let raw_params0 = gen_default_raw_params(
         rng,
-        false,
+        true,
         group0_marked,
         group1_marked,
     );
     let raw_params1 = gen_default_raw_params(
         rng,
-        false,
+        true,
         group1_marked,
         group0_marked,
     );
@@ -110,6 +110,10 @@ fn gen_cil_mat() -> SymCcDat<f32> {
 /// Generate raw world parameters, in particular, how
 /// cells interact with each other, and any boundaries.
 fn raw_world_parameters(
+    coa_mag: Option<f32>,
+    adh_mag: Option<f32>,
+    cal_mag: Option<f32>,
+    cil_mag: f32,
     char_quants: &CharQuantities,
 ) -> RawWorldParameters {
     // Some(RawCoaParams {
@@ -118,10 +122,16 @@ fn raw_world_parameters(
     //     mag: 100.0,
     // })
     let one_at = gen_default_phys_contact_dist();
+    let coa = RawCoaParams::default_with_mag(coa_mag);
+    let adh_mag = if let Some(x) = adh_mag {
+        Some(gen_default_adhesion_mag(char_quants, x))
+    } else {
+        None
+    };
     RawWorldParameters {
         vertex_eta: gen_default_viscosity(),
         interactions: RawInteractionParams {
-            coa: None,
+            coa,
             chem_attr: None,
             bdry: None,
             phys_contact: RawPhysicalContactParams {
@@ -129,12 +139,9 @@ fn raw_world_parameters(
                     one_at.mul_number(2.0),
                     one_at,
                 ),
-                adh_mag: Some(gen_default_adhesion_mag(
-                    char_quants,
-                    10.0,
-                )),
-                cal_mag: Some(60.0),
-                cil_mag: 60.0,
+                adh_mag,
+                cal_mag,
+                cil_mag,
             },
         },
     }
@@ -146,12 +153,47 @@ pub fn generate(seed: Option<u64>) -> Experiment {
         Some(s) => Pcg32::seed_from_u64(s),
         None => Pcg32::from_entropy(),
     };
+    let cil = 60.0;
+    let cal: Option<f32> = None;
+    let adh: Option<f32> = Some(10.0);
+    let coa: Option<f32> = Some(24.0);
+
     let char_quants = gen_default_char_quants();
     let world_parameters =
-        raw_world_parameters(&char_quants).refine(&char_quants);
+        raw_world_parameters(coa, adh, cal, cil, &char_quants)
+            .refine(&char_quants);
     let cell_groups = cell_groups(&mut rng, &char_quants);
+
+    //convert the option into string
+    let cal = if let Some(i) = cal {
+        i.to_string()
+    } else {
+        "None".to_string()
+    };
+
+    let adh = if let Some(i) = adh {
+        i.to_string()
+    } else {
+        "None".to_string()
+    };
+
+    let coa = if let Some(i) = coa {
+        i.to_string()
+    } else {
+        "None".to_string()
+    };
+
+    let seed_string = if let Some(i) = seed {
+        i.to_string()
+    } else {
+        "None".to_string()
+    };
+
     Experiment {
-        file_name: "separated_pair".to_string(),
+        file_name: format!(
+            "separated_pair_cil={}_cal={}_adh={}_coa={}_seed={}",
+            cil, cal, adh, coa, seed_string
+        ),
         char_quants,
         world_parameters,
         cell_groups,
@@ -166,7 +208,7 @@ fn gen_default_raw_params(
     marked_rac: [bool; NVERTS],
     marked_rho: [bool; NVERTS],
 ) -> RawParameters {
-    //println!("marking: {:?}", &marked_rac);
+    // println!("marking: {:?}", &marked_rac);
 
     let rgtp_d = (Length(0.1_f32.sqrt()).micro().pow(2.0).g()
         / Time(1.0).g())
@@ -176,7 +218,7 @@ fn gen_default_raw_params(
     let init_rac = RgtpDistribution::generate(
         DistributionScheme {
             frac: 0.1,
-            ty: DistributionType::Specific(marked_rac),
+            ty: DistributionType::SpecificRandom(marked_rac),
         },
         DistributionScheme {
             frac: 0.1,
@@ -189,10 +231,10 @@ fn gen_default_raw_params(
     let init_rho = RgtpDistribution::generate(
         DistributionScheme {
             frac: 0.1,
-            ty: DistributionType::Specific(marked_rho),
+            ty: DistributionType::SpecificRandom(marked_rho),
         },
         DistributionScheme {
-            frac: 0.0,
+            frac: 0.1,
             ty: DistributionType::Random,
         },
         rng,
@@ -206,7 +248,7 @@ fn gen_default_raw_params(
         halfmax_rgtp_frac: 0.4,
         lm_ss: Stress(10.0).kilo(),
         rho_friction: 0.2,
-        stiffness_ctyo: Force(1e-7),
+        stiffness_cyto: Force(1e-7),
         diffusion_rgtp: rgtp_d,
         tot_rac: 2.5e6,
         tot_rho: 1e6,

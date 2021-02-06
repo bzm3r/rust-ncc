@@ -5,8 +5,6 @@ use serde_cbor::ser::IoWrite;
 use std::borrow::Borrow;
 use std::fs::File;
 use std::fs::OpenOptions;
-
-use std::io::{Seek, SeekFrom};
 use std::path::{Path, PathBuf};
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::thread::JoinHandle;

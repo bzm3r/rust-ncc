@@ -7,11 +7,8 @@
 // except according to those terms.
 
 pub mod cil_test;
-pub mod four_cells;
 pub mod n_cells;
-pub mod pair;
 pub mod separated_pair;
-//pub mod single;
 
 use crate::cell::chemistry::{
     DistributionScheme, DistributionType, RgtpDistribution,
@@ -129,7 +126,7 @@ fn gen_default_raw_params(
         halfmax_rgtp_frac: 0.4,
         lm_ss: Stress(10.0).kilo(),
         rho_friction: 0.2,
-        stiffness_ctyo: Force(1e-7),
+        stiffness_cyto: Force(1e-7),
         diffusion_rgtp: rgtp_d,
         tot_rac: 2.5e6,
         tot_rho: 1e6,
