@@ -97,23 +97,23 @@ fn cell_groups(
 }
 
 /// Generate CAL values between different cells.
-fn gen_cal_mat() -> SymCcDat<f32> {
-    SymCcDat::<f32>::new(2, 0.0)
+fn gen_cal_mat() -> SymCcDat<f64> {
+    SymCcDat::<f64>::new(2, 0.0)
 }
 
 /// Generate CIL values between different cells (see SI for
 /// justification).
-fn gen_cil_mat() -> SymCcDat<f32> {
-    SymCcDat::<f32>::new(2, 60.0)
+fn gen_cil_mat() -> SymCcDat<f64> {
+    SymCcDat::<f64>::new(2, 60.0)
 }
 
 /// Generate raw world parameters, in particular, how
 /// cells interact with each other, and any boundaries.
 fn raw_world_parameters(
-    coa_mag: Option<f32>,
-    adh_mag: Option<f32>,
-    cal_mag: Option<f32>,
-    cil_mag: f32,
+    coa_mag: Option<f64>,
+    adh_mag: Option<f64>,
+    cal_mag: Option<f64>,
+    cil_mag: f64,
     char_quants: &CharQuantities,
 ) -> RawWorldParameters {
     // Some(RawCoaParams {
@@ -154,9 +154,9 @@ pub fn generate(seed: Option<u64>) -> Experiment {
         None => Pcg32::from_entropy(),
     };
     let cil = 60.0;
-    let cal: Option<f32> = None;
-    let adh: Option<f32> = Some(10.0);
-    let coa: Option<f32> = Some(24.0);
+    let cal: Option<f64> = None;
+    let adh: Option<f64> = Some(10.0);
+    let coa: Option<f64> = Some(24.0);
 
     let char_quants = gen_default_char_quants();
     let world_parameters =
@@ -210,7 +210,7 @@ fn gen_default_raw_params(
 ) -> RawParameters {
     // println!("marking: {:?}", &marked_rac);
 
-    let rgtp_d = (Length(0.1_f32.sqrt()).micro().pow(2.0).g()
+    let rgtp_d = (Length(0.1_f64.sqrt()).micro().pow(2.0).g()
         / Time(1.0).g())
     .to_diffusion()
     .unwrap();

@@ -26,9 +26,9 @@ pub fn calc_edge_vecs(
 
 /// Calculate elastic forces due to stretching of edges.
 pub fn calc_edge_forces(
-    edge_strains: &[f32; NVERTS],
+    edge_strains: &[f64; NVERTS],
     edge_unit_vecs: &[V2D; NVERTS],
-    stiffness_edge: f32,
+    stiffness_edge: f64,
 ) -> [V2D; NVERTS] {
     let mut r = [V2D::default(); NVERTS];
     (0..NVERTS).for_each(|i| {
@@ -46,8 +46,8 @@ pub fn calc_edge_forces(
 pub fn calc_cyto_forces(
     vertex_coords: &[V2D; NVERTS],
     unit_inward_vecs: &[V2D; NVERTS],
-    rest_area: f32,
-    stiffness_cyto: f32,
+    rest_area: f64,
+    stiffness_cyto: f64,
 ) -> [V2D; NVERTS] {
     let mut r = [V2D::default(); NVERTS];
     let area = calc_poly_area(vertex_coords);
@@ -66,12 +66,12 @@ pub fn calc_cyto_forces(
 /// activity, and the force generated. The shape of the sigmoid is
 /// governed by `halfmax_vertex_rgtp_act`.
 pub fn calc_rgtp_forces(
-    rac_acts: &[f32; NVERTS],
-    rho_acts: &[f32; NVERTS],
+    rac_acts: &[f64; NVERTS],
+    rho_acts: &[f64; NVERTS],
     unit_inward_vecs: &[V2D; NVERTS],
-    halfmax_vertex_rgtp_act: f32,
-    const_protrusive: f32,
-    const_retractive: f32,
+    halfmax_vertex_rgtp_act: f64,
+    const_protrusive: f64,
+    const_retractive: f64,
 ) -> [V2D; NVERTS] {
     let mut r = [V2D::default(); NVERTS];
     for i in 0..NVERTS {

@@ -12,13 +12,13 @@ pub mod v2d;
 
 #[inline]
 /// Calculate `x` modulo `y`.
-pub fn modulo_f32(x: f32, y: f32) -> f32 {
+pub fn modulo_f64(x: f64, y: f64) -> f64 {
     (x % y) + y
 }
 
 /// Returns the minimum of a slice of floats.
-pub fn min_f32s(xs: &[f32]) -> f32 {
-    let mut x = std::f32::MAX;
+pub fn min_f64s(xs: &[f64]) -> f64 {
+    let mut x = std::f64::MAX;
     for &y in xs {
         if y < x {
             x = y;
@@ -28,8 +28,8 @@ pub fn min_f32s(xs: &[f32]) -> f32 {
 }
 
 /// Returns the maximum of a slice of floats.
-pub fn max_f32s(xs: &[f32]) -> f32 {
-    let mut x = std::f32::MIN;
+pub fn max_f64s(xs: &[f64]) -> f64 {
+    let mut x = std::f64::MIN;
     for &y in xs {
         if y > x {
             x = y;
@@ -40,7 +40,7 @@ pub fn max_f32s(xs: &[f32]) -> f32 {
 
 #[inline]
 /// Returns the minimum of two floats.
-pub fn min_f32(x: f32, y: f32) -> f32 {
+pub fn min_f64(x: f64, y: f64) -> f64 {
     if x < y {
         x
     } else {
@@ -50,7 +50,7 @@ pub fn min_f32(x: f32, y: f32) -> f32 {
 
 #[inline]
 /// Returns maximum of two floats.
-pub fn max_f32(x: f32, y: f32) -> f32 {
+pub fn max_f64(x: f64, y: f64) -> f64 {
     if x > y {
         x
     } else {
@@ -60,7 +60,7 @@ pub fn max_f32(x: f32, y: f32) -> f32 {
 
 #[inline]
 /// Hill function with exponent 3.
-pub fn hill_function3(thresh: f32, x: f32) -> f32 {
+pub fn hill_function3(thresh: f64, x: f64) -> f64 {
     let x_cubed = x.powi(3);
     x_cubed / (thresh.powi(3) + x_cubed)
 }
@@ -68,7 +68,7 @@ pub fn hill_function3(thresh: f32, x: f32) -> f32 {
 #[inline]
 /// Model a function which is `0` and `1` at the given inputs,
 /// but is capped in output between `[0, 1]`.
-pub fn capped_linear_fn(x: f32, zero_at: f32, one_at: f32) -> f32 {
+pub fn capped_linear_fn(x: f64, zero_at: f64, one_at: f64) -> f64 {
     // first, calculate the uncapped linear function
     let m = 1.0 / (one_at - zero_at);
     // 0.0 = y = m * zero_at + b => 0.0 - m * zero_at = b
@@ -85,7 +85,7 @@ pub fn capped_linear_fn(x: f32, zero_at: f32, one_at: f32) -> f32 {
 
 /// Return if the float `x` close to `0.0`.
 #[inline]
-pub fn close_to_zero(x: f32) -> bool {
+pub fn close_to_zero(x: f64) -> bool {
     x.abs() < 1e-4
 }
 
@@ -98,7 +98,7 @@ pub enum InUnitInterval {
 }
 
 #[inline]
-pub fn in_unit_interval(x: f32) -> InUnitInterval {
+pub fn in_unit_interval(x: f64) -> InUnitInterval {
     if x > 0.0 && x < 1.0 {
         InUnitInterval::In
     } else if close_to_zero(x) {

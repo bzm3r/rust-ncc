@@ -25,7 +25,7 @@ use crate::world::hardio::AsyncWriter;
 use rand::seq::SliceRandom;
 use rand::{RngCore, SeedableRng};
 use serde::{Deserialize, Serialize};
-use std::f32::consts::PI;
+use std::f64::consts::PI;
 use std::path::PathBuf;
 
 #[derive(Clone, Deserialize, Serialize, PartialEq, Default, Debug)]
@@ -126,10 +126,10 @@ pub struct World {
     snap_freq: u32,
 }
 
-fn gen_poly(centroid: &V2D, radius: f32) -> [V2D; NVERTS] {
+fn gen_poly(centroid: &V2D, radius: f64) -> [V2D; NVERTS] {
     let mut r = [V2D::default(); NVERTS];
     (0..NVERTS).for_each(|vix| {
-        let vf = (vix as f32) / (NVERTS as f32);
+        let vf = (vix as f64) / (NVERTS as f64);
         let theta = 2.0 * PI * vf;
         r[vix] = V2D {
             x: centroid.x + theta.cos() * radius,
@@ -275,7 +275,7 @@ impl World {
         }
     }
 
-    pub fn simulate(&mut self, final_tpoint: f32, save_cbor: bool) {
+    pub fn simulate(&mut self, final_tpoint: f64, save_cbor: bool) {
         let num_tsteps =
             (final_tpoint / self.char_quants.time()).ceil() as u32;
         while self.tstep < num_tsteps {
@@ -370,8 +370,8 @@ fn gen_cell_centroids(cg: &CellGroup) -> Result<Vec<V2D>, String> {
             let row = ix / layout.width;
             let col = ix - layout.width * row;
             let cg = first_cell_centroid
-                + (row as f32) * row_delta
-                + (col as f32) * col_delta;
+                + (row as f64) * row_delta
+                + (col as f64) * col_delta;
             r.push(cg);
         }
         Ok(r)

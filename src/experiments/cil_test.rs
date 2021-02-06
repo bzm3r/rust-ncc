@@ -97,14 +97,14 @@ fn cell_groups(
 }
 
 /// Generate CAL values between different cells.
-fn gen_cal_mat() -> SymCcDat<f32> {
-    SymCcDat::<f32>::new(2, 0.0)
+fn gen_cal_mat() -> SymCcDat<f64> {
+    SymCcDat::<f64>::new(2, 0.0)
 }
 
 /// Generate CIL values between different cells (see SI for
 /// justification).
-fn gen_cil_mat() -> SymCcDat<f32> {
-    SymCcDat::<f32>::new(2, 60.0)
+fn gen_cil_mat() -> SymCcDat<f64> {
+    SymCcDat::<f64>::new(2, 60.0)
 }
 
 /// Generate raw world parameters, in particular, how
@@ -165,7 +165,7 @@ fn gen_default_raw_params(
 ) -> RawParameters {
     //println!("marking: {:?}", &marked_rac);
 
-    let rgtp_d = (Length(0.1_f32.sqrt()).micro().pow(2.0).g()
+    let rgtp_d = (Length(0.1_f64.sqrt()).micro().pow(2.0).g()
         / Time(1.0).g())
     .to_diffusion()
     .unwrap();

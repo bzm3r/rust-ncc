@@ -8,15 +8,15 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Copy, Deserialize, Serialize)]
 pub struct VertexPairInfo {
-    dist: f32,
-    num_intersects: f32,
+    dist: f64,
+    num_intersects: f64,
 }
 
 impl VertexPairInfo {
     pub fn infinity() -> VertexPairInfo {
         VertexPairInfo {
-            dist: f32::INFINITY,
-            num_intersects: f32::INFINITY,
+            dist: f64::INFINITY,
+            num_intersects: f64::INFINITY,
         }
     }
 }
@@ -81,7 +81,7 @@ pub fn calc_pair_info(
                     0.0
                 }
             })
-            .sum::<f32>();
+            .sum::<f64>();
         return VertexPairInfo {
             dist,
             num_intersects: clearance,
@@ -173,9 +173,9 @@ impl CoaGenerator {
         }
     }
 
-    pub fn generate(&self) -> Vec<[f32; NVERTS]> {
+    pub fn generate(&self) -> Vec<[f64; NVERTS]> {
         let num_cells = self.contacts.num_cells;
-        let mut all_x_coas = vec![[0.0f32; NVERTS]; num_cells];
+        let mut all_x_coas = vec![[0.0f64; NVERTS]; num_cells];
         let CoaParams {
             los_penalty,
             mag,
@@ -193,7 +193,7 @@ impl CoaGenerator {
                             } = self.dat.get(ci, vi, oci, ovi);
                             *x_coa = mag * (distrib_exp * dist).exp()
                                 / (num_intersects + 1.0)
-                                    .powf(los_penalty as f32);
+                                    .powf(los_penalty as f64);
                         }
                     }
                 }

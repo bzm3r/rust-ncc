@@ -8,7 +8,7 @@
 
 use crate::math::v2d::V2D;
 use crate::math::{
-    close_to_zero, in_unit_interval, max_f32s, min_f32s,
+    close_to_zero, in_unit_interval, max_f64s, min_f64s,
     InUnitInterval,
 };
 use crate::utils::{circ_ix_minus, circ_ix_plus};
@@ -43,10 +43,10 @@ impl Poly {
 
 /// Calculate the area of a polygon with vertices positioned at `xys`.
 /// [ref](http://geomalgorithms.com/a01-_area.html)
-pub fn calc_poly_area(xys: &[V2D]) -> f32 {
+pub fn calc_poly_area(xys: &[V2D]) -> f64 {
     let nvs = xys.len();
 
-    let mut area = 0.0_f32;
+    let mut area = 0.0_f64;
     for i in 0..nvs {
         let j = circ_ix_plus(i, nvs);
         let k = circ_ix_minus(i, nvs);
@@ -60,10 +60,10 @@ pub fn calc_poly_area(xys: &[V2D]) -> f32 {
     Copy, Clone, Deserialize, Serialize, PartialEq, Default, Debug,
 )]
 pub struct BBox {
-    pub xmin: f32,
-    pub ymin: f32,
-    pub xmax: f32,
-    pub ymax: f32,
+    pub xmin: f64,
+    pub ymin: f64,
+    pub xmax: f64,
+    pub ymax: f64,
 }
 
 impl BBox {
@@ -77,18 +77,18 @@ impl BBox {
     }
 
     pub fn from_points(ps: &[V2D]) -> BBox {
-        let xs: Vec<f32> = ps.iter().map(|v| v.x).collect();
-        let ys: Vec<f32> = ps.iter().map(|v| v.y).collect();
+        let xs: Vec<f64> = ps.iter().map(|v| v.x).collect();
+        let ys: Vec<f64> = ps.iter().map(|v| v.y).collect();
         BBox {
-            xmin: min_f32s(&xs),
-            ymin: min_f32s(&ys),
-            xmax: max_f32s(&xs),
-            ymax: max_f32s(&ys),
+            xmin: min_f64s(&xs),
+            ymin: min_f64s(&ys),
+            xmax: max_f64s(&xs),
+            ymax: max_f64s(&ys),
         }
     }
 
     #[inline]
-    pub fn expand_by(&self, l: f32) -> BBox {
+    pub fn expand_by(&self, l: f64) -> BBox {
         BBox {
             xmin: self.xmin - l,
             ymin: self.ymin - l,
@@ -173,13 +173,13 @@ pub fn is_point_in_poly(
         let p0 = &poly[vi];
         let p1 = &poly[circ_ix_plus(vi, nverts)];
 
-        if (p0.y - p.y).abs() < f32::EPSILON || p0.y < p.y {
+        if (p0.y - p.y).abs() < f64::EPSILON || p0.y < p.y {
             if p1.y > p.y {
                 if let PointSegRelation::Left = is_left(p, p0, p1) {
                     wn += 1;
                 }
             }
-        } else if (p1.y - p.y).abs() < f32::EPSILON || p1.y < p.y {
+        } else if (p1.y - p.y).abs() < f64::EPSILON || p1.y < p.y {
             if let PointSegRelation::Right = is_left(p, p0, p1) {
                 wn -= 1;
             }
@@ -214,16 +214,16 @@ impl Display for LineSeg2D {
 
 #[derive(Copy, Clone)]
 pub enum IntersectCalcResult {
-    Strict(f32, f32),
-    Weak(f32, f32),
+    Strict(f64, f64),
+    Weak(f64, f64),
     TwoNonIdenticalPoints,
     NoBBoxOverlap,
     SelfIsPointNotOnOther,
     SelfIsCollinearPointNotOnOther,
     OtherIsCollinearPointNotOnSelf,
     OtherIsPointNotOnSelf,
-    IntersectionPointNotOnSelf(f32),
-    IntersectionPointNotOnOther(f32),
+    IntersectionPointNotOnSelf(f64),
+    IntersectionPointNotOnOther(f64),
     ParallelLineSegs,
 }
 
@@ -289,13 +289,13 @@ impl LineSeg2D {
     }
 
     // /// Create new line segment from four coordinate points
-    // /// `(a, b, x, y)` of type `(f32; 4)`, assuming that `p0`
+    // /// `(a, b, x, y)` of type `(f64; 4)`, assuming that `p0`
     // /// is `V2d::new(a, b)` and `p1` is `V2d::new(x, y)`.
     // pub fn from_coordinates(
-    //     a: f32,
-    //     b: f32,
-    //     x: f32,
-    //     y: f32,
+    //     a: f64,
+    //     b: f64,
+    //     x: f64,
+    //     y: f64,
     // ) -> LineSeg2D {
     //     LineSeg2D::new(&V2D::new(a, b), &V2D::new(x, y))
     // }
@@ -593,7 +593,7 @@ impl LineSeg2D {
         // `o` be a point on the "other" line segment, such that:
         // `s = t * self.p + self.p0`
         // `o = u * self.p + self.p0`
-        // where `t: f32`, and `u: f32`.
+        // where `t: f64`, and `u: f64`.
 
         // Let `dx_s = p.x = self.p1.x - self.p0.x`; similarly, let
         // `dy_s = p.y`, `dx_o` and `dy_o` be defined analogously.
@@ -764,12 +764,12 @@ impl LineSeg2D {
     }
 
     #[inline]
-    pub fn mag(&self) -> f32 {
+    pub fn mag(&self) -> f64 {
         self.vector.mag()
     }
 }
 
-// pub fn refine_raw_poly(raw_poly: [[f32; 2]; 16]) -> [V2d; 16] {
+// pub fn refine_raw_poly(raw_poly: [[f64; 2]; 16]) -> [V2d; 16] {
 //     let mut r = [V2d::default(); 16];
 //     for (q, p) in r.iter_mut().zip(raw_poly.iter()) {
 //         q.x = p[0];

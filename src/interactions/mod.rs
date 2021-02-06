@@ -36,19 +36,19 @@ use serde::{Deserialize, Serialize};
 /// dominates, otherwise it is negative.
 #[derive(Copy, Clone, Debug, Deserialize, Serialize)]
 pub enum RelativeRgtpActivity {
-    RhoDominant(f32),
-    RacDominant(f32),
+    RhoDominant(f64),
+    RacDominant(f64),
 }
 
 impl RelativeRgtpActivity {
-    pub fn to_f32(&self) -> f32 {
+    pub fn to_f64(&self) -> f64 {
         match self {
             RelativeRgtpActivity::RacDominant(value) => *value,
             RelativeRgtpActivity::RhoDominant(value) => *value,
         }
     }
 
-    pub fn from_f32(value: f32) -> Self {
+    pub fn from_f64(value: f64) -> Self {
         if value > 0.0 {
             RacDominant(value)
         } else {
@@ -61,11 +61,11 @@ impl RelativeRgtpActivity {
     pub fn mix_rel_rgtp_act_across_edge(
         smaller_vertex: RelativeRgtpActivity,
         bigger_vertex: RelativeRgtpActivity,
-        t: f32,
+        t: f64,
     ) -> RelativeRgtpActivity {
-        RelativeRgtpActivity::from_f32(
-            smaller_vertex.to_f32() * (1.0 - t)
-                + bigger_vertex.to_f32() * t,
+        RelativeRgtpActivity::from_f64(
+            smaller_vertex.to_f64() * (1.0 - t)
+                + bigger_vertex.to_f64() * t,
         )
     }
 }
@@ -74,12 +74,12 @@ impl RelativeRgtpActivity {
     Copy, Clone, Debug, Default, Deserialize, Serialize, PartialEq,
 )]
 pub struct Interactions {
-    pub x_cals: [f32; NVERTS],
-    pub x_cils: [f32; NVERTS],
+    pub x_cals: [f64; NVERTS],
+    pub x_cils: [f64; NVERTS],
     pub x_adhs: [V2D; NVERTS],
-    pub x_chem_attrs: [f32; NVERTS],
-    pub x_coas: [f32; NVERTS],
-    pub x_bdrys: [f32; NVERTS],
+    pub x_chem_attrs: [f64; NVERTS],
+    pub x_coas: [f64; NVERTS],
+    pub x_bdrys: [f64; NVERTS],
 }
 
 /// Generates interaction related factors.
@@ -148,11 +148,13 @@ impl InteractionGenerator {
             .update(cell_ix, &self.cell_polys);
     }
 
-    pub fn generate(&self, rel_rgtps: &Vec<[RelativeRgtpActivity; NVERTS]>) -> Vec<Interactions> {
+    pub fn generate(
+        &self,
+        rel_rgtps: &Vec<[RelativeRgtpActivity; NVERTS]>,
+    ) -> Vec<Interactions> {
         let num_cells = self.cell_polys.len();
-        let PhysContactFactors { adh, cil, cal } = self
-            .phys_contact_generator
-            .generate(rel_rgtps);
+        let PhysContactFactors { adh, cil, cal } =
+            self.phys_contact_generator.generate(rel_rgtps);
         let r_coas = self
             .coa_generator
             .as_ref()

@@ -9,7 +9,7 @@ pub struct BdryEffectGenerator {
     shape: Vec<V2D>,
     bbox: BBox,
     skip_bb_check: bool,
-    mag: f32,
+    mag: f64,
 }
 
 impl BdryEffectGenerator {
@@ -31,11 +31,11 @@ impl BdryEffectGenerator {
     pub fn generate(
         &self,
         cell_polys: &[Poly],
-    ) -> Vec<[f32; NVERTS]> {
+    ) -> Vec<[f64; NVERTS]> {
         cell_polys
             .iter()
             .map(|poly| {
-                let mut x_bdrys = [0.0f32; NVERTS];
+                let mut x_bdrys = [0.0f64; NVERTS];
                 poly.verts.iter().zip(x_bdrys.iter_mut()).for_each(
                     |(v, x)| {
                         let in_bdry = if self.skip_bb_check {

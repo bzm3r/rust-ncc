@@ -10,7 +10,7 @@ use std::time::Duration;
 
 const SEED: u64 = 23891;
 
-fn random_lseg(rng: &mut Pcg32, distrib: &Uniform<f32>) -> LineSeg2D {
+fn random_lseg(rng: &mut Pcg32, distrib: &Uniform<f64>) -> LineSeg2D {
     let a = V2D::new(rng.sample(&distrib), rng.sample(&distrib));
     let b = V2D::new(rng.sample(&distrib), rng.sample(&distrib));
     LineSeg2D::new(&a, &b)
@@ -18,7 +18,7 @@ fn random_lseg(rng: &mut Pcg32, distrib: &Uniform<f32>) -> LineSeg2D {
 
 fn random_lsegs(n: usize) -> Vec<LineSeg2D> {
     let mut rng = Pcg32::seed_from_u64(SEED);
-    let uniform = Uniform::new(0.0_f32, 10.0);
+    let uniform = Uniform::new(0.0_f64, 10.0);
     let lsegs =
         (0..n).map(|_| random_lseg(&mut rng, &uniform)).collect();
     lsegs

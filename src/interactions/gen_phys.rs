@@ -13,20 +13,20 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 
 #[derive(Clone, Copy)]
-pub struct Dist(f32);
+pub struct Dist(f64);
 #[derive(Clone, Copy, Serialize, Deserialize)]
-pub struct LineSegParam(f32);
+pub struct LineSegParam(f64);
 
 #[derive(Clone, Copy, Serialize, Deserialize, Debug, PartialEq)]
 pub enum ClosePoint {
     Vertex {
         vector_to: V2D,
-        smooth_factor: f32,
+        smooth_factor: f64,
     },
     OnEdge {
-        edge_point_param: f32,
+        edge_point_param: f64,
         vector_to: V2D,
-        smooth_factor: f32,
+        smooth_factor: f64,
     },
     None,
 }
@@ -128,8 +128,8 @@ pub struct PhysicalContactGenerator {
 
 pub struct PhysContactFactors {
     pub adh: Vec<[V2D; NVERTS]>,
-    pub cil: Vec<[f32; NVERTS]>,
-    pub cal: Vec<[f32; NVERTS]>,
+    pub cil: Vec<[f64; NVERTS]>,
+    pub cal: Vec<[f64; NVERTS]>,
 }
 
 impl PhysicalContactGenerator {
@@ -355,8 +355,8 @@ impl PhysicalContactGenerator {
         let num_cells = self.contacts.num_cells;
         let mut adh_per_cell =
             vec![[V2D::default(); NVERTS]; num_cells];
-        let mut cal_per_cell = vec![[0.0f32; NVERTS]; num_cells];
-        let mut cil_per_cell = vec![[0.0f32; NVERTS]; num_cells];
+        let mut cal_per_cell = vec![[0.0f64; NVERTS]; num_cells];
+        let mut cil_per_cell = vec![[0.0f64; NVERTS]; num_cells];
         for ci in 0..num_cells {
             let x_cals = &mut cal_per_cell[ci];
             let x_cils = &mut cil_per_cell[ci];
@@ -457,6 +457,6 @@ pub struct CloseEdge {
     /// Let the position of `vert_ix` be `p0`, and the position of `vert_ix + 1` be `p1`. Let `p`
     /// be the point on the close edge closest to the focus vertex. Then, `t` is such that
     /// `(p1 - p0)*t + p0 = p`.
-    pub edge_point_param: f32,
-    pub smooth_factor: f32,
+    pub edge_point_param: f64,
+    pub smooth_factor: f64,
 }

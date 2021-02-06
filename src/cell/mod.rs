@@ -24,7 +24,7 @@ use crate::utils::pcg32::Pcg32;
 use crate::utils::{circ_ix_minus, circ_ix_plus};
 use crate::NVERTS;
 use serde::{Deserialize, Serialize};
-use std::f32::consts::PI;
+use std::f64::consts::PI;
 
 /// Cell state structure.
 #[derive(
@@ -192,7 +192,7 @@ impl Cell {
         // Assumed normalized time by time provided in CharQuant.
         // Therefore, we can take the time period to integrate over
         // as 1.0.
-        let dt = 1.0 / (nsteps as f32);
+        let dt = 1.0 / (nsteps as f64);
         for _ in 0..nsteps {
             // d(state)/dt = dynamics_f(state) <- calculate RHS of ODE
             let delta = CoreState::dynamics_f(
@@ -298,10 +298,10 @@ impl Cell {
 }
 
 /// Calculate the area of an "ideal" initial cell of radius R, if it has n vertices.
-pub fn calc_init_cell_area(r: f32) -> f32 {
+pub fn calc_init_cell_area(r: f64) -> f64 {
     let poly_coords = (0..NVERTS)
         .map(|vix| {
-            let theta = (vix as f32) / (NVERTS as f32) * 2.0 * PI;
+            let theta = (vix as f64) / (NVERTS as f64) * 2.0 * PI;
             V2D {
                 x: r * theta.cos(),
                 y: r * theta.sin(),
