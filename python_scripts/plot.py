@@ -7,7 +7,7 @@ import cbor2
 
 output = None
 
-file_name = "history_cal_test.cbor"
+file_name = "cal_test.cbor"
 
 with open(file_name, mode='rb') as sf:
     output = cbor2.load(sf)

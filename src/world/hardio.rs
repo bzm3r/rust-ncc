@@ -23,9 +23,9 @@ pub fn get_file_name(format: Format, name: &str) -> String {
         Format::Bincode => "binc".to_string(),
     };
     if cfg!(features = "validate") {
-        format!("history_validated_{}.{}", name, ext)
+        format!("validated_{}.{}", name, ext)
     } else {
-        format!("history_{}.{}", name, ext)
+        format!("{}.{}", name, ext)
     }
 }
 
@@ -107,7 +107,7 @@ impl AsyncWriter {
         file_name: String,
         max_capacity: usize,
         truncate: bool,
-        history_info: WorldInfo,
+        info: WorldInfo,
     ) -> AsyncWriter {
         let path = output_dir
             .join(get_file_name(Format::Bincode, &file_name));
@@ -124,7 +124,7 @@ impl AsyncWriter {
             .unwrap();
 
         if truncate {
-            serialize_into(&mut file, &history_info).unwrap();
+            serialize_into(&mut file, &info).unwrap();
         }
 
         let thread_handle = thread::spawn(move || {

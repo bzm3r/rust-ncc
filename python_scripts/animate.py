@@ -7,7 +7,7 @@ from matplotlib import animation
 
 output = None
 
-file_name = "../output/history_separated_pair_cil=60_cal=None_adh=10_coa=24_seed=3600.cbor"
+file_name = "../output/separated_pair_cil=60_cal=None_adh=10_coa=24_seed=3600.cbor"
 
 snapshots = []
 with open(file_name, mode='rb') as sf:

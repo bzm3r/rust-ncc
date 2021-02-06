@@ -7,7 +7,7 @@ import cbor2
 
 output = None
 
-file_name = "history_separated_pair_cil=60_cal=None_adh=10_coa=24_seed=3340.cbor"
+file_name = "separated_pair_cil=60_cal=None_adh=10_coa=24_seed=3340.cbor"
 
 with open(file_name, mode='rb') as sf:
     output = cbor2.load(sf)

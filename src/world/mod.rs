@@ -119,7 +119,7 @@ pub struct World {
     tstep: u32,
     world_params: WorldParameters,
     group_params: Vec<Parameters>,
-    history_writer: Option<AsyncWriter>,
+    writer: Option<AsyncWriter>,
     cells: Cells,
     interaction_generator: InteractionGenerator,
     pub rng: Pcg32,
@@ -235,8 +235,8 @@ impl World {
             states: cell_states,
             interactions: cell_interactions.clone(),
         };
-        let history_writer = if let Some(out_dir) = out_dir {
-            Some(Self::init_history_writer(
+        let writer = if let Some(out_dir) = out_dir {
+            Some(Self::init_writer(
                 out_dir,
                 experiment.file_name,
                 WorldInfo {
@@ -263,7 +263,7 @@ impl World {
             interaction_generator,
             rng,
             snap_freq,
-            history_writer,
+            writer,
         }
     }
 
@@ -296,10 +296,10 @@ impl World {
             self.cells = new_cells;
             self.tstep += 1;
             if self.tstep % self.snap_freq == 0
-                && self.history_writer.is_some()
+                && self.writer.is_some()
             {
                 let snapshot = self.take_snapshot();
-                if let Some(hw) = self.history_writer.as_mut() {
+                if let Some(hw) = self.writer.as_mut() {
                     if self.tstep % self.snap_freq == 0 {
                         hw.push(snapshot);
                     }
@@ -309,7 +309,7 @@ impl World {
         self.finish_saving_history(save_cbor);
     }
 
-    pub fn history_info(&self) -> WorldInfo {
+    pub fn info(&self) -> WorldInfo {
         WorldInfo {
             snap_freq: self.snap_freq,
             char_quants: self.char_quants,
@@ -323,10 +323,10 @@ impl World {
         }
     }
 
-    pub fn init_history_writer(
+    pub fn init_writer(
         output_dir: PathBuf,
         file_name: String,
-        history_info: WorldInfo,
+        info: WorldInfo,
         max_capacity: usize,
     ) -> AsyncWriter {
         AsyncWriter::new(
@@ -334,12 +334,12 @@ impl World {
             file_name,
             max_capacity,
             true,
-            history_info,
+            info,
         )
     }
 
     pub fn finish_saving_history(&mut self, save_cbor: bool) {
-        if let Some(hw) = self.history_writer.take() {
+        if let Some(hw) = self.writer.take() {
             hw.finish(save_cbor);
         }
     }

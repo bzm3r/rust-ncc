@@ -7,7 +7,7 @@ use std::io;
 fn main() {
     let mut src = OpenOptions::new()
         .read(true)
-        .open("../output/history_n_cells.binc")
+        .open("../output/n_cells.binc")
         .unwrap();
 
     let _world_info: WorldInfo = deserialize_from(&mut src).unwrap();
