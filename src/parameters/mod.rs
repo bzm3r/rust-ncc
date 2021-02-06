@@ -29,8 +29,6 @@ pub struct CharQuantities {
     pub l: Length,
     pub t: Time,
     pub l3d: Length,
-    pub k_mem_off: Tinv,
-    pub k_mem_on: Tinv,
     pub k_rgtp: Tinv,
 }
 
@@ -334,30 +332,31 @@ pub struct RawParameters {
     pub init_rac: RgtpDistribution,
     /// Initial distribution of RhoA.
     pub init_rho: RgtpDistribution,
-    /// Baseline Rac1 activation rate as a multiple of characteristic activation rate, which we
-    /// currently take to be 1e-4/second.
-    ///
-    /// The user only needs to think about providing the baseline Rac1 activity rate in terms of
-    /// the characteristic activity rate.
-    pub kgtp_rac: f64,
-    /// Rac1 auto-activation rate as a multiple of the characteristic activity rate.
-    pub kgtp_rac_auto: f64,
-    /// Baseline Rac1 inactivation rate as a multiple of the characteristic inactivity rate.
-    pub kdgtp_rac: f64,
-    /// RhoA mediated inhibition of Rac1 as a multiple of baseline Rac1 inactivation rate.
-    pub kdgtp_rho_on_rac: f64,
+    /// Baseline Rac1 activation rate.
+    pub kgtp_rac: Tinv,
+    /// Rac1 auto-activation rate.
+    pub kgtp_rac_auto: Tinv,
+    /// Baseline Rac1 inactivation rate.
+    pub kdgtp_rac: Tinv,
+    /// RhoA mediated inhibition of Rac1.
+    pub kdgtp_rho_on_rac: Tinv,
     /// Strain at which Rac1 tension-mediated inhibition is half-strength.
     pub halfmax_tension_inhib: f64,
     /// Maximum tension-mediated Rac1 inhibition as a multiple of baseline Rac1 inactivation rate.
     pub tension_inhib: f64,
-    /// Baseline RhoA activation rate as a multiple of characteristic activation rate.
-    pub kgtp_rho: f64,
-    /// RhoA auto-activation rate as a multiple of characteristic activation rate.
-    pub kgtp_auto_rho: f64,
-    /// Baseline RhoA inactivation rate as a multiple of characteristic inactivation rate.
-    pub kdgtp_rho: f64,
-    /// Rac1 mediated inhibition of RhoA as a multiple of characteristic inactivation rate.
-    pub kdgtp_rac_on_rho: f64,
+    /// Rate at which inactive membrane bound Rho GTPase dissociates from the
+    /// membrane.
+    pub k_mem_off: Tinv,
+    /// Rate at which cytosolic Rho GTPase associates with the membrane.
+    pub k_mem_on: Tinv,
+    /// Baseline RhoA activation rate.
+    pub kgtp_rho: Tinv,
+    /// RhoA auto-activation rate.
+    pub kgtp_auto_rho: Tinv,
+    /// Baseline RhoA inactivation rate.
+    pub kdgtp_rho: Tinv,
+    /// Rac1 mediated inhibition of RhoA.
+    pub kdgtp_rac_on_rho: Tinv,
     /// Enable randomization of bursts in Rac1 activity?
     pub randomization: bool,
     /// Average period between randomization events.
@@ -461,35 +460,25 @@ impl RawParameters {
             const_protrusive: bq.normalize(&const_protrusive),
             const_retractive: bq.normalize(&const_retractive),
             stiffness_cyto: bq.normalize(&stiffness_cyto),
-            k_mem_on_vertex: bq.normalize(&bq.k_mem_on)
+            k_mem_on_vertex: bq.normalize(&self.k_mem_on)
                 / NVERTS as f64,
-            k_mem_off: bq.normalize(&bq.k_mem_off),
+            k_mem_off: bq.normalize(&self.k_mem_off),
             diffusion_rgtp: bq.normalize(&self.diffusion_rgtp),
             init_rac: self.init_rac,
             init_rho: self.init_rho,
             halfmax_vertex_rgtp,
             halfmax_vertex_rgtp_conc: bq
                 .normalize(&halfmax_vertex_rgtp_conc),
-            kgtp_rac: bq
-                .normalize(&bq.k_rgtp.mul_number(self.kgtp_rac)),
-            kgtp_rac_auto: bq
-                .normalize(&bq.k_rgtp.mul_number(self.kgtp_rac_auto)),
-            kdgtp_rac: bq
-                .normalize(&bq.k_rgtp.mul_number(self.kdgtp_rac)),
-            kdgtp_rho_on_rac: bq.normalize(
-                &bq.k_rgtp.mul_number(self.kdgtp_rho_on_rac),
-            ),
+            kgtp_rac: bq.normalize(&self.kgtp_rac),
+            kgtp_rac_auto: bq.normalize(&self.kgtp_rac_auto),
+            kdgtp_rac: bq.normalize(&self.kdgtp_rac),
+            kdgtp_rho_on_rac: bq.normalize(&self.kdgtp_rho_on_rac),
             halfmax_tension_inhib: self.halfmax_tension_inhib,
             tension_inhib: self.tension_inhib,
-            kgtp_rho: bq
-                .normalize(&bq.k_rgtp.mul_number(self.kgtp_rho)),
-            kgtp_rho_auto: bq
-                .normalize(&bq.k_rgtp.mul_number(self.kgtp_auto_rho)),
-            kdgtp_rho: bq
-                .normalize(&bq.k_rgtp.mul_number(self.kdgtp_rho)),
-            kdgtp_rac_on_rho: bq.normalize(
-                &bq.k_rgtp.mul_number(self.kdgtp_rac_on_rho),
-            ),
+            kgtp_rho: bq.normalize(&self.kgtp_rho),
+            kgtp_rho_auto: bq.normalize(&self.kgtp_auto_rho),
+            kdgtp_rho: bq.normalize(&self.kdgtp_rho),
+            kdgtp_rac_on_rho: bq.normalize(&self.kdgtp_rac_on_rho),
             randomization: self.randomization,
             rand_avg_t: bq.normalize(&self.rand_avg_t).ceil(),
             rand_std_t: bq.normalize(&self.rand_std_t).ceil(),
