@@ -205,8 +205,6 @@ fn gen_default_raw_params(
         rho_friction: 0.2,
         stiffness_cyto: Force(1e-7),
         diffusion_rgtp: rgtp_d,
-        tot_rac: 2.5e6,
-        tot_rho: 1e6,
         kgtp_rac: 24.0,
         kgtp_rac_auto: 500.0,
         kdgtp_rac: 8.0,

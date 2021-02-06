@@ -260,7 +260,12 @@ pub fn calc_kgtps_rho(
     let mut kgtps_rho = [0.0_f64; NVERTS];
 
     for i in 0..nvs {
-        let base = (1.0 + x_cils[i]) * kgtp_rho_base;
+        let base = (1.0
+            + (x_cils[i]
+                + x_cils[circ_ix_minus(i, NVERTS)]
+                + x_cils[circ_ix_plus(i, NVERTS)])
+                / 3.0)
+            * kgtp_rho_base;
         let auto =
             hill_function3(halfmax_rho_thresh, conc_rho_acts[i])
                 * kgtp_rho_auto;

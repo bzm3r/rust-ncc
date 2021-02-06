@@ -7,7 +7,7 @@
 // except according to those terms.
 
 use crate::math::radians::{arctan, Radians};
-use crate::math::{max_f64, min_f64};
+use crate::math::{close_to_zero, max_f64, min_f64};
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::fmt::Display;
@@ -126,6 +126,12 @@ impl V2D {
     #[inline]
     pub fn zeros() -> V2D {
         V2D::default()
+    }
+
+    #[inline]
+    pub fn close_to(&self, other: &V2D) -> bool {
+        close_to_zero(self.x - other.x)
+            && close_to_zero(self.y - other.y)
     }
 }
 

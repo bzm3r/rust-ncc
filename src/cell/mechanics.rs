@@ -64,12 +64,12 @@ pub fn calc_cyto_forces(
 /// force-generating elements. For simplicity, we assume a piece-wise
 /// linear (approximating a sigmoid) relationship between Rho GTPase
 /// activity, and the force generated. The shape of the sigmoid is
-/// governed by `halfmax_vertex_rgtp_act`.
+/// governed by `halfmax_vertex_rgtp`.
 pub fn calc_rgtp_forces(
     rac_acts: &[f64; NVERTS],
     rho_acts: &[f64; NVERTS],
     unit_inward_vecs: &[V2D; NVERTS],
-    halfmax_vertex_rgtp_act: f64,
+    halfmax_vertex_rgtp: f64,
     const_protrusive: f64,
     const_retractive: f64,
 ) -> [V2D; NVERTS] {
@@ -89,14 +89,14 @@ pub fn calc_rgtp_forces(
                 * capped_linear_fn(
                     ra - pa,
                     0.0,
-                    2.0 * halfmax_vertex_rgtp_act,
+                    2.0 * halfmax_vertex_rgtp,
                 )
         } else {
             const_retractive
                 * capped_linear_fn(
                     pa - ra,
                     0.0,
-                    2.0 * halfmax_vertex_rgtp_act,
+                    2.0 * halfmax_vertex_rgtp,
                 )
         };
 

@@ -338,7 +338,7 @@ impl CoreState {
             &self.rac_acts,
             &self.rho_acts,
             uivs,
-            parameters.halfmax_vertex_rgtp_act,
+            parameters.halfmax_vertex_rgtp,
             parameters.const_protrusive,
             parameters.const_retractive,
         );
@@ -483,10 +483,10 @@ impl CoreState {
             &conc_rho_inacts,
         );
 
-        let rac_cyto = parameters.total_rgtp
+        let rac_cyto = 1.0
             - self.rac_acts.iter().sum::<f64>()
             - self.rac_inacts.iter().sum::<f64>();
-        let rho_cyto = parameters.total_rgtp
+        let rho_cyto = 1.0
             - self.rho_acts.iter().sum::<f64>()
             - self.rho_inacts.iter().sum::<f64>();
         ChemState {
@@ -781,10 +781,10 @@ impl CoreState {
             .for_each(|(ix, (&rac, &rho))| {
                 r[ix] = RelativeRgtpActivity::from_f64(
                     hill_function3(
-                        parameters.halfmax_vertex_rgtp_act,
+                        parameters.halfmax_vertex_rgtp,
                         rac,
                     ) - hill_function3(
-                        parameters.halfmax_vertex_rgtp_act,
+                        parameters.halfmax_vertex_rgtp,
                         rho,
                     ),
                 );

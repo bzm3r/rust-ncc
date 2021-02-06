@@ -31,9 +31,7 @@ pub struct CharQuantities {
     pub l3d: Length,
     pub k_mem_off: Tinv,
     pub k_mem_on: Tinv,
-    pub kgtp: Tinv,
-    pub kdgtp: Tinv,
-    pub frac_rgtp: f64,
+    pub k_rgtp: Tinv,
 }
 
 impl CharQuantities {
@@ -94,22 +92,27 @@ impl RawPhysicalContactParams {
 
 #[derive(Clone, Debug)]
 pub struct RawCoaParams {
-    /// Factor controlling to what extent line-of-sight blockage should be penalized.
+    /// Factor controlling to what extent line-of-sight blockage should be
+    /// penalized.
     pub los_penalty: f64,
-    pub range: Length,
+    /// Distance from point of emission at which COA signal reaches half
+    /// its maximum value.
+    pub halfmax_dist: Length,
+    /// Magnitude of COA. It will be divided by `NVERTS` so that it scales based
+    /// on the number of vertices.
     pub mag: f64,
 }
 
 impl RawCoaParams {
     pub fn refine(&self, bq: &CharQuantities) -> CoaParams {
-        let range = bq.normalize(&self.range);
+        let halfmax_dist = bq.normalize(&self.halfmax_dist);
         CoaParams {
             los_penalty: self.los_penalty,
-            range,
-            mag: self.mag,
+            halfmax_dist,
+            vertex_mag: self.mag / NVERTS as f64,
             // self.mag * exp(distrib_exp * x), where x is distance
             // between points.
-            distrib_exp: 0.5f64.ln() / (0.5 * range),
+            distrib_exp: 0.5f64.ln() / halfmax_dist,
         }
     }
 
@@ -120,7 +123,7 @@ impl RawCoaParams {
             None => None,
             Some(i) => Some(RawCoaParams {
                 los_penalty: 2.0,
-                range: Length(100.0).micro(),
+                halfmax_dist: Length(110.0).micro(),
                 mag: i,
             }),
         }
@@ -244,14 +247,10 @@ pub struct CoaParams {
     /// Factor controlling to what extent line-of-sight blockage
     /// should be penalized. See SI for further information.
     pub los_penalty: f64,
-    //TODO: Expand upon the exponential curve used to model COA
-    // (see SI). Confirm whether it is half-max, or full-max range.
-    /// Factor controlling shape of the exponential modelling COA
-    /// interaction. It captures the (half?)-maximum distance between
-    /// two points still able to undergo COA.
-    pub range: f64,
+    /// The distance at which COA signal reaches half-maximum value.
+    pub halfmax_dist: f64,
     /// Magnitude of COA that acts on Rac1 activation rates.
-    pub mag: f64,
+    pub vertex_mag: f64,
     //TODO: look up exactly what is being done for this (see where
     // parameter is being generated for hint).
     /// Factor controlling the shape of the exponential modelling
@@ -335,10 +334,6 @@ pub struct RawParameters {
     pub init_rac: RgtpDistribution,
     /// Initial distribution of RhoA.
     pub init_rho: RgtpDistribution,
-    /// Total amount of Rac1 in cell.
-    pub tot_rac: f64,
-    /// Total amount of RhoA in cell.
-    pub tot_rho: f64,
     /// Baseline Rac1 activation rate as a multiple of characteristic activation rate, which we
     /// currently take to be 1e-4/second.
     ///
@@ -402,13 +397,9 @@ pub struct Parameters {
     /// Initial distribution of RhoA.
     pub init_rho: RgtpDistribution,
     /// Halfmax Rho GTPase activity per vertex.
-    pub halfmax_vertex_rgtp_act: f64,
+    pub halfmax_vertex_rgtp: f64,
     /// Halfmax Rho GTPase activity per vertex as concentration.
     pub halfmax_vertex_rgtp_conc: f64,
-    /// Total amount of Rac1 in cell.
-    pub tot_rac: f64,
-    /// Total amount of RhoA in cell.
-    pub tot_rho: f64,
     /// Baseline Rac1 activation rate.
     pub kgtp_rac: f64,
     /// Rac1 auto-activation rate as a multiple of baseline Rac1 activation rate.
@@ -439,19 +430,6 @@ pub struct Parameters {
     pub rand_mag: f64,
     /// Number of vertices to be selected for random Rac1 activity boost.
     pub num_rand_vs: u32,
-    /// Total Rho GTPase "fraction" compared to "baseline" fraction of Rho GTPase activity.
-    /// 0.05 = "halfmax level of Rho GTPase"
-    /// 1.0 = " total amount"
-    ///
-    /// At a vertex, assume that we are only at 5% of the halfmax level:
-    /// 0.05 * 0.05 = 0.0025
-    ///
-    /// 1.0 = "halfmax level of Rho GTPase"
-    /// 20.0 = "total amount"
-    /// At a vertex, assume that we are only at 5% of the halfmax:
-    /// 0.05 * 1.0 = 0.05
-    //TODO: should this be removed?
-    pub total_rgtp: f64,
 }
 
 impl RawParameters {
@@ -467,10 +445,10 @@ impl RawParameters {
                 .mul_number(self.halfmax_rgtp_max_f_frac);
         let const_retractive =
             const_protrusive.mul_number(self.rho_friction);
-        let halfmax_vertex_rgtp_act =
-            (self.halfmax_rgtp_frac / bq.frac_rgtp) / NVERTS as f64;
+        let halfmax_vertex_rgtp =
+            self.halfmax_rgtp_frac / NVERTS as f64;
         let halfmax_vertex_rgtp_conc =
-            rel.pow(-1.0).mul_number(halfmax_vertex_rgtp_act);
+            rel.pow(-1.0).mul_number(halfmax_vertex_rgtp);
         let stiffness_edge = self.stiffness_cortex.g() * bq.l3d.g();
         let stiffness_cyto =
             self.stiffness_cyto.g().mul_number(1.0 / NVERTS as f64);
@@ -489,37 +467,34 @@ impl RawParameters {
             diffusion_rgtp: bq.normalize(&self.diffusion_rgtp),
             init_rac: self.init_rac,
             init_rho: self.init_rho,
-            halfmax_vertex_rgtp_act,
+            halfmax_vertex_rgtp,
             halfmax_vertex_rgtp_conc: bq
                 .normalize(&halfmax_vertex_rgtp_conc),
-            tot_rac: self.tot_rac,
-            tot_rho: self.tot_rho,
             kgtp_rac: bq
-                .normalize(&bq.kgtp.mul_number(self.kgtp_rac)),
+                .normalize(&bq.k_rgtp.mul_number(self.kgtp_rac)),
             kgtp_rac_auto: bq
-                .normalize(&bq.kgtp.mul_number(self.kgtp_rac_auto)),
+                .normalize(&bq.k_rgtp.mul_number(self.kgtp_rac_auto)),
             kdgtp_rac: bq
-                .normalize(&bq.kdgtp.mul_number(self.kdgtp_rac)),
+                .normalize(&bq.k_rgtp.mul_number(self.kdgtp_rac)),
             kdgtp_rho_on_rac: bq.normalize(
-                &bq.kdgtp.mul_number(self.kdgtp_rho_on_rac),
+                &bq.k_rgtp.mul_number(self.kdgtp_rho_on_rac),
             ),
             halfmax_tension_inhib: self.halfmax_tension_inhib,
             tension_inhib: self.tension_inhib,
             kgtp_rho: bq
-                .normalize(&bq.kgtp.mul_number(self.kgtp_rho)),
+                .normalize(&bq.k_rgtp.mul_number(self.kgtp_rho)),
             kgtp_rho_auto: bq
-                .normalize(&bq.kgtp.mul_number(self.kgtp_auto_rho)),
+                .normalize(&bq.k_rgtp.mul_number(self.kgtp_auto_rho)),
             kdgtp_rho: bq
-                .normalize(&bq.kdgtp.mul_number(self.kdgtp_rho)),
+                .normalize(&bq.k_rgtp.mul_number(self.kdgtp_rho)),
             kdgtp_rac_on_rho: bq.normalize(
-                &bq.kdgtp.mul_number(self.kdgtp_rac_on_rho),
+                &bq.k_rgtp.mul_number(self.kdgtp_rac_on_rho),
             ),
             randomization: self.randomization,
             rand_avg_t: bq.normalize(&self.rand_avg_t).ceil(),
             rand_std_t: bq.normalize(&self.rand_std_t).ceil(),
             rand_mag: self.rand_mag,
             num_rand_vs: (self.rand_vs * NVERTS as f64) as u32,
-            total_rgtp: 1.0 / bq.frac_rgtp,
         }
     }
 }

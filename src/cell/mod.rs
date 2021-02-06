@@ -17,7 +17,9 @@ use crate::cell::states::{
     ChemState, CoreState, GeomState, MechState,
 };
 use crate::interactions::{ContactData, Interactions};
-use crate::math::geometry::{calc_poly_area, LineSeg2D};
+use crate::math::geometry::{
+    calc_poly_area, check_strong_intersection,
+};
 use crate::math::v2d::V2D;
 use crate::parameters::{Parameters, WorldParameters};
 use crate::utils::pcg32::Pcg32;
@@ -35,7 +37,7 @@ pub struct Cell {
     pub ix: usize,
     /// Index of group that cell belongs to.
     pub group_ix: usize,
-    /// Core state of the cell (position, Rho GTPases).
+    /// Core state of the cell (position, Rho GTPase).
     pub core: CoreState,
     /// Random Rac1 activity.
     pub rac_rand: RacRandState,
@@ -53,14 +55,13 @@ pub fn violates_volume_exclusion(
     test_w: &V2D,
     contacts: &[ContactData],
 ) -> bool {
-    let lsegs = [
-        LineSeg2D::new(test_u, test_v),
-        LineSeg2D::new(test_v, test_w),
-    ];
-    for lseg in lsegs.iter() {
+    let point_pairs = [(test_u, test_v), (test_v, test_w)];
+    for (p0, p1) in point_pairs.iter() {
         for cd in contacts.iter() {
-            if lseg.check_poly_intersect(&cd.poly) {
-                return true;
+            for edge in cd.poly.edges.iter() {
+                if check_strong_intersection(p0, p1, edge) {
+                    return true;
+                }
             }
         }
     }

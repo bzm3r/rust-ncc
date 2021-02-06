@@ -86,9 +86,7 @@ fn gen_default_char_quants() -> CharQuantities {
         l3d: Length(10e-6),
         k_mem_off: Tinv(0.15),
         k_mem_on: Tinv(0.02),
-        kgtp: Tinv(1e-4),
-        kdgtp: Tinv(1e-4),
-        frac_rgtp: 0.1,
+        k_rgtp: Tinv(1e-4),
     }
 }
 
@@ -126,10 +124,8 @@ fn gen_default_raw_params(
         halfmax_rgtp_frac: 0.4,
         lm_ss: Stress(10.0).kilo(),
         rho_friction: 0.2,
-        stiffness_cyto: Force(1e-7),
+        stiffness_cyto: Force(1e-5),
         diffusion_rgtp: rgtp_d,
-        tot_rac: 2.5e6,
-        tot_rho: 1e6,
         kgtp_rac: 24.0,
         kgtp_rac_auto: 500.0,
         kdgtp_rac: 8.0,
@@ -142,7 +138,7 @@ fn gen_default_raw_params(
         kdgtp_rac_on_rho: 400.0,
         randomization,
         rand_avg_t: Time(40.0 * 60.0),
-        rand_std_t: Time(0.2 * 40.0 * 60.0),
+        rand_std_t: Time(0.1 * 40.0 * 60.0),
         rand_mag: 10.0,
         rand_vs: 0.25,
         init_rac,

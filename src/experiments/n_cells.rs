@@ -88,7 +88,7 @@ fn raw_world_parameters(
         interactions: RawInteractionParams {
             coa: Some(RawCoaParams {
                 los_penalty: 2.0,
-                range: Length(110.0).micro(),
+                halfmax_dist: Length(110.0).micro(),
                 mag: 24.0,
             }),
             chem_attr: None,
