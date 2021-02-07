@@ -42,39 +42,39 @@ impl ClosePoint {
     /// segment `k = (b - a)*t + a, 0 <= t < 1`.
     pub fn calc(
         range: CloseBounds,
-        p: V2D,
-        a: V2D,
-        b: V2D,
+        test_point: V2D,
+        seg_start: V2D,
+        seg_end: V2D,
     ) -> ClosePoint {
         // Is `p` close to `a`? Then it interacts directly with `a`.
-        let ap = p - a;
-        if ap.mag() < range.zero_at {
+        let s_to_tp = test_point - seg_start;
+        if s_to_tp.mag() < range.zero_at {
             let smooth_factor = capped_linear_fn(
-                ap.mag(),
+                s_to_tp.mag(),
                 range.zero_at,
                 range.one_at,
             );
             ClosePoint::Vertex {
-                vector_to: -1.0 * ap,
+                vector_to: -1.0 * s_to_tp,
                 smooth_factor,
             }
-        } else if (b - p).mag() < range.zero_at {
+        } else if (seg_end - test_point).mag() < range.zero_at {
             ClosePoint::None
         } else {
-            let ab = b - a;
-            let t = ab.dot(&ap) / ab.mag_squared();
+            let seg_vec = seg_end - seg_start;
+            let t = seg_vec.dot(&s_to_tp) / seg_vec.mag_squared();
             // Is `t` in the interval `[0, 1)`? If yes, then the close
             // point lies on the edge.
             match in_unit_interval(t) {
                 InUnitInterval::Zero | InUnitInterval::In => {
-                    let c = t * (ab) + a;
-                    let pc = c - p;
-                    if pc.mag() < range.zero_at {
+                    let c = t * (seg_vec) + seg_start;
+                    let tp_to_c = c - test_point;
+                    if tp_to_c.mag() < range.zero_at {
                         ClosePoint::OnEdge {
                             edge_point_param: t,
-                            vector_to: pc,
+                            vector_to: tp_to_c,
                             smooth_factor: capped_linear_fn(
-                                pc.mag(),
+                                tp_to_c.mag(),
                                 range.zero_at,
                                 range.one_at,
                             ),

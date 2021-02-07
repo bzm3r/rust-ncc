@@ -7,10 +7,8 @@
 // except according to those terms.
 
 pub mod quantity;
-
-use crate::cell::calc_init_cell_area;
 use crate::cell::chemistry::RgtpDistribution;
-use crate::math::geometry::BBox;
+use crate::math::geometry::{calc_poly_area, BBox};
 use crate::math::v2d::V2D;
 use crate::parameters::quantity::{
     Diffusion, Force, Length, Quantity, Stress, Time, Tinv, Viscosity,
@@ -486,4 +484,19 @@ impl RawParameters {
             num_rand_vs: (self.rand_vs * NVERTS as f64) as u32,
         }
     }
+}
+
+/// Calculate the area of an "ideal" initial cell of radius R, if it has
+/// `NVERTS`  vertices.
+pub fn calc_init_cell_area(r: f64) -> f64 {
+    let poly_coords = (0..NVERTS)
+        .map(|vix| {
+            let theta = (vix as f64) / (NVERTS as f64) * 2.0 * PI;
+            V2D {
+                x: r * theta.cos(),
+                y: r * theta.sin(),
+            }
+        })
+        .collect::<Vec<V2D>>();
+    calc_poly_area(&poly_coords)
 }

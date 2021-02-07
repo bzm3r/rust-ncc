@@ -258,24 +258,33 @@ pub fn poly_to_string(poly: &[V2D]) -> String {
     r
 }
 
-/// 2D vector with `f64` elements.
+/// Square of a 2D vector with `f64` elements.
 #[derive(
     Clone, Copy, Debug, Default, Deserialize, Serialize, PartialEq,
 )]
-pub struct PowV2D {
+pub struct SqV2D {
     pub x: f64,
     pub y: f64,
-    exponent: i32,
 }
 
-impl Mul for V2D {
-    type Output = PowV2D;
+impl Mul<V2D> for V2D {
+    type Output = SqV2D;
 
     fn mul(self, rhs: Self) -> Self::Output {
-        PowV2D {
+        SqV2D {
             x: self.x * rhs.x,
             y: self.y * rhs.y,
-            exponent: 2,
+        }
+    }
+}
+
+impl Div<V2D> for SqV2D {
+    type Output = V2D;
+
+    fn div(self, rhs: V2D) -> Self::Output {
+        V2D {
+            x: self.x / rhs.x,
+            y: self.y / rhs.y,
         }
     }
 }

@@ -24,8 +24,7 @@ pub struct Header {
     pub l3d: f64,
     pub k_mem_on_vertex: f64,
     pub k_mem_off: f64,
-    pub kgtp: f64,
-    pub kdgtp: f64,
+    pub k_rgtp: f64,
     pub close_zero_at: f64,
     pub close_one_at: f64,
     pub cil_mag: f64,
@@ -48,8 +47,6 @@ pub struct Header {
     pub init_rho: [f64; NVERTS],
     pub halfmax_vertex_rgtp_act: f64,
     pub halfmax_vertex_rgtp_conc: f64,
-    pub tot_rac: f64,
-    pub tot_rho: f64,
     pub kgtp_rac: f64,
     pub kgtp_rac_auto: f64,
     pub kdgtp_rac: f64,
@@ -65,7 +62,6 @@ pub struct Header {
     pub rand_std_t: f64,
     pub rand_mag: f64,
     pub num_rand_vs: u32,
-    pub total_rgtp: f64,
 }
 
 /// Stores data generated in intermediate integration steps.
@@ -85,16 +81,14 @@ pub struct IntStepData {
     pub rgtp_forces: Vec<[f64; 2]>,
     pub edge_forces: Vec<[f64; 2]>,
     pub cyto_forces: Vec<[f64; 2]>,
-    pub conc_rac_acts: [f64; NVERTS],
     pub x_cils: [f64; NVERTS],
     pub x_coas: [f64; NVERTS],
     pub rac_act_net_fluxes: [f64; NVERTS],
     pub edge_strains: [f64; NVERTS],
     pub poly_area: f64,
-    pub coa_update: [bool; NVERTS],
-    pub cil_update: [bool; NVERTS],
+    pub coa_updates: [bool; NVERTS],
+    pub cil_updates: [bool; NVERTS],
     pub uevs: Vec<[f64; 2]>,
-    pub edge_forces_minus: Vec<[f64; 2]>,
 }
 
 #[derive(Clone, Deserialize, Serialize, Default, Debug, PartialEq)]
@@ -233,8 +227,7 @@ impl Writer {
             l3d: char_quants.l3d.number(),
             k_mem_off: params.k_mem_off,
             k_mem_on_vertex: params.k_mem_on_vertex,
-            kgtp: char_quants.kgtp.number(),
-            kdgtp: char_quants.kdgtp.number(),
+            k_rgtp: char_quants.k_rgtp.number(),
             close_zero_at: world_params
                 .interactions
                 .phys_contact
@@ -255,7 +248,7 @@ impl Writer {
                 .interactions
                 .coa
                 .as_ref()
-                .map_or_else(|| 0.0, |coa_gen| coa_gen.range),
+                .map_or_else(|| 0.0, |coa_gen| coa_gen.halfmax_dist),
             coa_distrib_exp: world_params
                 .interactions
                 .coa
@@ -265,7 +258,7 @@ impl Writer {
                 .interactions
                 .coa
                 .as_ref()
-                .map_or_else(|| 0.0, |coa_gen| coa_gen.mag),
+                .map_or_else(|| 0.0, |coa_gen| coa_gen.vertex_mag),
             vertex_eta: world_params.vertex_eta,
             cell_r: params.cell_r,
             rest_edge_len: params.rest_edge_len,
@@ -277,10 +270,8 @@ impl Writer {
             diffusion_rgtp: params.diffusion_rgtp,
             init_rac: params.init_rac.active,
             init_rho: params.init_rho.active,
-            halfmax_vertex_rgtp_act: params.halfmax_vertex_rgtp_act,
+            halfmax_vertex_rgtp_act: params.halfmax_vertex_rgtp,
             halfmax_vertex_rgtp_conc: params.halfmax_vertex_rgtp_conc,
-            tot_rac: params.tot_rac,
-            tot_rho: params.tot_rho,
             kgtp_rac: params.kgtp_rac,
             kgtp_rac_auto: params.kgtp_rac_auto,
             kdgtp_rac: params.kdgtp_rac,
@@ -296,7 +287,6 @@ impl Writer {
             rand_std_t: params.rand_std_t,
             rand_mag: params.rand_mag,
             num_rand_vs: params.num_rand_vs,
-            total_rgtp: params.total_rgtp,
         };
     }
 }

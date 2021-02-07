@@ -5,12 +5,10 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-pub mod hardio;
-#[cfg(feature = "validate")]
-use crate::cell::confirm_volume_exclusion;
 use crate::cell::states::Core;
 use crate::cell::Cell;
 use crate::experiments::{CellGroup, Experiment};
+use crate::hardio::AsyncWriter;
 use crate::interactions::{
     InteractionGenerator, Interactions, RelativeRgtpActivity,
 };
@@ -18,10 +16,8 @@ use crate::math::v2d::V2D;
 use crate::parameters::{
     CharQuantities, Parameters, WorldParameters,
 };
-use crate::NVERTS;
-//use rand_core::SeedableRng;
 use crate::utils::pcg32::Pcg32;
-use crate::world::hardio::AsyncWriter;
+use crate::NVERTS;
 use rand::seq::SliceRandom;
 use rand::{RngCore, SeedableRng};
 use serde::{Deserialize, Serialize};
@@ -66,13 +62,6 @@ impl Cells {
 
             interaction_generator
                 .update(ci, &new_cell_state.core.poly);
-
-            #[cfg(feature = "validate")]
-            confirm_volume_exclusion(
-                &new_cell_state.core.poly,
-                &interaction_generator.get_contact_data(ci),
-                &format!("world cell {}", ci),
-            )?;
 
             new_cell_states[ci] = new_cell_state;
         }
@@ -161,7 +150,7 @@ impl World {
             .map(|cg| cg.parameters.clone())
             .collect::<Vec<Parameters>>();
 
-        // Create a list of indices of the groups. and reate a vector
+        // Create a list of indices of the groups. and create a vector
         // of the cell centroids in each group.
         let mut cell_group_ixs = vec![];
         let mut cell_centroids = vec![];
@@ -192,7 +181,7 @@ impl World {
                 )
             })
             .collect::<Vec<Core>>();
-        // Calcualte relative activity of Rac1 vs. RhoA at a node.
+        // Calculate relative activity of Rac1 vs. RhoA at a node.
         // This is needed for CRL.
         let cell_rgtps = cell_group_ixs
             .iter()
@@ -226,7 +215,6 @@ impl World {
                 cell_ix,
                 group_ix,
                 cell_core_states[cell_ix],
-                &cell_interactions[cell_ix],
                 parameters,
                 &mut cell_rng,
             ));

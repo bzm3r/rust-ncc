@@ -112,7 +112,7 @@ impl Ks {
         );
 
         let k1 = {
-            let kp = init_state + h * A1 * k0;
+            let kp = init_state + h * k0.time_step(A1);
             f(
                 &kp,
                 rand_state,
@@ -123,7 +123,8 @@ impl Ks {
         };
 
         let k2 = {
-            let kp = init_state + h * (A2[0] * k0 + A2[1] * k1);
+            let kp = init_state
+                + h * (k0.time_step(A2[0]) + k1.time_step(A2[1]));
             f(
                 &kp,
                 rand_state,
@@ -135,7 +136,9 @@ impl Ks {
 
         let k3 = {
             let kp = init_state
-                + h * (A3[0] * k0 + A3[1] * k1 + A3[2] * k2);
+                + h * (k0.time_step(A3[0])
+                    + k1.time_step(A3[1])
+                    + k2.time_step(A3[2]));
             f(
                 &kp,
                 rand_state,
@@ -147,10 +150,10 @@ impl Ks {
 
         let k4 = {
             let kp = init_state
-                + h * (A4[0] * k0
-                    + A4[1] * k1
-                    + A4[2] * k2
-                    + A4[3] * k3);
+                + h * (k0.time_step(A4[0])
+                    + k1.time_step(A4[1])
+                    + k2.time_step(A4[2])
+                    + k3.time_step(A4[3]));
             f(
                 &kp,
                 rand_state,
@@ -162,11 +165,11 @@ impl Ks {
 
         let k5 = {
             let kp = init_state
-                + h * (A5[0] * k0
-                    + A5[1] * k1
-                    + A5[2] * k2
-                    + A5[3] * k3
-                    + A5[4] * k4);
+                + h * (k0.time_step(A5[0])
+                    + k1.time_step(A5[1])
+                    + k2.time_step(A5[2])
+                    + k3.time_step(A5[3])
+                    + k4.time_step(A5[4]));
             f(
                 &kp,
                 rand_state,
@@ -178,12 +181,12 @@ impl Ks {
 
         let k6 = {
             let kp = init_state
-                + h * (A6[0] * k0
-                    + A6[1] * k1
-                    + A6[2] * k2
-                    + A6[3] * k3
-                    + A6[4] * k4
-                    + A6[5] * k5);
+                + h * (k0.time_step(A6[0])
+                    + k1.time_step(A6[1])
+                    + k2.time_step(A6[2])
+                    + k3.time_step(A6[3])
+                    + k4.time_step(A6[4])
+                    + k5.time_step(A6[5]));
             f(
                 &kp,
                 rand_state,
@@ -205,12 +208,13 @@ impl Ks {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn integrator(
     mut dt: f64,
     f: CellDynamicsFn,
     init_state: &Core,
     rand_state: &RacRandState,
-    inter_state: &Interactions,
+    interactions: &Interactions,
     world_parameters: &WorldParameters,
     parameters: &Parameters,
     mut aux_args: AuxArgs,
@@ -249,7 +253,7 @@ pub fn integrator(
             h,
             y0,
             rand_state,
-            inter_state,
+            interactions,
             world_parameters,
             parameters,
         );
@@ -273,17 +277,23 @@ pub fn integrator(
         }
 
         let y1_hat = y0
-            + h * (B_HAT[0] * k0
-                + B_HAT[1] * k1
-                + B_HAT[2] * k2
-                + B_HAT[3] * k3
-                + B_HAT[4] * k4
-                + B_HAT[5] * k5
-                + B_HAT[6] * k6);
+            + h * (k0.time_step(B_HAT[0])
+                + k1.time_step(B_HAT[1])
+                + k2.time_step(B_HAT[2])
+                + k3.time_step(B_HAT[3])
+                + k4.time_step(B_HAT[4])
+                + k5.time_step(B_HAT[5])
+                + k6.time_step(B_HAT[6]));
 
         // Equations 4.10, 4.11, Hairer,Wanner&Norsett Solving ODEs Vol. 1
         let sc = rtol * y0.abs().max(&y1.abs()) + atol;
-        let error = ((y1 - y1_hat).powi(2) / sc).flat_avg().sqrt();
+        let delta_y1 = y1 - y1_hat;
+        let delta_y1_sq = delta_y1.square();
+        let scaled = delta_y1_sq / sc;
+        let scaled_flat_avg = scaled.flat_avg();
+        let scaled_flat_avg_sqrt = scaled_flat_avg.sqrt();
+        let error = ((y1 - y1_hat).square() / sc).flat_avg().sqrt();
+        println!("error: {}")
         let mut h_new =
             h * min_f64(fac_max, FAC * (1.0 / error).powf(INV_QP1));
 

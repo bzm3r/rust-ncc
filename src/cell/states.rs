@@ -7,11 +7,14 @@ use crate::cell::mechanics::{
     calc_cyto_forces, calc_edge_forces, calc_edge_vecs,
     calc_rgtp_forces,
 };
-use crate::interactions::{Interactions, RelativeRgtpActivity};
-use crate::math::v2d::V2D;
+use crate::interactions::{
+    ContactData, Interactions, RelativeRgtpActivity,
+};
+use crate::math::geometry::check_strong_intersection;
+use crate::math::v2d::{SqV2D, V2D};
 use crate::math::{hill_function3, max_f64};
 use crate::parameters::{Parameters, WorldParameters};
-use crate::utils::circ_ix_minus;
+use crate::utils::{circ_ix_minus, circ_ix_plus};
 use crate::NVERTS;
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -87,9 +90,9 @@ impl DCoreDt {
 #[derive(
     Copy, Clone, Debug, Default, Deserialize, Serialize, PartialEq,
 )]
-pub struct PowCore {
+pub struct SqCore {
     /// Polygon representing cell shape.
-    pub poly: [V2D; NVERTS],
+    pub poly: [SqV2D; NVERTS],
     /// Fraction of Rac1 active at each vertex.
     pub rac_acts: [f64; NVERTS],
     /// Fraction of Rac1 inactive at each vertex.
@@ -98,57 +101,6 @@ pub struct PowCore {
     pub rho_acts: [f64; NVERTS],
     /// Fraction of RhoA inactive at each vertex.
     pub rho_inacts: [f64; NVERTS],
-    /// Geometric state resulting from this core state.
-    pub exponent: i32,
-}
-
-impl PowCore {
-    //TODO(BM): automate generation of `num_vars` using proc macro.
-    /// Calculate the total number of variables that `CoreState`
-    /// holds. That is: the number of variables per vertex, times the
-    /// number of all the vertices in a cell.
-    pub fn num_vars() -> u32 {
-        (NVERTS * 6) as u32
-    }
-
-    pub fn flat_sum(&self) -> f64 {
-        let mut r: f64 = 0.0;
-
-        for i in 0..(NVERTS) {
-            r += self.poly[i].x + self.poly[i].y;
-            r += self.rac_acts[i];
-            r += self.rac_inacts[i];
-            r += self.rho_acts[i];
-            r += self.rho_inacts[i];
-        }
-
-        r
-    }
-
-    pub fn flat_avg(&self) -> f64 {
-        self.flat_sum() / (Self::num_vars() as f64)
-    }
-}
-
-impl From<PowCore> for Core {
-    fn from(pow_core: PowCore) -> Self {
-        if pow_core.exponent == 1 {
-            let PowCore {
-                poly,
-                rac_acts,
-                rac_inacts,
-                rho_acts,
-                rho_inacts,
-                ..
-            } = pow_core;
-            return Core::new(
-                poly, rac_acts, rac_inacts, rho_acts, rho_inacts,
-            );
-        } else {
-            panic!("Cannot convert `1`PowCoreState`1` with `exponent != 1` \
-            into a `CoreState`.")
-        }
-    }
 }
 
 impl Add for Core {
@@ -174,10 +126,10 @@ impl Add for Core {
 }
 
 impl Mul for Core {
-    type Output = PowCore;
+    type Output = SqCore;
 
     fn mul(self, rhs: Core) -> Self::Output {
-        let mut poly = [V2D::default(); NVERTS];
+        let mut poly = [SqV2D::default(); NVERTS];
         let mut rac_acts = [0.0_f64; NVERTS];
         let mut rac_inacts = [0.0_f64; NVERTS];
         let mut rho_acts = [0.0_f64; NVERTS];
@@ -186,8 +138,7 @@ impl Mul for Core {
         for i in 0..(NVERTS) {
             poly[i] = self.poly[i] * rhs.poly[i];
             rac_acts[i] = self.rac_acts[i] * rhs.rac_acts[i];
-            rac_inacts[i] =
-                self.rac_inacts[i] * rhs.rac_inacts[i];
+            rac_inacts[i] = self.rac_inacts[i] * rhs.rac_inacts[i];
             rho_acts[i] = self.rho_acts[i] * rhs.rho_acts[i];
             rho_inacts[i] = self.rho_inacts[i] * rhs.rho_inacts[i];
         }
@@ -198,7 +149,34 @@ impl Mul for Core {
             rac_inacts,
             rho_acts,
             rho_inacts,
-            exponent: 2,
+        }
+    }
+}
+
+impl Mul<&Core> for &Core {
+    type Output = SqCore;
+
+    fn mul(self, rhs: &Core) -> Self::Output {
+        let mut poly = [SqV2D::default(); NVERTS];
+        let mut rac_acts = [0.0_f64; NVERTS];
+        let mut rac_inacts = [0.0_f64; NVERTS];
+        let mut rho_acts = [0.0_f64; NVERTS];
+        let mut rho_inacts = [0.0_f64; NVERTS];
+
+        for i in 0..(NVERTS) {
+            poly[i] = self.poly[i] * rhs.poly[i];
+            rac_acts[i] = self.rac_acts[i] * rhs.rac_acts[i];
+            rac_inacts[i] = self.rac_inacts[i] * rhs.rac_inacts[i];
+            rho_acts[i] = self.rho_acts[i] * rhs.rho_acts[i];
+            rho_inacts[i] = self.rho_inacts[i] * rhs.rho_inacts[i];
+        }
+
+        Self::Output {
+            poly,
+            rac_acts,
+            rac_inacts,
+            rho_acts,
+            rho_inacts,
         }
     }
 }
@@ -236,7 +214,7 @@ impl Mul<f64> for Core {
         let mut rho_inacts = [0.0_f64; NVERTS];
 
         for i in 0..(NVERTS) {
-            poly[i] = self.poly[i] * rhs;
+            poly[i] = self.poly[i].scale(rhs);
             rac_acts[i] = self.rac_acts[i] * rhs;
             rac_inacts[i] = self.rac_inacts[i] * rhs;
             rho_acts[i] = self.rho_acts[i] * rhs;
@@ -251,7 +229,7 @@ impl Mul<Core> for f64 {
     type Output = Core;
 
     fn mul(self, rhs: Core) -> Self::Output {
-        self * rhs
+        rhs * self
     }
 }
 
@@ -281,14 +259,14 @@ impl Add<Core> for f64 {
     type Output = Core;
 
     fn add(self, rhs: Core) -> Self::Output {
-        self + rhs
+        rhs + self
     }
 }
 
-impl Div for PowCore {
-    type Output = PowCore;
+impl Div<Core> for SqCore {
+    type Output = Core;
 
-    fn div(self, rhs: PowCore) -> PowCore {
+    fn div(self, rhs: Core) -> Self::Output {
         let mut poly = [V2D::default(); NVERTS];
         let mut rac_acts = [0.0_f64; NVERTS];
         let mut rac_inacts = [0.0_f64; NVERTS];
@@ -303,43 +281,7 @@ impl Div for PowCore {
             rho_inacts[i] = self.rho_inacts[i] / rhs.rho_inacts[i]
         }
 
-        Self::Output {
-            poly,
-            rac_acts,
-            rac_inacts,
-            rho_acts,
-            rho_inacts,
-            exponent: self.exponent - rhs.exponent,
-        }
-    }
-}
-
-impl Div<Core> for PowCore {
-    type Output = PowCore;
-
-    fn div(self, rhs: Core) -> PowCore {
-        let mut poly = [V2D::default(); NVERTS];
-        let mut rac_acts = [0.0_f64; NVERTS];
-        let mut rac_inacts = [0.0_f64; NVERTS];
-        let mut rho_acts = [0.0_f64; NVERTS];
-        let mut rho_inacts = [0.0_f64; NVERTS];
-
-        for i in 0..(NVERTS) {
-            poly[i] = self.poly[i] / rhs.poly[i];
-            rac_acts[i] = self.rac_acts[i] / rhs.rac_acts[i];
-            rac_inacts[i] = self.rac_inacts[i] / rhs.rac_inacts[i];
-            rho_acts[i] = self.rho_acts[i] / rhs.rho_acts[i];
-            rho_inacts[i] = self.rho_inacts[i] / rhs.rho_inacts[i]
-        }
-
-        Self::Output {
-            poly,
-            rac_acts,
-            rac_inacts,
-            rho_acts,
-            rho_inacts,
-            exponent: self.exponent - 1,
-        }
+        Core::new(poly, rac_acts, rac_inacts, rho_acts, rho_inacts)
     }
 }
 
@@ -678,9 +620,9 @@ impl Core {
     /// Calculate the right hand side of the ODEs simulating cell
     /// vertex motion and biochemistry.
     pub fn derivative(
-        state: &Core,
+        &self,
         rac_rand_state: &RacRandState,
-        inter_state: &Interactions,
+        interactions: &Interactions,
         world_parameters: &WorldParameters,
         parameters: &Parameters,
     ) -> DCoreDt {
@@ -688,26 +630,26 @@ impl Core {
         // `derivative`, if we have saved this info in the `Cell` struct?
         // What is the importance of `interactions`---might it have changed
         // since the last time we calculated these?
-        let mech_state = state.calc_mech_state(parameters);
-        let chem_state = state.calc_chem_state(
+        let mech_state = self.calc_mech_state(parameters);
+        let chem_state = self.calc_chem_state(
             &mech_state,
             rac_rand_state,
-            inter_state,
+            interactions,
             parameters,
         );
         let mut delta = DCoreDt::default();
         for i in 0..NVERTS {
             // rate of rac deactivation * current fraction of rac active
             let inactivated_rac =
-                chem_state.kdgtps_rac[i] * state.rac_acts[i];
+                chem_state.kdgtps_rac[i] * self.rac_acts[i];
             let activated_rac =
-                chem_state.kgtps_rac[i] * state.rac_inacts[i];
+                chem_state.kgtps_rac[i] * self.rac_inacts[i];
             let delta_rac_activated = activated_rac - inactivated_rac;
             let rac_cyto_exchange = {
                 let rac_mem_on =
                     parameters.k_mem_on_vertex * chem_state.rac_cyto;
                 let rac_mem_off =
-                    parameters.k_mem_off * state.rac_inacts[i];
+                    parameters.k_mem_off * self.rac_inacts[i];
                 rac_mem_on - rac_mem_off
             };
             let vertex_rac_act_flux =
@@ -721,15 +663,15 @@ impl Core {
                 - delta_rac_activated;
 
             let inactivated_rho =
-                chem_state.kdgtps_rho[i] * state.rho_acts[i];
+                chem_state.kdgtps_rho[i] * self.rho_acts[i];
             let activated_rho =
-                chem_state.kgtps_rho[i] * state.rho_inacts[i];
+                chem_state.kgtps_rho[i] * self.rho_inacts[i];
             let delta_rho_activated = activated_rho - inactivated_rho;
             let rho_cyto_exchange = {
                 let rho_mem_on =
                     parameters.k_mem_on_vertex * chem_state.rho_cyto;
                 let rho_mem_off =
-                    parameters.k_mem_off * state.rho_inacts[i];
+                    parameters.k_mem_off * self.rho_inacts[i];
                 rho_mem_on - rho_mem_off
             };
             let vertex_rho_act_flux =
@@ -742,7 +684,7 @@ impl Core {
                 + vertex_rho_inact_flux
                 - delta_rho_activated;
             delta.poly[i] = (1.0 / world_parameters.vertex_eta)
-                * (mech_state.sum_forces[i] + inter_state.x_adhs[i]);
+                * (mech_state.sum_forces[i] + interactions.x_adhs[i]);
         }
         delta
     }
@@ -803,29 +745,8 @@ impl Core {
         )
     }
 
-    pub fn powi(&self, x: i32) -> PowCore {
-        let mut vertex_coords = [V2D::default(); NVERTS];
-        let mut rac_acts = [0.0_f64; NVERTS];
-        let mut rac_inacts = [0.0_f64; NVERTS];
-        let mut rho_acts = [0.0_f64; NVERTS];
-        let mut rho_inacts = [0.0_f64; NVERTS];
-
-        for i in 0..(NVERTS) {
-            vertex_coords[i] = vertex_coords[i].powi(x);
-            rac_acts[i] = self.rac_acts[i].powi(x);
-            rac_inacts[i] = self.rac_inacts[i].powi(x);
-            rho_acts[i] = self.rho_acts[i].powi(x);
-            rho_inacts[i] = self.rho_inacts[i].powi(x);
-        }
-
-        PowCore {
-            poly: vertex_coords,
-            rac_acts,
-            rac_inacts,
-            rho_acts,
-            rho_inacts,
-            exponent: x,
-        }
+    pub fn square(&self) -> SqCore {
+        self * self
     }
 
     pub fn max(&self, other: &Core) -> Core {
@@ -876,11 +797,7 @@ impl Core {
     }
 
     #[cfg(feature = "validate")]
-    pub fn validate(
-        &self,
-        loc_str: &str,
-        parameters: &Parameters,
-    ) -> Result<(), String> {
+    pub fn validate(&self, loc_str: &str) -> Result<(), String> {
         if self.rac_acts.iter().any(|&r| r < 0.0_f64) {
             return Err(format!(
                 "{}: neg rac_acts: {:?}",
@@ -907,7 +824,7 @@ impl Core {
         }
         let sum_rac_mem = self.rac_inacts.iter().sum::<f64>()
             + self.rac_acts.iter().sum::<f64>();
-        if sum_rac_mem > 1.0 || sum_rac_mem < 0.0 {
+        if !(0.0..=1.0).contains(&sum_rac_mem) {
             return Err(format!(
                 "{}: problem in sum of rac_mem: {}",
                 loc_str, sum_rac_mem
@@ -915,7 +832,7 @@ impl Core {
         }
         let sum_rho_mem = self.rho_inacts.iter().sum::<f64>()
             + self.rho_acts.iter().sum::<f64>();
-        if sum_rho_mem > 1.0 || sum_rho_mem < 0.0 {
+        if !(0.0..=1.0).contains(&sum_rho_mem) {
             return Err(format!(
                 "{}: problem in sum of rho_mem: {}",
                 loc_str, sum_rho_mem
@@ -924,4 +841,123 @@ impl Core {
         Ok(())
         // println!("{}: successfully validated", loc_str)
     }
+
+    pub fn enforce_volume_exclusion(
+        &mut self,
+        old_vs: &[V2D; NVERTS],
+        contacts: &[ContactData],
+    ) -> Result<(), String> {
+        #[cfg(feature = "validate")]
+        confirm_volume_exclusion(&old_vs, &contacts, "old_vs")?;
+
+        #[allow(clippy::needless_range_loop)]
+        for vi in 0..NVERTS {
+            let old_v = old_vs[vi];
+            let new_v = self.poly[vi];
+            let new_u = self.poly[circ_ix_minus(vi, NVERTS)];
+            let new_w = self.poly[circ_ix_plus(vi, NVERTS)];
+            self.poly[vi] = move_point_out(
+                &new_u, new_v, &new_w, old_v, &contacts, 20,
+            );
+        }
+
+        #[cfg(feature = "validate")]
+        confirm_volume_exclusion(&self.poly, &contacts, "new_vs")?;
+
+        Ok(())
+    }
+
+    //TODO(BM): automate generation of `num_vars` using proc macro.
+    /// Calculate the total number of variables that `CoreState`
+    /// holds. That is: the number of variables per vertex, times the
+    /// number of all the vertices in a cell.
+    pub fn num_vars() -> u32 {
+        (NVERTS * 6) as u32
+    }
+
+    pub fn flat_sum(&self) -> f64 {
+        let mut r: f64 = 0.0;
+
+        for i in 0..(NVERTS) {
+            r += self.poly[i].x + self.poly[i].y;
+            r += self.rac_acts[i];
+            r += self.rac_inacts[i];
+            r += self.rho_acts[i];
+            r += self.rho_inacts[i];
+        }
+
+        r
+    }
+
+    pub fn flat_avg(&self) -> f64 {
+        self.flat_sum() / (Self::num_vars() as f64)
+    }
+}
+
+fn violates_volume_exclusion(
+    test_v: &V2D,
+    test_u: &V2D,
+    test_w: &V2D,
+    contacts: &[ContactData],
+) -> bool {
+    let point_pairs = [(test_u, test_v), (test_v, test_w)];
+    for (p0, p1) in point_pairs.iter() {
+        for cd in contacts.iter() {
+            for edge in cd.poly.edges.iter() {
+                if check_strong_intersection(p0, p1, edge) {
+                    return true;
+                }
+            }
+        }
+    }
+    false
+}
+
+fn move_point_out(
+    new_u: &V2D,
+    mut new_v: V2D,
+    new_w: &V2D,
+    mut good_v: V2D,
+    contacts: &[ContactData],
+    num_iters: u32,
+) -> V2D {
+    let mut n = 0;
+    while n < num_iters {
+        let test_v = 0.5 * (good_v + new_v);
+        if violates_volume_exclusion(&test_v, new_u, new_w, contacts)
+        {
+            new_v = test_v;
+        } else {
+            good_v = test_v;
+        }
+        n += 1;
+    }
+    good_v
+}
+
+#[cfg(feature = "validate")]
+pub fn confirm_volume_exclusion(
+    vs: &[V2D; NVERTS],
+    contacts: &[ContactData],
+    msg: &str,
+) -> Result<(), String> {
+    use crate::math::v2d::poly_to_string;
+    for (vi, v) in vs.iter().enumerate() {
+        let u = &vs[circ_ix_minus(vi, NVERTS)];
+        let w = &vs[circ_ix_plus(vi, NVERTS)];
+        for ContactData { poly, .. } in contacts {
+            if violates_volume_exclusion(v, u, w, contacts) {
+                return Err(format!(
+                    "{} violates volume exclusion.\n\
+                    vs[{}] = {}, \n\
+                    other poly = {}",
+                    msg,
+                    vi,
+                    v,
+                    &poly_to_string(&poly.verts)
+                ));
+            }
+        }
+    }
+    Ok(())
 }

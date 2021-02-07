@@ -171,8 +171,8 @@ pub fn calc_conc_rgtps(
     r
 }
 
-//TODO(ES): make this better.
 /// Calculates Rac1 activation rates, as discussed in SI.
+#[allow(clippy::too_many_arguments)]
 pub fn calc_kgtps_rac(
     rac_acts: &[f64; NVERTS],
     conc_rac_acts: &[f64; NVERTS],

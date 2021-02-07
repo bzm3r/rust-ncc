@@ -7,8 +7,7 @@
 // except according to those terms.
 use crate::cell::chemistry::RacRandState;
 
-use crate::cell::states::{Core, GeomState, MechState};
-use crate::cell::Cell;
+use crate::cell::states::Core;
 use crate::hardio::pycomp::{IntStepData, Writer};
 use crate::interactions::{ContactData, Interactions};
 use crate::math::geometry::calc_poly_area;
@@ -26,7 +25,14 @@ use serde::{Deserialize, Serialize};
     Copy, Clone, Deserialize, Serialize, PartialEq, Default, Debug,
 )]
 pub struct PyCompCell {
-    cell: Cell,
+    /// Index of cell within world.
+    pub ix: usize,
+    /// Index of group that cell belongs to.
+    pub group_ix: usize,
+    /// State of Random Rac1 activity that affected `core`.
+    pub rac_rand: RacRandState,
+    /// Core state of the cell (position, Rho GTPase).
+    pub core: Core,
     old_x_coas: [f64; NVERTS],
     old_x_cils: [f64; NVERTS],
     print_opts: PrintOptions,
@@ -56,29 +62,16 @@ impl PyCompCell {
         rng: &mut Pcg32,
         print_opts: PrintOptions,
     ) -> PyCompCell {
-        let geom = core.calc_geom_state();
-        let mech = core.calc_mech_state(&geom, parameters);
         let rac_rand = if parameters.randomization {
             RacRandState::new(rng, parameters)
         } else {
             RacRandState::default()
         };
-        let chem = core.calc_chem_state(
-            &mech,
-            &rac_rand,
-            &interactions,
-            parameters,
-        );
         PyCompCell {
-            cell: Cell {
-                ix,
-                group_ix,
-                core,
-                rac_rand,
-                geom,
-                chem,
-                mech,
-            },
+            ix,
+            group_ix,
+            core,
+            rac_rand,
             old_x_coas: interactions.x_coas,
             old_x_cils: interactions.x_cils,
             print_opts,
@@ -88,7 +81,7 @@ impl PyCompCell {
     pub fn print_tstep_header(&self, tstep: u32) {
         if self.print_opts.any() {
             println!("-----------------------------------");
-            println!("tstep: {}, cell: {}", tstep, self.cell.ix);
+            println!("tstep: {}, cell: {}", tstep, self.ix);
         }
     }
 
@@ -122,9 +115,8 @@ impl PyCompCell {
     ) -> [bool; NVERTS] {
         let mut updates = [false; NVERTS];
         for i in 0..NVERTS {
-            updates[i] = !close_to_zero(
-                old_interacts[i] - new_interacts.[i],
-            );
+            updates[i] =
+                !close_to_zero(old_interacts[i] - new_interacts[i]);
         }
         updates
     }
@@ -144,10 +136,17 @@ impl PyCompCell {
         }
     }
 
-    pub fn write_state(&self, parameters: &Parameters, writer: &mut Writer) {
-        let geom_state = self.cell.core.calc_geom_state();
-        let mech_state = self.cell.core.calc_mech_state(parameters);
-        let chem_state = self.cell.core.calc_chem_state(
+    pub fn write_state(
+        &self,
+        interactions: &Interactions,
+        parameters: &Parameters,
+        cil_updates: [bool; NVERTS],
+        coa_updates: [bool; NVERTS],
+        writer: &mut Writer,
+    ) {
+        let geom_state = self.core.geom;
+        let mech_state = self.core.calc_mech_state(parameters);
+        let chem_state = self.core.calc_chem_state(
             &mech_state,
             &self.rac_rand,
             &interactions,
@@ -155,23 +154,22 @@ impl PyCompCell {
         );
         let save_data = IntStepData {
             poly: self
-                .cell
-                .state
+                .core
                 .poly
                 .iter()
                 .map(|v| [v.x, v.y])
                 .collect::<Vec<[f64; 2]>>(),
-            rac_acts: self.cell.state.rac_acts,
-            rac_inacts: self.cell.state.rac_inacts,
-            rho_acts: self.cell.state.rho_acts,
-            rho_inacts: self.cell.state.rho_inacts,
+            rac_acts: self.core.rac_acts,
+            rac_inacts: self.core.rac_inacts,
+            rho_acts: self.core.rho_acts,
+            rho_inacts: self.core.rho_inacts,
             sum_forces: mech_state
                 .sum_forces
                 .iter()
                 .map(|v| [v.x, v.y])
                 .collect::<Vec<[f64; 2]>>(),
             uivs: geom_state
-                .unit_inward_vecs
+                .unit_in_vecs
                 .iter()
                 .map(|v| [v.x, v.y])
                 .collect::<Vec<[f64; 2]>>(),
@@ -189,11 +187,6 @@ impl PyCompCell {
                 .iter()
                 .map(|v| [v.x, v.y])
                 .collect::<Vec<[f64; 2]>>(),
-            edge_forces_minus: mech_state
-                .edge_forces_minus
-                .iter()
-                .map(|v| [v.x, v.y])
-                .collect::<Vec<[f64; 2]>>(),
             uevs: geom_state
                 .unit_edge_vecs
                 .iter()
@@ -204,32 +197,31 @@ impl PyCompCell {
                 .iter()
                 .map(|v| [v.x, v.y])
                 .collect::<Vec<[f64; 2]>>(),
-            conc_rac_acts: chem_state.conc_rac_acts,
             x_cils: interactions.x_cils,
             x_coas: interactions.x_coas,
             rac_act_net_fluxes: chem_state.rac_act_net_fluxes,
             edge_strains: mech_state.edge_strains,
-            poly_area: calc_poly_area(&state.poly),
+            poly_area: calc_poly_area(&self.core.poly),
             coa_updates,
-            cil_update,
+            cil_updates,
         };
         writer.save_int_step(save_data);
     }
 
-    #[allow(unused)]
-    /// A wrapper around `Cell::simulate_euler`, that outputs data for
-    /// comparison with the Python model.
+    /// Executes the same logic as `Cell::simulate_euler`, but saves
+    /// additional data for comparison with the Python model.
+    #[allow(unused, clippy::too_many_arguments)]
     pub fn simulate_euler(
         &self,
         tstep: u32,
         num_int_steps: u32,
         interactions: &Interactions,
-        contact_data: Vec<ContactData>,
+        contacts: Vec<ContactData>,
         world_parameters: &WorldParameters,
         parameters: &Parameters,
         rng: &mut Pcg32,
         writer: &mut Writer,
-    ) -> Result<Cell, String> {
+    ) -> Result<PyCompCell, String> {
         self.print_tstep_header(tstep);
 
         let coa_updates = Self::find_updates(
@@ -247,71 +239,73 @@ impl PyCompCell {
             &self.old_x_cils,
             &interactions.x_cils,
         );
+
         self.print_interaction_updates(
             &cil_updates,
             &self.old_x_cils,
             &interactions.x_cils,
+            "cil",
         );
 
+        let dt = 1.0 / (num_int_steps as f64);
+        let mut state = self.core;
         for int_step in 0..num_int_steps {
-            self.print_poly_delta_header(&self.cell.state);
-            self.write_state(writer);
+            self.print_poly_delta_header(&state);
+            self.write_state(
+                interactions,
+                parameters,
+                cil_updates,
+                coa_updates,
+                writer,
+            );
             // d(state)/dt = dynamics_f(state) <- calculate RHS of ODE
-            let delta = Core::derivative();
-            state = state + dt * delta;
-            let actual_dp_0 = state.poly[0] - self.core.poly[0];
-            let actual_dp_15 = state.poly[15] - self.core.poly[15];
+            let delta = state.derivative(
+                &self.rac_rand,
+                interactions,
+                world_parameters,
+                parameters,
+            );
+            let mut new_state = state + delta.time_step(dt);
+            let delta_poly_0 = new_state.poly[0] - state.poly[0];
+            let delta_poly_15 = new_state.poly[15] - state.poly[15];
             // Enforcing volume exclusion! Tricky!
-            state.poly = enforce_volume_exclusion_py(
-                talkative,
-                &self.core.poly,
-                state.poly,
-                contact_data.clone(),
-                dt,
-                parameters.const_protrusive,
-                world_parameters.vertex_eta,
-                &geom_state.unit_inward_vecs,
-            )?;
-            if talkative {
-                println!("actual Delta poly(0): {}", actual_dp_0);
+            new_state
+                .enforce_volume_exclusion(&state.poly, &contacts)?;
+            if self.print_opts.deltas {
+                println!(
+                    "calculated Delta poly(0): {}",
+                    delta_poly_0
+                );
                 println!(
                     "Delta poly after VE: {}",
-                    state.poly[0] - self.core.poly[0]
+                    new_state.poly[0] - state.poly[0]
                 );
-                println!("final poly[0]: {:?}", state.poly[0]);
-                println!("actual Delta poly(15): {}", actual_dp_15);
+                println!("final poly[0]: {:?}", new_state.poly[0]);
+                println!("actual Delta poly(15): {}", delta_poly_15);
                 println!(
                     "Delta poly after VE: {}",
-                    state.poly[15] - self.core.poly[15]
+                    new_state.poly[15] - state.poly[15]
                 );
-                println!("final poly[15]: {:?}", state.poly[15]);
+                println!("final poly[15]: {:?}", new_state.poly[15]);
             }
+            state = new_state;
         }
-        let geom_state = state.calc_geom_state();
-        let mech_state =
-            state.calc_mech_state(&geom_state, parameters);
-        let chem_state = state.calc_chem_state(
-            &geom_state,
-            &mech_state,
-            &self.rac_rand,
-            &interactions,
-            parameters,
-        );
-        let geom_state = state.calc_geom_state();
 
         #[cfg(feature = "validate")]
-        state.validate("euler", &parameters)?;
+        state.validate("euler")?;
 
-        Ok(Cell {
+        Ok(PyCompCell {
             ix: self.ix,
             group_ix: self.group_ix,
+            rac_rand: self.rac_rand.update(
+                tstep + 1,
+                rng,
+                parameters,
+            ),
             core: state,
-            rac_rand: self.rac_rand.update(tstep, rng, parameters),
-            geom: geom_state,
-            chem: chem_state,
-            mech: mech_state,
             old_x_coas: interactions.x_coas,
             old_x_cils: interactions.x_cils,
+            print_opts: self.print_opts,
         })
     }
 }
