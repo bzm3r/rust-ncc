@@ -84,9 +84,14 @@ pub fn capped_linear_fn(x: f64, zero_at: f64, one_at: f64) -> f64 {
 }
 
 /// Return if the float `x` close to `0.0`.
-#[inline]
 pub fn close_to_zero(x: f64) -> bool {
     x.abs() < 1e-4
+}
+
+/// Round to `n` digits.
+pub fn round(x: f64, n: u32) -> f64 {
+    let scale = 10_u32.pow(n) as f64;
+    (x * scale).round() / scale
 }
 
 #[derive(Clone, Copy)]

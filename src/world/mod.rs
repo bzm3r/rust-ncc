@@ -185,7 +185,7 @@ impl World {
             .zip(cell_polys.iter())
             .map(|(&gix, poly)| {
                 let parameters = &group_params[gix];
-                CoreState::new(
+                CoreState::init(
                     *poly,
                     parameters.init_rac,
                     parameters.init_rho,

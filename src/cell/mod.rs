@@ -9,6 +9,7 @@ pub mod chemistry;
 pub mod states;
 // pub mod geometry;
 pub mod mechanics;
+pub mod pycomp;
 pub mod rkdp5;
 
 use crate::cell::chemistry::RacRandState;
@@ -17,6 +18,7 @@ use crate::cell::states::{
     ChemState, CoreState, GeomState, MechState,
 };
 use crate::interactions::{ContactData, Interactions};
+use crate::math::close_to_zero;
 use crate::math::geometry::{
     calc_poly_area, check_strong_intersection,
 };
@@ -37,15 +39,15 @@ pub struct Cell {
     pub ix: usize,
     /// Index of group that cell belongs to.
     pub group_ix: usize,
+    /// State of Random Rac1 activity that affected `core`.
+    pub rac_rand: RacRandState,
     /// Core state of the cell (position, Rho GTPase).
     pub core: CoreState,
-    /// Random Rac1 activity.
-    pub rac_rand: RacRandState,
-    /// Mechanical activity (forces).
-    pub mech: MechState,
-    /// Geometry (unit inward vecs, etc.).
+    /// Geometry (unit inward vecs, etc.) due to `core`.
     pub geom: GeomState,
-    /// Chemical state (various reaction rates).
+    /// State of Mechanical activity (forces) due to `core``.
+    pub mech: MechState,
+    /// Chemical state (various reaction rates) due to `core`.
     pub chem: ChemState,
 }
 
@@ -182,6 +184,7 @@ impl Cell {
     pub fn simulate_euler(
         &mut self,
         tstep: u32,
+        int_steps: u32,
         interactions: &Interactions,
         contact_data: Vec<ContactData>,
         world_parameters: &WorldParameters,
@@ -189,14 +192,13 @@ impl Cell {
         rng: &mut Pcg32,
     ) -> Result<Cell, String> {
         let mut state = self.core;
-        let nsteps: u32 = 10;
         // Assumed normalized time by time provided in CharQuant.
         // Therefore, we can take the time period to integrate over
         // as 1.0.
-        let dt = 1.0 / (nsteps as f64);
-        for _ in 0..nsteps {
+        let dt = 1.0 / (int_steps as f64);
+        for _ in 0..int_steps {
             // d(state)/dt = dynamics_f(state) <- calculate RHS of ODE
-            let delta = CoreState::dynamics_f(
+            let delta = CoreState::derivative(
                 &state,
                 &self.rac_rand,
                 &interactions,
@@ -254,7 +256,7 @@ impl Cell {
         };
         let result = rkdp5::integrator(
             1.0,
-            CoreState::dynamics_f,
+            CoreState::derivative,
             &self.core,
             &self.rac_rand,
             interactions,

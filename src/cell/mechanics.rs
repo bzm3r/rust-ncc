@@ -27,14 +27,14 @@ pub fn calc_edge_vecs(
 /// Calculate elastic forces due to stretching of edges.
 pub fn calc_edge_forces(
     edge_strains: &[f64; NVERTS],
-    edge_unit_vecs: &[V2D; NVERTS],
+    unit_edge_vecs: &[V2D; NVERTS],
     stiffness_edge: f64,
 ) -> [V2D; NVERTS] {
     let mut r = [V2D::default(); NVERTS];
     (0..NVERTS).for_each(|i| {
         // Elastic relationship: stiffness * strain = magnitude of
         // force. Direction of force is along the unite edge vector.
-        r[i] = edge_strains[i] * stiffness_edge * edge_unit_vecs[i]
+        r[i] = edge_strains[i] * stiffness_edge * unit_edge_vecs[i]
     });
     r
 }

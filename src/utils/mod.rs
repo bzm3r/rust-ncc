@@ -8,6 +8,7 @@
 
 pub mod normal;
 pub mod pcg32;
+pub mod display;
 
 pub fn circ_ix_minus(ix: usize, num_items: usize) -> usize {
     if ix == 0 {

@@ -1,5 +1,6 @@
 pub mod cell;
 pub mod experiments;
+pub mod hardio;
 pub mod interactions;
 pub mod math;
 pub mod parameters;

@@ -1,3 +1,5 @@
+pub mod pycomp;
+
 use crate::world::{Snapshot, WorldInfo};
 use bincode::{deserialize_from, serialize_into};
 use serde::Serialize;
