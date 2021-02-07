@@ -224,7 +224,7 @@ impl Cell {
         let geom_state = state.calc_geom_state();
 
         #[cfg(feature = "validate")]
-        state.validate("euler", &parameters)?;
+        state.validate("euler")?;
 
         Ok(Cell {
             ix: self.ix,
@@ -284,7 +284,7 @@ impl Cell {
         let geom_state = state.calc_geom_state();
 
         #[cfg(feature = "validate")]
-        state.validate("rkdp5", &parameters)?;
+        state.validate("rkdp5")?;
 
         Ok(Cell {
             ix: self.ix,

@@ -793,11 +793,7 @@ impl CoreState {
     }
 
     #[cfg(feature = "validate")]
-    pub fn validate(
-        &self,
-        loc_str: &str,
-        parameters: &Parameters,
-    ) -> Result<(), String> {
+    pub fn validate(&self, loc_str: &str) -> Result<(), String> {
         if self.rac_acts.iter().any(|&r| r < 0.0_f64) {
             return Err(format!(
                 "{}: neg rac_acts: {:?}",
@@ -824,7 +820,7 @@ impl CoreState {
         }
         let sum_rac_mem = self.rac_inacts.iter().sum::<f64>()
             + self.rac_acts.iter().sum::<f64>();
-        if sum_rac_mem > parameters.total_rgtp || sum_rac_mem < 0.0 {
+        if sum_rac_mem > 1.0 || sum_rac_mem < 0.0 {
             return Err(format!(
                 "{}: problem in sum of rac_mem: {}",
                 loc_str, sum_rac_mem
@@ -832,7 +828,7 @@ impl CoreState {
         }
         let sum_rho_mem = self.rho_inacts.iter().sum::<f64>()
             + self.rho_acts.iter().sum::<f64>();
-        if sum_rho_mem > parameters.total_rgtp || sum_rho_mem < 0.0 {
+        if sum_rho_mem > 1.0 || sum_rho_mem < 0.0 {
             return Err(format!(
                 "{}: problem in sum of rho_mem: {}",
                 loc_str, sum_rho_mem
