@@ -1,16 +1,17 @@
 #![allow(unused)]
-use crate::cell::{chemistry::RacRandState, states::CoreState};
+use crate::cell::states::DCoreDt;
+use crate::cell::{chemistry::RacRandState, states::Core};
 use crate::interactions::Interactions;
 use crate::math::{max_f64, min_f64};
 use crate::parameters::{Parameters, WorldParameters};
 
 type CellDynamicsFn = fn(
-    state: &CoreState,
+    state: &Core,
     rac_random_state: &RacRandState,
     interactions: &Interactions,
     world_parameters: &WorldParameters,
     parameters: &Parameters,
-) -> CoreState;
+) -> DCoreDt;
 
 const C: [f64; 7] =
     [0.0, 1.0 / 5.0, 3.0 / 10.0, 4.0 / 5.0, 8.0 / 9.0, 1.0, 1.0];
@@ -69,37 +70,33 @@ pub struct AuxArgs {
 }
 
 pub struct SolverArgs {
-    f: fn(
-        dt: f64,
-        state: &CoreState,
-        parameters: &Parameters,
-    ) -> CoreState,
-    init_state: CoreState,
+    f: fn(dt: f64, state: &Core, parameters: &Parameters) -> Core,
+    init_state: Core,
     t0: f64,
     t1: f64,
 }
 
 pub struct Solution {
-    pub y: Result<CoreState, String>,
+    pub y: Result<Core, String>,
     pub num_rejections: u32,
     pub num_iters: u32,
 }
 
 pub struct Ks {
-    k0: CoreState,
-    k1: CoreState,
-    k2: CoreState,
-    k3: CoreState,
-    k4: CoreState,
-    k5: CoreState,
-    k6: CoreState,
+    k0: DCoreDt,
+    k1: DCoreDt,
+    k2: DCoreDt,
+    k3: DCoreDt,
+    k4: DCoreDt,
+    k5: DCoreDt,
+    k6: DCoreDt,
 }
 
 impl Ks {
     fn calc(
         f: CellDynamicsFn,
         h: f64,
-        init_state: CoreState,
+        init_state: Core,
         rand_state: &RacRandState,
         inter_state: &Interactions,
         world_parameters: &WorldParameters,
@@ -211,7 +208,7 @@ impl Ks {
 pub fn integrator(
     mut dt: f64,
     f: CellDynamicsFn,
-    init_state: &CoreState,
+    init_state: &Core,
     rand_state: &RacRandState,
     inter_state: &Interactions,
     world_parameters: &WorldParameters,
@@ -258,13 +255,13 @@ pub fn integrator(
         );
 
         let y1 = y0
-            + h * (B[0] * k0
-                + B[1] * k1
-                + B[2] * k2
-                + B[3] * k3
-                + B[4] * k4
-                + B[5] * k5
-                + B[6] * k6);
+            + B[0] * k0.time_step(h)
+            + B[1] * k1.time_step(h)
+            + B[2] * k2.time_step(h)
+            + B[3] * k3.time_step(h)
+            + B[4] * k4.time_step(h)
+            + B[5] * k5.time_step(h)
+            + B[6] * k6.time_step(h);
 
         if last_iter {
             assert!((h - dt).abs() < f64::EPSILON);
@@ -285,9 +282,8 @@ pub fn integrator(
                 + B_HAT[6] * k6);
 
         // Equations 4.10, 4.11, Hairer,Wanner&Norsett Solving ODEs Vol. 1
-        let sc =
-            y0.abs().max(&y1.abs()).scalar_mul(rtol).scalar_add(atol);
-        let error = ((y1 - y1_hat).powi(2) / sc).average().sqrt();
+        let sc = rtol * y0.abs().max(&y1.abs()) + atol;
+        let error = ((y1 - y1_hat).powi(2) / sc).flat_avg().sqrt();
         let mut h_new =
             h * min_f64(fac_max, FAC * (1.0 / error).powf(INV_QP1));
 

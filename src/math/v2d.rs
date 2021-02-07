@@ -157,6 +157,25 @@ impl Add for &V2D {
     }
 }
 
+impl Add<f64> for V2D {
+    type Output = Self;
+
+    fn add(self, rhs: f64) -> Self::Output {
+        V2D {
+            x: self.x + rhs,
+            y: self.y + rhs,
+        }
+    }
+}
+
+impl Add<V2D> for f64 {
+    type Output = V2D;
+
+    fn add(self, rhs: V2D) -> Self::Output {
+        rhs + self
+    }
+}
+
 impl Div for V2D {
     type Output = Self;
 
@@ -201,17 +220,6 @@ impl Mul<V2D> for &f64 {
     }
 }
 
-impl Add<V2D> for f64 {
-    type Output = V2D;
-
-    fn add(self, rhs: V2D) -> Self::Output {
-        V2D {
-            x: self + rhs.x,
-            y: self + rhs.y,
-        }
-    }
-}
-
 impl Sub for V2D {
     type Output = Self;
 
@@ -248,4 +256,26 @@ pub fn poly_to_string(poly: &[V2D]) -> String {
     }
     write!(r, "]").unwrap();
     r
+}
+
+/// 2D vector with `f64` elements.
+#[derive(
+    Clone, Copy, Debug, Default, Deserialize, Serialize, PartialEq,
+)]
+pub struct PowV2D {
+    pub x: f64,
+    pub y: f64,
+    exponent: i32,
+}
+
+impl Mul for V2D {
+    type Output = PowV2D;
+
+    fn mul(self, rhs: Self) -> Self::Output {
+        PowV2D {
+            x: self.x * rhs.x,
+            y: self.y * rhs.y,
+            exponent: 2,
+        }
+    }
 }

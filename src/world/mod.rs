@@ -8,7 +8,7 @@
 pub mod hardio;
 #[cfg(feature = "validate")]
 use crate::cell::confirm_volume_exclusion;
-use crate::cell::states::CoreState;
+use crate::cell::states::Core;
 use crate::cell::Cell;
 use crate::experiments::{CellGroup, Experiment};
 use crate::interactions::{
@@ -185,13 +185,13 @@ impl World {
             .zip(cell_polys.iter())
             .map(|(&gix, poly)| {
                 let parameters = &group_params[gix];
-                CoreState::init(
+                Core::init(
                     *poly,
                     parameters.init_rac,
                     parameters.init_rho,
                 )
             })
-            .collect::<Vec<CoreState>>();
+            .collect::<Vec<Core>>();
         // Calcualte relative activity of Rac1 vs. RhoA at a node.
         // This is needed for CRL.
         let cell_rgtps = cell_group_ixs

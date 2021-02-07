@@ -9,7 +9,7 @@ use crate::cell::mechanics::{
 };
 use crate::interactions::{Interactions, RelativeRgtpActivity};
 use crate::math::v2d::V2D;
-use crate::math::{hill_function3, max_f64, min_f64};
+use crate::math::{hill_function3, max_f64};
 use crate::parameters::{Parameters, WorldParameters};
 use crate::utils::circ_ix_minus;
 use crate::NVERTS;
@@ -24,7 +24,7 @@ use std::ops::{Add, Div, Mul, Sub};
 #[derive(
     Copy, Clone, Debug, Default, Deserialize, Serialize, PartialEq,
 )]
-pub struct CoreState {
+pub struct Core {
     /// Polygon representing cell shape.
     pub poly: [V2D; NVERTS],
     /// Fraction of Rac1 active at each vertex.
@@ -56,9 +56,29 @@ pub struct DCoreDt {
     pub rho_inacts: [f64; NVERTS],
 }
 
-impl From<&CoreState> for DCoreDt {
-    fn from(_: &CoreState) -> Self {
+impl From<&Core> for DCoreDt {
+    fn from(_: &Core) -> Self {
         unimplemented!()
+    }
+}
+
+impl DCoreDt {
+    pub fn time_step(&self, dt: f64) -> Core {
+        let mut poly = [V2D::default(); NVERTS];
+        let mut rac_acts = [0.0_f64; NVERTS];
+        let mut rac_inacts = [0.0_f64; NVERTS];
+        let mut rho_acts = [0.0_f64; NVERTS];
+        let mut rho_inacts = [0.0_f64; NVERTS];
+
+        for i in 0..(NVERTS) {
+            poly[i] = dt * self.poly[i];
+            rac_acts[i] = dt * self.rac_acts[i];
+            rac_inacts[i] = dt * self.rac_inacts[i];
+            rho_acts[i] = dt * self.rho_acts[i];
+            rho_inacts[i] = dt * self.rho_inacts[i];
+        }
+
+        Core::new(poly, rac_acts, rac_inacts, rho_acts, rho_inacts)
     }
 }
 
@@ -67,7 +87,7 @@ impl From<&CoreState> for DCoreDt {
 #[derive(
     Copy, Clone, Debug, Default, Deserialize, Serialize, PartialEq,
 )]
-pub struct PowCoreState {
+pub struct PowCore {
     /// Polygon representing cell shape.
     pub poly: [V2D; NVERTS],
     /// Fraction of Rac1 active at each vertex.
@@ -82,10 +102,38 @@ pub struct PowCoreState {
     pub exponent: i32,
 }
 
-impl From<PowCoreState> for CoreState {
-    fn from(pow_core: PowCoreState) -> Self {
+impl PowCore {
+    //TODO(BM): automate generation of `num_vars` using proc macro.
+    /// Calculate the total number of variables that `CoreState`
+    /// holds. That is: the number of variables per vertex, times the
+    /// number of all the vertices in a cell.
+    pub fn num_vars() -> u32 {
+        (NVERTS * 6) as u32
+    }
+
+    pub fn flat_sum(&self) -> f64 {
+        let mut r: f64 = 0.0;
+
+        for i in 0..(NVERTS) {
+            r += self.poly[i].x + self.poly[i].y;
+            r += self.rac_acts[i];
+            r += self.rac_inacts[i];
+            r += self.rho_acts[i];
+            r += self.rho_inacts[i];
+        }
+
+        r
+    }
+
+    pub fn flat_avg(&self) -> f64 {
+        self.flat_sum() / (Self::num_vars() as f64)
+    }
+}
+
+impl From<PowCore> for Core {
+    fn from(pow_core: PowCore) -> Self {
         if pow_core.exponent == 1 {
-            let PowCoreState {
+            let PowCore {
                 poly,
                 rac_acts,
                 rac_inacts,
@@ -93,7 +141,7 @@ impl From<PowCoreState> for CoreState {
                 rho_inacts,
                 ..
             } = pow_core;
-            return CoreState::new(
+            return Core::new(
                 poly, rac_acts, rac_inacts, rho_acts, rho_inacts,
             );
         } else {
@@ -103,10 +151,10 @@ impl From<PowCoreState> for CoreState {
     }
 }
 
-impl Add for CoreState {
-    type Output = CoreState;
+impl Add for Core {
+    type Output = Core;
 
-    fn add(self, rhs: CoreState) -> CoreState {
+    fn add(self, rhs: Core) -> Core {
         let mut poly = [V2D::default(); NVERTS];
         let mut rac_acts = [0.0_f64; NVERTS];
         let mut rac_inacts = [0.0_f64; NVERTS];
@@ -121,16 +169,14 @@ impl Add for CoreState {
             rho_inacts[i] = self.rho_inacts[i] + rhs.rho_inacts[i]
         }
 
-        CoreState::new(
-            poly, rac_acts, rac_inacts, rho_acts, rho_inacts,
-        )
+        Core::new(poly, rac_acts, rac_inacts, rho_acts, rho_inacts)
     }
 }
 
-impl Mul for CoreState {
-    type Output = PowCoreState;
+impl Mul for Core {
+    type Output = PowCore;
 
-    fn mul(self, rhs: CoreState) -> Self::Output {
+    fn mul(self, rhs: Core) -> Self::Output {
         let mut poly = [V2D::default(); NVERTS];
         let mut rac_acts = [0.0_f64; NVERTS];
         let mut rac_inacts = [0.0_f64; NVERTS];
@@ -141,7 +187,7 @@ impl Mul for CoreState {
             poly[i] = self.poly[i] * rhs.poly[i];
             rac_acts[i] = self.rac_acts[i] * rhs.rac_acts[i];
             rac_inacts[i] =
-                self.rhs.rac_inacts[i] * rhs.rac_inacts[i];
+                self.rac_inacts[i] * rhs.rac_inacts[i];
             rho_acts[i] = self.rho_acts[i] * rhs.rho_acts[i];
             rho_inacts[i] = self.rho_inacts[i] * rhs.rho_inacts[i];
         }
@@ -157,10 +203,10 @@ impl Mul for CoreState {
     }
 }
 
-impl Sub for CoreState {
-    type Output = CoreState;
+impl Sub for Core {
+    type Output = Core;
 
-    fn sub(self, rhs: CoreState) -> CoreState {
+    fn sub(self, rhs: Core) -> Core {
         let mut poly = [V2D::default(); NVERTS];
         let mut rac_acts = [0.0_f64; NVERTS];
         let mut rac_inacts = [0.0_f64; NVERTS];
@@ -175,14 +221,12 @@ impl Sub for CoreState {
             rho_inacts[i] = self.rho_inacts[i] - rhs.rho_inacts[i]
         }
 
-        CoreState::new(
-            poly, rac_acts, rac_inacts, rho_acts, rho_inacts,
-        )
+        Core::new(poly, rac_acts, rac_inacts, rho_acts, rho_inacts)
     }
 }
 
-impl Mul<f64> for CoreState {
-    type Output = CoreState;
+impl Mul<f64> for Core {
+    type Output = Core;
 
     fn mul(self, rhs: f64) -> Self::Output {
         let mut poly = [V2D::default(); NVERTS];
@@ -199,47 +243,105 @@ impl Mul<f64> for CoreState {
             rho_inacts[i] = self.rho_inacts[i] * rhs;
         }
 
-        CoreState::new(
-            poly, rac_acts, rac_inacts, rho_acts, rho_inacts,
-        )
+        Core::new(poly, rac_acts, rac_inacts, rho_acts, rho_inacts)
     }
 }
 
-impl Mul<CoreState> for f64 {
-    type Output = CoreState;
+impl Mul<Core> for f64 {
+    type Output = Core;
 
-    fn mul(self, rhs: CoreState) -> Self::Output {
-        unimplemented!()
+    fn mul(self, rhs: Core) -> Self::Output {
+        self * rhs
     }
 }
 
-// impl Div for CoreState {
-//     type Output = CoreState;
-//
-//     fn div(self, rhs: CoreState) -> CoreState {
-//         let mut vertex_coords = [V2D::default(); NVERTS];
-//         let mut rac_acts = [0.0_f64; NVERTS];
-//         let mut rac_inacts = [0.0_f64; NVERTS];
-//         let mut rho_acts = [0.0_f64; NVERTS];
-//         let mut rho_inacts = [0.0_f64; NVERTS];
-//
-//         for i in 0..(NVERTS) {
-//             vertex_coords[i] = self.poly[i] / rhs.poly[i];
-//             rac_acts[i] = self.rac_acts[i] / rhs.rac_acts[i];
-//             rac_inacts[i] = self.rac_inacts[i] / rhs.rac_inacts[i];
-//             rho_acts[i] = self.rho_acts[i] / rhs.rho_acts[i];
-//             rho_inacts[i] = self.rho_inacts[i] / rhs.rho_inacts[i]
-//         }
-//
-//         Self::Output {
-//             poly: vertex_coords,
-//             rac_acts,
-//             rac_inacts,
-//             rho_acts,
-//             rho_inacts,
-//         }
-//     }
-// }
+impl Add<f64> for Core {
+    type Output = Core;
+
+    fn add(self, rhs: f64) -> Self::Output {
+        let mut poly = [V2D::default(); NVERTS];
+        let mut rac_acts = [0.0_f64; NVERTS];
+        let mut rac_inacts = [0.0_f64; NVERTS];
+        let mut rho_acts = [0.0_f64; NVERTS];
+        let mut rho_inacts = [0.0_f64; NVERTS];
+
+        for i in 0..(NVERTS) {
+            poly[i] = self.poly[i] + rhs;
+            rac_acts[i] = self.rac_acts[i] + rhs;
+            rac_inacts[i] = self.rac_inacts[i] + rhs;
+            rho_acts[i] = self.rho_acts[i] + rhs;
+            rho_inacts[i] = self.rho_inacts[i] + rhs;
+        }
+
+        Core::new(poly, rac_acts, rac_inacts, rho_acts, rho_inacts)
+    }
+}
+
+impl Add<Core> for f64 {
+    type Output = Core;
+
+    fn add(self, rhs: Core) -> Self::Output {
+        self + rhs
+    }
+}
+
+impl Div for PowCore {
+    type Output = PowCore;
+
+    fn div(self, rhs: PowCore) -> PowCore {
+        let mut poly = [V2D::default(); NVERTS];
+        let mut rac_acts = [0.0_f64; NVERTS];
+        let mut rac_inacts = [0.0_f64; NVERTS];
+        let mut rho_acts = [0.0_f64; NVERTS];
+        let mut rho_inacts = [0.0_f64; NVERTS];
+
+        for i in 0..(NVERTS) {
+            poly[i] = self.poly[i] / rhs.poly[i];
+            rac_acts[i] = self.rac_acts[i] / rhs.rac_acts[i];
+            rac_inacts[i] = self.rac_inacts[i] / rhs.rac_inacts[i];
+            rho_acts[i] = self.rho_acts[i] / rhs.rho_acts[i];
+            rho_inacts[i] = self.rho_inacts[i] / rhs.rho_inacts[i]
+        }
+
+        Self::Output {
+            poly,
+            rac_acts,
+            rac_inacts,
+            rho_acts,
+            rho_inacts,
+            exponent: self.exponent - rhs.exponent,
+        }
+    }
+}
+
+impl Div<Core> for PowCore {
+    type Output = PowCore;
+
+    fn div(self, rhs: Core) -> PowCore {
+        let mut poly = [V2D::default(); NVERTS];
+        let mut rac_acts = [0.0_f64; NVERTS];
+        let mut rac_inacts = [0.0_f64; NVERTS];
+        let mut rho_acts = [0.0_f64; NVERTS];
+        let mut rho_inacts = [0.0_f64; NVERTS];
+
+        for i in 0..(NVERTS) {
+            poly[i] = self.poly[i] / rhs.poly[i];
+            rac_acts[i] = self.rac_acts[i] / rhs.rac_acts[i];
+            rac_inacts[i] = self.rac_inacts[i] / rhs.rac_inacts[i];
+            rho_acts[i] = self.rho_acts[i] / rhs.rho_acts[i];
+            rho_inacts[i] = self.rho_inacts[i] / rhs.rho_inacts[i]
+        }
+
+        Self::Output {
+            poly,
+            rac_acts,
+            rac_inacts,
+            rho_acts,
+            rho_inacts,
+            exponent: self.exponent - 1,
+        }
+    }
+}
 
 /// Records the mechanical state of a cell.
 #[derive(
@@ -268,9 +370,9 @@ pub struct MechState {
 ///     * `kdgtp_X`: Rho GTPase inactivation rates
 ///     * `kgtp_X`: Rho GTPase activation rates
 ///     * `X_act_net_fluxes`: diffusion fluxes between vertices of
-/// active form of Rho GTPases
+/// active form of Rho GTPase
 ///     * `X_inact_net_fluxes`: diffusion fluxes between vertices of
-/// inactive form of Rho GTPases
+/// inactive form of Rho GTPase
 ///     * `X_cyto`: fraction of Rho GTPase in the cytoplasm
 ///     * `x_tens`: "tension" factor that affects Rac1 activation
 /// rate, calculated based on average tensile strain in cell (i.e.
@@ -355,7 +457,7 @@ pub fn fmt_var_arr<T: fmt::Display>(
     writeln!(f, "{}: [{}]", description, contents)
 }
 
-impl Display for CoreState {
+impl Display for Core {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt_var_arr(f, "vertex_coords", &self.poly)?;
         fmt_var_arr(f, "rac_acts", &self.rac_acts)?;
@@ -394,16 +496,8 @@ impl Display for ChemState {
     }
 }
 
-impl CoreState {
-    //TODO(BM): automate generation of `num_vars` using proc macro.
-    /// Calculate the total number of variables that `CoreState`
-    /// holds. That is: the number of variables per vertex, times the
-    /// number of all the vertices in a cell.
-    pub fn num_vars() -> u32 {
-        (NVERTS * 6) as u32
-    }
-
-    pub fn calc_mech_sate(
+impl Core {
+    pub fn calc_mech_state(
         &self,
         parameters: &Parameters,
     ) -> MechState {
@@ -411,7 +505,7 @@ impl CoreState {
             unit_edge_vecs,
             edge_lens,
             unit_in_vecs,
-        } = &self.geom_state;
+        } = &self.geom;
         let rgtp_forces = calc_rgtp_forces(
             &self.rac_acts,
             &self.rho_acts,
@@ -443,7 +537,7 @@ impl CoreState {
         // Only tension is considered to have an effect (see refs. in
         // SI.
         //TODO(BM): what is the latest on this front? Recent paper
-        // (Elife?) which suggests not true for migrating cells.
+        // (ELife?) which suggests not true for migrating cells.
         let avg_tens_strain = edge_strains
             .iter()
             .map(|&es| if es < 0.0 { 0.0 } else { es })
@@ -473,10 +567,10 @@ impl CoreState {
         interactions: &Interactions,
         parameters: &Parameters,
     ) -> ChemState {
-        let GeomState { edge_lens, .. } = self.geom_state;
+        let GeomState { edge_lens, .. } = self.geom;
         // Need to calculate average length of edges meeting at
         // a vertex in order to roughly approximate diffusion related
-        // flux of Rho GTPases from neighbouring vertices. Provides
+        // flux of Rho GTPase from neighbouring vertices. Provides
         // an approximation for the length of the membrane abstracted
         // by the edges that meet at that vertex.
         let mut avg_edge_lens: [f64; NVERTS] = [0.0_f64; NVERTS];
@@ -582,35 +676,26 @@ impl CoreState {
     }
 
     /// Calculate the right hand side of the ODEs simulating cell
-    /// vertex motion and biochemistry. In particular, calculate
-    /// `(delta(state)/delta(t))`. Note that `delta(state)` should have
-    /// "units" of `[CoreState]` (the units of the result of
-    /// addition/subtraction of two quanties with units X, is X), so
-    /// this function should be returning a quantity with units
-    /// `[CoreState]/[Time]`, but since time is normalized, this is
-    /// the same as having units of `[CoreState]`.
+    /// vertex motion and biochemistry.
     pub fn derivative(
-        state: &CoreState,
+        state: &Core,
         rac_rand_state: &RacRandState,
         inter_state: &Interactions,
         world_parameters: &WorldParameters,
         parameters: &Parameters,
-    ) -> CoreState {
+    ) -> DCoreDt {
         //TODO: is it necessary to recalculate chem/mech/geom states in
         // `derivative`, if we have saved this info in the `Cell` struct?
         // What is the importance of `interactions`---might it have changed
         // since the last time we calculated these?
-        let geom_state = Self::calc_geom_state(state);
-        let mech_state =
-            Self::calc_mech_state(state, &geom_state, parameters);
-        let chem_state = Self::calc_chem_state(
-            state,
+        let mech_state = state.calc_mech_state(parameters);
+        let chem_state = state.calc_chem_state(
             &mech_state,
             rac_rand_state,
             inter_state,
             parameters,
         );
-        let mut delta = CoreState::default();
+        let mut delta = DCoreDt::default();
         for i in 0..NVERTS {
             // rate of rac deactivation * current fraction of rac active
             let inactivated_rac =
@@ -666,8 +751,8 @@ impl CoreState {
         poly: [V2D; NVERTS],
         init_rac: RgtpDistribution,
         init_rho: RgtpDistribution,
-    ) -> CoreState {
-        CoreState::new(
+    ) -> Core {
+        Core::new(
             poly,
             init_rac.active,
             init_rac.inactive,
@@ -682,9 +767,9 @@ impl CoreState {
         rac_inacts: [f64; NVERTS],
         rho_acts: [f64; NVERTS],
         rho_inacts: [f64; NVERTS],
-    ) -> CoreState {
+    ) -> Core {
         let geom = GeomState::from(&poly);
-        CoreState {
+        Core {
             poly,
             rac_acts,
             rac_inacts,
@@ -694,31 +779,7 @@ impl CoreState {
         }
     }
 
-    pub fn scalar_add(&self, s: f64) -> CoreState {
-        let mut vertex_coords = [V2D::default(); NVERTS];
-        let mut rac_acts = [0.0_f64; NVERTS];
-        let mut rac_inacts = [0.0_f64; NVERTS];
-        let mut rho_acts = [0.0_f64; NVERTS];
-        let mut rho_inacts = [0.0_f64; NVERTS];
-
-        for i in 0..(NVERTS) {
-            vertex_coords[i] = s + self.poly[i];
-            rac_acts[i] = self.rac_acts[i] + s;
-            rac_inacts[i] = self.rac_inacts[i] + s;
-            rho_acts[i] = self.rho_acts[i] + s;
-            rho_inacts[i] = self.rho_inacts[i] + s;
-        }
-
-        CoreState {
-            poly: vertex_coords,
-            rac_acts,
-            rac_inacts,
-            rho_acts,
-            rho_inacts,
-        }
-    }
-
-    pub fn abs(&self) -> CoreState {
+    pub fn abs(&self) -> Core {
         let mut vertex_coords = [V2D::default(); NVERTS];
         let mut rac_acts = [0.0_f64; NVERTS];
         let mut rac_inacts = [0.0_f64; NVERTS];
@@ -733,16 +794,16 @@ impl CoreState {
             rho_inacts[i] = self.rho_inacts[i].abs();
         }
 
-        CoreState {
-            poly: vertex_coords,
+        Core::new(
+            vertex_coords,
             rac_acts,
             rac_inacts,
             rho_acts,
             rho_inacts,
-        }
+        )
     }
 
-    pub fn powi(&self, x: i32) -> PowCoreState {
+    pub fn powi(&self, x: i32) -> PowCore {
         let mut vertex_coords = [V2D::default(); NVERTS];
         let mut rac_acts = [0.0_f64; NVERTS];
         let mut rac_inacts = [0.0_f64; NVERTS];
@@ -757,16 +818,17 @@ impl CoreState {
             rho_inacts[i] = self.rho_inacts[i].powi(x);
         }
 
-        PowCoreState {
+        PowCore {
             poly: vertex_coords,
             rac_acts,
             rac_inacts,
             rho_acts,
             rho_inacts,
+            exponent: x,
         }
     }
 
-    pub fn max(&self, other: &CoreState) -> CoreState {
+    pub fn max(&self, other: &Core) -> Core {
         let mut poly = [V2D::default(); NVERTS];
         let mut rac_acts = [0.0_f64; NVERTS];
         let mut rac_inacts = [0.0_f64; NVERTS];
@@ -785,16 +847,7 @@ impl CoreState {
                 max_f64(self.rho_inacts[i], other.rho_inacts[i]);
         }
 
-        geom = GeomState::from(&poly);
-
-        CoreState {
-            poly,
-            rac_acts,
-            rac_inacts,
-            rho_acts,
-            rho_inacts,
-            geom,
-        }
+        Core::new(poly, rac_acts, rac_inacts, rho_acts, rho_inacts)
     }
 
     /// Calculate which Rho GTPase has dominates in terms of effect
@@ -854,7 +907,7 @@ impl CoreState {
         }
         let sum_rac_mem = self.rac_inacts.iter().sum::<f64>()
             + self.rac_acts.iter().sum::<f64>();
-        if sum_rac_mem > parameters.total_rgtp || sum_rac_mem < 0.0 {
+        if sum_rac_mem > 1.0 || sum_rac_mem < 0.0 {
             return Err(format!(
                 "{}: problem in sum of rac_mem: {}",
                 loc_str, sum_rac_mem
@@ -862,7 +915,7 @@ impl CoreState {
         }
         let sum_rho_mem = self.rho_inacts.iter().sum::<f64>()
             + self.rho_acts.iter().sum::<f64>();
-        if sum_rho_mem > parameters.total_rgtp || sum_rho_mem < 0.0 {
+        if sum_rho_mem > 1.0 || sum_rho_mem < 0.0 {
             return Err(format!(
                 "{}: problem in sum of rho_mem: {}",
                 loc_str, sum_rho_mem

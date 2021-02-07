@@ -14,9 +14,7 @@ pub mod rkdp5;
 
 use crate::cell::chemistry::RacRandState;
 use crate::cell::rkdp5::AuxArgs;
-use crate::cell::states::{
-    ChemState, CoreState, GeomState, MechState,
-};
+use crate::cell::states::{ChemState, Core, GeomState, MechState};
 use crate::interactions::{ContactData, Interactions};
 use crate::math::close_to_zero;
 use crate::math::geometry::{
@@ -42,7 +40,7 @@ pub struct Cell {
     /// State of Random Rac1 activity that affected `core`.
     pub rac_rand: RacRandState,
     /// Core state of the cell (position, Rho GTPase).
-    pub core: CoreState,
+    pub core: Core,
     /// Geometry (unit inward vecs, etc.) due to `core`.
     pub geom: GeomState,
     /// State of Mechanical activity (forces) due to `core``.
@@ -147,7 +145,7 @@ impl Cell {
     pub fn new(
         ix: usize,
         group_ix: usize,
-        core: CoreState,
+        core: Core,
         interactions: &Interactions,
         parameters: &Parameters,
         rng: &mut Pcg32,
@@ -160,7 +158,6 @@ impl Cell {
             RacRandState::default()
         };
         let chem = core.calc_chem_state(
-            &geom,
             &mech,
             &rac_rand,
             &interactions,
@@ -198,7 +195,7 @@ impl Cell {
         let dt = 1.0 / (int_steps as f64);
         for _ in 0..int_steps {
             // d(state)/dt = dynamics_f(state) <- calculate RHS of ODE
-            let delta = CoreState::derivative(
+            let delta = Core::derivative(
                 &state,
                 &self.rac_rand,
                 &interactions,
@@ -211,7 +208,6 @@ impl Cell {
         let mech_state =
             state.calc_mech_state(&geom_state, parameters);
         let chem_state = state.calc_chem_state(
-            &geom_state,
             &mech_state,
             &self.rac_rand,
             &interactions,
@@ -256,7 +252,7 @@ impl Cell {
         };
         let result = rkdp5::integrator(
             1.0,
-            CoreState::derivative,
+            Core::derivative,
             &self.core,
             &self.rac_rand,
             interactions,

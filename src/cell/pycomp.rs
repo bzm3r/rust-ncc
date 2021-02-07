@@ -5,33 +5,21 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-pub mod chemistry;
-pub mod states;
-// pub mod geometry;
-pub mod mechanics;
-pub mod pycomp;
-pub mod rkdp5;
-
 use crate::cell::chemistry::RacRandState;
-use crate::cell::rkdp5::AuxArgs;
-use crate::cell::states::{
-    ChemState, CoreState, GeomState, MechState,
-};
+
+use crate::cell::states::{Core, GeomState, MechState};
 use crate::cell::Cell;
+use crate::hardio::pycomp::{IntStepData, Writer};
 use crate::interactions::{ContactData, Interactions};
-use crate::math::geometry::{
-    calc_poly_area, check_strong_intersection,
-};
-use crate::math::v2d::V2D;
-use crate::math::{close_to_zero, round};
+use crate::math::geometry::calc_poly_area;
+
+use crate::math::close_to_zero;
 use crate::parameters::{Parameters, WorldParameters};
+use crate::utils::display::stringify_f64_arr;
 use crate::utils::pcg32::Pcg32;
-use crate::utils::{circ_ix_minus, circ_ix_plus};
+
 use crate::NVERTS;
 use serde::{Deserialize, Serialize};
-use std::f64::consts::PI;
-use crate::utils::display::stringify_f64_arr;
-use crate::hardio::pycomp::{Writer, IntStepData};
 
 /// Cell state structure.
 #[derive(
@@ -44,14 +32,17 @@ pub struct PyCompCell {
     print_opts: PrintOptions,
 }
 
+#[derive(
+    Copy, Clone, Deserialize, Serialize, PartialEq, Default, Debug,
+)]
 pub struct PrintOptions {
     deltas: bool,
-    coa: bool,
+    interaction_updates: bool,
 }
 
 impl PrintOptions {
     pub fn any(&self) -> bool {
-        self.deltas || self.coa
+        self.deltas || self.interaction_updates
     }
 }
 
@@ -59,7 +50,7 @@ impl PyCompCell {
     pub fn new(
         ix: usize,
         group_ix: usize,
-        core: CoreState,
+        core: Core,
         interactions: &Interactions,
         parameters: &Parameters,
         rng: &mut Pcg32,
@@ -73,7 +64,6 @@ impl PyCompCell {
             RacRandState::default()
         };
         let chem = core.calc_chem_state(
-            &geom,
             &mech,
             &rac_rand,
             &interactions,
@@ -104,17 +94,20 @@ impl PyCompCell {
 
     pub fn print_interaction_updates(
         &self,
-        updates: &[bool; NVERTS,
+        updates: &[bool; NVERTS],
         old_interact_factors: &[f64; NVERTS],
         new_interact_factors: &[f64; NVERTS],
         description: &str,
     ) {
-        if self.print_opts.coa {
+        if self.print_opts.interaction_updates {
             if updates.iter().any(|&x| x) {
-                println!("old_coa = {}", stringify_f64_arr(old_interact_factors));
+                println!(
+                    "old_coa = {}",
+                    stringify_f64_arr(old_interact_factors, 4)
+                );
                 println!(
                     "new_coa = {}",
-                    stringify_f64_arr(new_interact_factors)
+                    stringify_f64_arr(new_interact_factors, 4)
                 );
             } else {
                 println!("{}: no change", description);
@@ -123,20 +116,21 @@ impl PyCompCell {
         }
     }
 
-    pub fn find_updates(old_interacts: &[f64; NVERTS],
-                                         new_interacts: &[f64; NVERTS])
-        -> [bool; NVERTS] {
+    pub fn find_updates(
+        old_interacts: &[f64; NVERTS],
+        new_interacts: &[f64; NVERTS],
+    ) -> [bool; NVERTS] {
         let mut updates = [false; NVERTS];
         for i in 0..NVERTS {
             updates[i] = !close_to_zero(
-                old_interacts[i] - new_interacts.x_coas[i],
+                old_interacts[i] - new_interacts.[i],
             );
         }
         updates
     }
 
     #[allow(clippy::print_with_newline)]
-    pub fn print_poly_delta_header(&self, old_state: &CoreState) {
+    pub fn print_poly_delta_header(&self, old_state: &Core) {
         if self.print_opts.deltas {
             print!("-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n");
             print!(
@@ -150,19 +144,19 @@ impl PyCompCell {
         }
     }
 
-    pub fn write_state(&self, writer: &mut writer) {
-        let geom_state = self.cell.state.calc_geom_state();
-        let mech_state =
-            self.cell.state.calc_mech_state(&geom_state, parameters);
-        let chem_state = self.cell.state.calc_chem_state(
-            &geom_state,
+    pub fn write_state(&self, parameters: &Parameters, writer: &mut Writer) {
+        let geom_state = self.cell.core.calc_geom_state();
+        let mech_state = self.cell.core.calc_mech_state(parameters);
+        let chem_state = self.cell.core.calc_chem_state(
             &mech_state,
             &self.rac_rand,
             &interactions,
             parameters,
         );
         let save_data = IntStepData {
-            poly: self.cell.state
+            poly: self
+                .cell
+                .state
                 .poly
                 .iter()
                 .map(|v| [v.x, v.y])
@@ -238,22 +232,32 @@ impl PyCompCell {
     ) -> Result<Cell, String> {
         self.print_tstep_header(tstep);
 
-        let coa_updates = Self::find_updates(&self.old_x_coas,
-                                                              &interactions.x_coas);
-        self.print_interaction_updates(&coa_updates, &self.old_x_coas,
-                                       &interactions.x_coas, "coa");
+        let coa_updates = Self::find_updates(
+            &self.old_x_coas,
+            &interactions.x_coas,
+        );
+        self.print_interaction_updates(
+            &coa_updates,
+            &self.old_x_coas,
+            &interactions.x_coas,
+            "coa",
+        );
 
-        let mut cil_updates= Self::find_updates(&self.old_x_cils,
-                                                &interactions.x_cils)
-        self.print_interaction_updates(&cil_updates, &self.old_x_cils,
-                                       &interactions.x_cils);
+        let mut cil_updates = Self::find_updates(
+            &self.old_x_cils,
+            &interactions.x_cils,
+        );
+        self.print_interaction_updates(
+            &cil_updates,
+            &self.old_x_cils,
+            &interactions.x_cils,
+        );
 
         for int_step in 0..num_int_steps {
             self.print_poly_delta_header(&self.cell.state);
             self.write_state(writer);
             // d(state)/dt = dynamics_f(state) <- calculate RHS of ODE
-            let delta = CoreState::derivative(
-            );
+            let delta = Core::derivative();
             state = state + dt * delta;
             let actual_dp_0 = state.poly[0] - self.core.poly[0];
             let actual_dp_15 = state.poly[15] - self.core.poly[15];
