@@ -14,6 +14,7 @@ use crate::parameters::quantity::{
     Diffusion, Force, Length, Quantity, Stress, Time, Tinv, Viscosity,
 };
 use crate::NVERTS;
+use modify_derive::Modify;
 use serde::{Deserialize, Serialize};
 use std::f64::consts::PI;
 
@@ -307,6 +308,7 @@ impl RawWorldParameters {
 }
 
 /// The "raw", unprocessed, parameters that are supplied by the user.
+#[derive(Modify)]
 pub struct RawParameters {
     /// Cell diameter.
     pub cell_diam: Length,

@@ -6,8 +6,8 @@ use std::borrow::Borrow;
 use std::fs::OpenOptions;
 use std::io;
 
-const BINC_PATH: &str = "../output/n_cells.binc";
-const CBOR_PATH: &str = "../output/n_cells.cbor";
+const BINC_PATH: &str = "../output/history_n_cells.binc";
+const CBOR_PATH: &str = "../output/history_n_cells.cbor";
 
 #[derive(Deserialize, Serialize, Debug)]
 pub enum CborData {
