@@ -677,7 +677,7 @@ impl CoreState {
         let mut rho_inacts = [0.0_f64; NVERTS];
 
         for i in 0..(NVERTS) {
-            vertex_coords[i] = vertex_coords[i].powi(x);
+            vertex_coords[i] = self.poly[i].powi(x);
             rac_acts[i] = self.rac_acts[i].powi(x);
             rac_inacts[i] = self.rac_inacts[i].powi(x);
             rho_acts[i] = self.rho_acts[i].powi(x);

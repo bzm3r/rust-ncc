@@ -55,7 +55,7 @@ impl Cells {
             let contact_data =
                 interaction_generator.get_contact_data(ci);
 
-            let new_cell_state = cell_state.simulate_rkdp5(
+            let new_cell_state = cell_state.simulate_euler(
                 tstep,
                 &self.interactions[ci],
                 contact_data,

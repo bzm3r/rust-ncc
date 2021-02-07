@@ -180,7 +180,7 @@ impl Cell {
     /// the next state after a time period `dt` has elapsed. We
     /// assume `(next_state - state)/delta(t) = delta(state)`.
     pub fn simulate_euler(
-        &mut self,
+        &self,
         tstep: u32,
         interactions: &Interactions,
         contact_data: Vec<ContactData>,
@@ -237,6 +237,7 @@ impl Cell {
         })
     }
 
+    #[allow(unused)]
     pub fn simulate_rkdp5(
         &self,
         tstep: u32,
