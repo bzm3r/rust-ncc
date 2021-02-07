@@ -249,8 +249,8 @@ impl Cell {
     ) -> Result<Cell, String> {
         let aux_args = AuxArgs {
             max_iters: 100,
-            atol: 1e-8,
-            rtol: 1e-3,
+            atol: 1e-3,
+            rtol: 1e-6,
             init_h_factor: Some(0.1),
         };
         let result = rkdp5::integrator(
