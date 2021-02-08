@@ -210,7 +210,7 @@ impl PyCompCell {
 
     /// Executes the same logic as `Cell::simulate_euler`, but saves
     /// additional data for comparison with the Python model.
-    #[allow(unused, clippy::too_many_arguments)]
+    #[allow(clippy::too_many_arguments)]
     pub fn simulate_euler(
         &self,
         tstep: u32,
@@ -235,7 +235,7 @@ impl PyCompCell {
             "coa",
         );
 
-        let mut cil_updates = Self::find_updates(
+        let cil_updates = Self::find_updates(
             &self.old_x_cils,
             &interactions.x_cils,
         );
@@ -249,7 +249,7 @@ impl PyCompCell {
 
         let dt = 1.0 / (num_int_steps as f64);
         let mut state = self.core;
-        for int_step in 0..num_int_steps {
+        for _ in 0..num_int_steps {
             self.print_poly_delta_header(&state);
             self.write_state(
                 interactions,

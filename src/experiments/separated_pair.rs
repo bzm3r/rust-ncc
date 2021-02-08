@@ -1,21 +1,17 @@
-#![allow(unused)]
 use crate::cell::chemistry::{
     DistributionScheme, DistributionType, RgtpDistribution,
 };
 use crate::experiments::{
     gen_default_adhesion_mag, gen_default_char_quants,
-    gen_default_phys_contact_dist, gen_default_vertex_viscosity,
-    CellGroup, Experiment, GroupBBox,
+    gen_default_phys_contact_dist, gen_default_raw_params,
+    gen_default_vertex_viscosity, CellGroup, Experiment, GroupBBox,
 };
-use crate::interactions::dat_sym2d::SymCcDat;
 use crate::math::v2d::V2D;
-use crate::parameters::quantity::{
-    Force, Length, Quantity, Stress, Time, Tinv,
-};
+use crate::parameters::quantity::{Length, Quantity};
 use crate::parameters::{
-    CharQuantities, CoaParams, PhysicalContactParams, RawCloseBounds,
-    RawCoaParams, RawInteractionParams, RawParameters,
-    RawPhysicalContactParams, RawWorldParameters,
+    CharQuantities, RawCloseBounds, RawCoaParams,
+    RawInteractionParams, RawParameters, RawPhysicalContactParams,
+    RawWorldParameters,
 };
 use crate::utils::pcg32::Pcg32;
 use crate::NVERTS;
@@ -62,18 +58,10 @@ fn cell_groups(
         false, false, false, false, false, false, false, false,
         false, true, true, true, true, true, true, true,
     ];
-    let raw_params0 = gen_default_raw_params(
-        rng,
-        true,
-        group0_marked,
-        group1_marked,
-    );
-    let raw_params1 = gen_default_raw_params(
-        rng,
-        true,
-        group1_marked,
-        group0_marked,
-    );
+    let raw_params0 =
+        gen_raw_params(rng, true, group0_marked, group1_marked);
+    let raw_params1 =
+        gen_raw_params(rng, true, group1_marked, group0_marked);
     let params0 = raw_params0.gen_parameters(cq);
     let params1 = raw_params1.gen_parameters(cq);
     let bottom_left0 = (Length(0.0), Length(0.0));
@@ -94,17 +82,6 @@ fn cell_groups(
         parameters: params1,
     };
     vec![group0_layout, group1_layout]
-}
-
-/// Generate CAL values between different cells.
-fn gen_cal_mat() -> SymCcDat<f64> {
-    SymCcDat::<f64>::new(2, 0.0)
-}
-
-/// Generate CIL values between different cells (see SI for
-/// justification).
-fn gen_cil_mat() -> SymCcDat<f64> {
-    SymCcDat::<f64>::new(2, 60.0)
 }
 
 /// Generate raw world parameters, in particular, how
@@ -202,19 +179,12 @@ pub fn generate(seed: Option<u64>) -> Experiment {
     }
 }
 
-fn gen_default_raw_params(
+fn gen_raw_params(
     rng: &mut Pcg32,
     randomization: bool,
     marked_rac: [bool; NVERTS],
     marked_rho: [bool; NVERTS],
 ) -> RawParameters {
-    // println!("marking: {:?}", &marked_rac);
-
-    let rgtp_d = (Length(0.1_f64.sqrt()).micro().pow(2.0).g()
-        / Time(1.0).g())
-    .to_diffusion()
-    .unwrap();
-
     let init_rac = RgtpDistribution::generate(
         DistributionScheme {
             frac: 0.1,
@@ -240,34 +210,10 @@ fn gen_default_raw_params(
         rng,
     )
     .unwrap();
-    RawParameters {
-        cell_diam: Length(40.0).micro(),
-        stiffness_cortex: Stress(8.0).kilo(),
-        lm_h: Length(200.0).nano(),
-        halfmax_rgtp_max_f_frac: 0.3,
-        halfmax_rgtp_frac: 0.4,
-        lm_ss: Stress(10.0).kilo(),
-        rho_friction: 0.2,
-        stiffness_cyto: Force(1e-7),
-        diffusion_rgtp: rgtp_d,
-        k_mem_off: Tinv(0.15),
-        k_mem_on: Tinv(0.02),
-        kgtp_rac: Tinv(1e-4).mul_number(24.0),
-        kgtp_rac_auto: Tinv(1e-4).mul_number(500.0),
-        kdgtp_rac: Tinv(1e-4).mul_number(8.0),
-        kdgtp_rho_on_rac: Tinv(1e-4).mul_number(4000.0),
-        halfmax_tension_inhib: 0.1,
-        tension_inhib: 40.0,
-        kgtp_rho: Tinv(1e-4).mul_number(28.0),
-        kgtp_auto_rho: Tinv(1e-4).mul_number(390.0),
-        kdgtp_rho: Tinv(1e-4).mul_number(60.0),
-        kdgtp_rac_on_rho: Tinv(1e-4).mul_number(400.0),
-        randomization,
-        rand_avg_t: Time(40.0 * 60.0),
-        rand_std_t: Time(0.2 * 40.0 * 60.0),
-        rand_mag: 10.0,
-        rand_vs: 0.25,
-        init_rac,
-        init_rho,
-    }
+
+    let mut raw_params = gen_default_raw_params(rng, randomization);
+    raw_params.modify_init_rac(init_rac);
+    raw_params.modify_init_rho(init_rho);
+
+    raw_params
 }

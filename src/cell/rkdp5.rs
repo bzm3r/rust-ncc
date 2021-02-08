@@ -1,8 +1,7 @@
-#![allow(unused)]
 use crate::cell::states::DCoreDt;
 use crate::cell::{chemistry::RacRandState, states::Core};
 use crate::interactions::Interactions;
-use crate::math::{max_f64, min_f64};
+use crate::math::min_f64;
 use crate::parameters::{Parameters, WorldParameters};
 
 type CellDynamicsFn = fn(
@@ -13,8 +12,6 @@ type CellDynamicsFn = fn(
     parameters: &Parameters,
 ) -> DCoreDt;
 
-const C: [f64; 7] =
-    [0.0, 1.0 / 5.0, 3.0 / 10.0, 4.0 / 5.0, 8.0 / 9.0, 1.0, 1.0];
 // A0s are all zeros
 const A1: f64 = 1.0 / 5.0;
 const A2: [f64; 2] = [3.0 / 40.0, 9.0 / 40.0];
@@ -69,13 +66,6 @@ pub struct AuxArgs {
     pub init_h_factor: Option<f64>,
 }
 
-pub struct SolverArgs {
-    f: fn(dt: f64, state: &Core, parameters: &Parameters) -> Core,
-    init_state: Core,
-    t0: f64,
-    t1: f64,
-}
-
 pub struct Solution {
     pub y: Result<Core, String>,
     pub num_rejections: u32,
@@ -102,7 +92,6 @@ impl Ks {
         world_parameters: &WorldParameters,
         parameters: &Parameters,
     ) -> Ks {
-        // since C[0] = 0.0, the function evaluated at that point will return 0
         let k0 = f(
             &init_state,
             rand_state,
@@ -217,7 +206,7 @@ pub fn integrator(
     interactions: &Interactions,
     world_parameters: &WorldParameters,
     parameters: &Parameters,
-    mut aux_args: AuxArgs,
+    aux_args: AuxArgs,
 ) -> Solution {
     let mut y0 = *init_state;
 
@@ -287,13 +276,7 @@ pub fn integrator(
 
         // Equations 4.10, 4.11, Hairer,Wanner&Norsett Solving ODEs Vol. 1
         let sc = rtol * y0.abs().max(&y1.abs()) + atol;
-        let delta_y1 = y1 - y1_hat;
-        let delta_y1_sq = delta_y1.square();
-        let scaled = delta_y1_sq / sc;
-        let scaled_flat_avg = scaled.flat_avg();
-        let scaled_flat_avg_sqrt = scaled_flat_avg.sqrt();
         let error = ((y1 - y1_hat).square() / sc).flat_avg().sqrt();
-        println!("error: {}")
         let mut h_new =
             h * min_f64(fac_max, FAC * (1.0 / error).powf(INV_QP1));
 

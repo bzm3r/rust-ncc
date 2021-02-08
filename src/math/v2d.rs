@@ -248,7 +248,6 @@ impl Display for V2D {
     }
 }
 
-#[allow(unused)]
 pub fn poly_to_string(poly: &[V2D]) -> String {
     let mut r = "[".to_string();
     for p in poly {

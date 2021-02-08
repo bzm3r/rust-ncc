@@ -48,7 +48,9 @@ impl CharQuantities {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(
+    Clone, Copy, Debug, Default, Deserialize, Serialize, PartialEq,
+)]
 pub struct RawCloseBounds {
     pub zero_at: Length,
     pub one_at: Length,
@@ -60,7 +62,7 @@ impl RawCloseBounds {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default, Deserialize, Serialize, PartialEq)]
 pub struct RawPhysicalContactParams {
     pub range: RawCloseBounds,
     pub adh_mag: Option<Force>,
@@ -87,7 +89,9 @@ impl RawPhysicalContactParams {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(
+    Deserialize, Serialize, Clone, Copy, PartialEq, Default, Debug,
+)]
 pub struct RawCoaParams {
     /// Factor controlling to what extent line-of-sight blockage should be
     /// penalized.
@@ -127,7 +131,9 @@ impl RawCoaParams {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(
+    Deserialize, Serialize, Clone, Copy, PartialEq, Default, Debug,
+)]
 pub struct RawChemAttrParams {
     center: [Length; 2],
     center_mag: f64,
@@ -148,9 +154,11 @@ impl RawChemAttrParams {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(
+    Deserialize, Serialize, Clone, Copy, PartialEq, Default, Debug,
+)]
 pub struct RawBdryParams {
-    shape: Vec<[Length; 2]>,
+    shape: [[Length; 2]; 4],
     skip_bb_check: bool,
     mag: f64,
 }
@@ -175,7 +183,7 @@ impl RawBdryParams {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Deserialize, Serialize, Clone, PartialEq, Default, Debug)]
 pub struct RawInteractionParams {
     pub coa: Option<RawCoaParams>,
     pub chem_attr: Option<RawChemAttrParams>,
@@ -197,7 +205,7 @@ impl RawInteractionParams {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Deserialize, Serialize, Clone, PartialEq, Default, Debug)]
 pub struct RawWorldParameters {
     pub vertex_eta: Viscosity,
     pub interactions: RawInteractionParams,
@@ -369,7 +377,9 @@ pub struct RawParameters {
     pub rand_vs: f64,
 }
 
-#[derive(Clone, Deserialize, Serialize, Default, Debug, PartialEq)]
+#[derive(
+    Copy, Clone, Deserialize, Serialize, Default, Debug, PartialEq,
+)]
 pub struct Parameters {
     /// Resting cell radius.
     pub cell_r: f64,

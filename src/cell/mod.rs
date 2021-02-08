@@ -55,7 +55,6 @@ impl Cell {
         }
     }
 
-    #[allow(unused)]
     /// Suppose our current state is `state`. We want to determine
     /// the next state after a time period `dt` has elapsed. We
     /// assume `(next_state - state)/delta(t) = delta(state)`.
@@ -116,8 +115,8 @@ impl Cell {
         rng: &mut Pcg32,
     ) -> Result<Cell, String> {
         let aux_args = AuxArgs {
-            max_iters: 100,
-            atol: 1e-8,
+            max_iters: 20,
+            atol: 1e-3,
             rtol: 1e-3,
             init_h_factor: Some(0.1),
         };

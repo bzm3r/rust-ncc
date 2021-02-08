@@ -120,7 +120,6 @@ pub fn mix_colors(w0: f64, c0: Color, w1: f64, c1: Color) -> Color {
 const MID_0: UnitPoint = UnitPoint::new(0.0, 0.5);
 const MID_1: UnitPoint = UnitPoint::new(1.0, 0.5);
 
-#[allow(unused)]
 fn colors_from_relative_rgtp_activity(
     cell: &Cell,
     scale: f32,
@@ -161,7 +160,6 @@ fn colors_from_relative_rgtp_activity(
     rgtp_edge_colors
 }
 
-#[allow(unused)]
 fn colors_from_rgtp_activity(
     cell: &Cell,
     scale: f32,

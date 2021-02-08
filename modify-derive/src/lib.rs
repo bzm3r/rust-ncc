@@ -1,10 +1,12 @@
-use proc_macro::TokenStream;
-use quote::{format_ident, quote};
-use std::iter::Iterator;
-use syn::{parse_macro_input, DeriveInput, Fields, Ident, Type};
+use proc_macro2::Ident;
+use quote::quote;
+use syn::DeriveInput;
+use syn::{parse_macro_input, Type};
 
 #[proc_macro_derive(Modify)]
-pub fn derive(input: TokenStream) -> TokenStream {
+pub fn derive(
+    input: proc_macro::TokenStream,
+) -> proc_macro::TokenStream {
     let DeriveInput {
         ident: id, data, ..
     } = parse_macro_input!(input as DeriveInput);
@@ -12,29 +14,39 @@ pub fn derive(input: TokenStream) -> TokenStream {
     let mut fids: Vec<Ident> = vec![];
     let mut ftys: Vec<Type> = vec![];
     match data {
-        syn::Data::Struct(ds) => match ds.fields {
-            Fields::Named(nfs) => {
-                for nf in nfs.named {
-                    let syn::Field { ident: id, ty, .. } = nf;
-                    fids.push(id.unwrap());
-                    ftys.push(ty);
-                }
+        syn::Data::Struct(syn::DataStruct {
+            fields: syn::Fields::Named(syn::FieldsNamed { named, .. }),
+            ..
+        }) => {
+            for nf in named {
+                let syn::Field { ident: id, ty, .. } = nf;
+                fids.push(id.unwrap());
+                ftys.push(ty);
             }
-            _ => panic!("overrides only apply to named fields"),
         },
-        _ => panic!(
-            "Override macro expects struct, but found enum/union"
-        ),
+        _ => panic!("can only derive modify methods for named fields of structs"),
     };
 
-    let output = quote!(
-        impl #id {
-            #(pub fn modify_#fids(mut self, new_value: #ftys) -> #id {
-                self.#fids = new_value;
-                self
-            })*
-        }
+    let method_names = fids.iter().map(|fid| {
+        let m_name = format!("modify_{}", fid);
+        syn::Ident::new(&m_name, fid.span())
+    });
+
+    let methods = method_names.zip(fids.iter().zip(ftys)).map(
+        |(mn, (fid, fty))| {
+            quote!(
+                pub fn #mn(&mut self, val: #fty) {
+                    self.#fid = val;
+                }
+            )
+        },
     );
 
-    TokenStream::from(output)
+    let expanded = quote! {
+        impl #id {
+            #(#methods)*
+        }
+    };
+
+    expanded.into()
 }

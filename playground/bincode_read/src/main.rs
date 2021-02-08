@@ -1,5 +1,5 @@
 use bincode::deserialize_from;
-use rust_ncc::world::{hardio, Snapshot, WorldInfo};
+use rust_ncc::world::{hardio, WorldInfo, WorldSnapshot};
 use std::borrow::Borrow;
 use std::fs::OpenOptions;
 use std::io;
@@ -11,10 +11,10 @@ fn main() {
         .unwrap();
 
     let _world_info: WorldInfo = deserialize_from(&mut src).unwrap();
-    let mut snapshots: Vec<Snapshot> = vec![];
+    let mut snapshots: Vec<WorldSnapshot> = vec![];
 
     loop {
-        let rd: bincode::Result<Vec<Snapshot>> =
+        let rd: bincode::Result<Vec<WorldSnapshot>> =
             deserialize_from(&mut src);
         match rd {
             Ok(mut snaps) => snapshots.append(&mut snaps),

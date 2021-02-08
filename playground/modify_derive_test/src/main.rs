@@ -2,10 +2,8 @@ use modify_derive::Modify;
 
 #[derive(Modify)]
 pub struct MyStruct {
-    x: u32,
-    y: u64,
+    first: u32,
+    second: u64,
 }
 
-pub fn main() {
-
-}
+pub fn main() {}

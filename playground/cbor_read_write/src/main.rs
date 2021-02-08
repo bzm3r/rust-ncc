@@ -1,5 +1,5 @@
 use bincode::deserialize_from;
-use rust_ncc::world::{Snapshot, WorldInfo};
+use rust_ncc::world::{WorldInfo, WorldSnapshot};
 use serde::{Deserialize, Serialize};
 use serde_cbor::ser::IoWrite;
 use std::borrow::Borrow;
@@ -12,7 +12,7 @@ const CBOR_PATH: &str = "../output/history_n_cells.cbor";
 #[derive(Deserialize, Serialize, Debug)]
 pub enum CborData {
     WorldInfo(WorldInfo),
-    Snapshot(Snapshot),
+    Snapshot(WorldSnapshot),
 }
 
 fn cbor_write() {
@@ -30,7 +30,7 @@ fn cbor_write() {
     world_info.serialize(&mut serializer).unwrap();
 
     loop {
-        let rd: bincode::Result<Vec<Snapshot>> =
+        let rd: bincode::Result<Vec<WorldSnapshot>> =
             deserialize_from(&mut src);
         match rd {
             Ok(snaps) => {
@@ -59,9 +59,9 @@ fn cbor_read() {
     let _world_info: WorldInfo =
         serde::Deserialize::deserialize(&mut deserializer).unwrap();
 
-    let mut snapshots: Vec<Snapshot> = vec![];
+    let mut snapshots: Vec<WorldSnapshot> = vec![];
     loop {
-        let rd: serde_cbor::error::Result<Vec<Snapshot>> =
+        let rd: serde_cbor::error::Result<Vec<WorldSnapshot>> =
             serde::Deserialize::deserialize(&mut deserializer);
         match rd {
             Ok(mut snaps) => snapshots.append(&mut snaps),

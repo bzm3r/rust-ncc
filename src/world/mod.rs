@@ -80,13 +80,6 @@ impl Cells {
     }
 }
 
-#[derive(Clone, Deserialize, Serialize, PartialEq, Debug)]
-pub struct Snapshot {
-    pub tstep: u32,
-    pub cells: Cells,
-    pub rng: Pcg32,
-}
-
 #[derive(Deserialize, Serialize, Clone, Default, Debug, PartialEq)]
 pub struct WorldInfo {
     pub snap_freq: u32,
@@ -103,15 +96,20 @@ impl Iterator for Cells {
     }
 }
 
+#[derive(Clone)]
+pub struct WorldState {
+    pub tstep: u32,
+    pub cells: Cells,
+    pub rng: Pcg32,
+}
+
 pub struct World {
     char_quants: CharQuantities,
-    tstep: u32,
-    world_params: WorldParameters,
-    group_params: Vec<Parameters>,
+    state: WorldState,
+    params: WorldParameters,
+    cell_group_params: Vec<Parameters>,
     writer: Option<AsyncWriter>,
-    cells: Cells,
     interaction_generator: InteractionGenerator,
-    pub rng: Pcg32,
     snap_freq: u32,
 }
 
@@ -147,7 +145,7 @@ impl World {
         // from the `Experiment`.
         let group_params = cell_groups
             .iter()
-            .map(|cg| cg.parameters.clone())
+            .map(|cg| cg.parameters)
             .collect::<Vec<Parameters>>();
 
         // Create a list of indices of the groups. and create a vector
@@ -221,7 +219,7 @@ impl World {
         }
         let cells = Cells {
             states: cell_states,
-            interactions: cell_interactions.clone(),
+            interactions: cell_interactions,
         };
         let writer = if let Some(out_dir) = out_dir {
             Some(Self::init_writer(
@@ -234,7 +232,7 @@ impl World {
                     cell_params: cells
                         .states
                         .iter()
-                        .map(|s| group_params[s.group_ix].clone())
+                        .map(|s| group_params[s.group_ix])
                         .collect::<Vec<Parameters>>(),
                 },
                 max_on_ram,
@@ -243,53 +241,47 @@ impl World {
             None
         };
         World {
-            tstep: 0,
+            state: WorldState {
+                tstep: 0,
+                cells,
+                rng,
+            },
             char_quants,
-            world_params,
-            group_params,
-            cells,
+            params: world_params,
+            cell_group_params: group_params,
             interaction_generator,
-            rng,
             snap_freq,
             writer,
-        }
-    }
-
-    pub fn take_snapshot(&self) -> Snapshot {
-        Snapshot {
-            tstep: self.tstep,
-            rng: self.rng,
-            cells: self.cells.clone(),
         }
     }
 
     pub fn simulate(&mut self, final_tpoint: f64, save_cbor: bool) {
         let num_tsteps =
             (final_tpoint / self.char_quants.time()).ceil() as u32;
-        while self.tstep < num_tsteps {
+        while self.state.tstep < num_tsteps {
             let new_cells: Cells = self
+                .state
                 .cells
                 .simulate(
-                    self.tstep,
-                    &mut self.rng,
-                    &self.world_params,
-                    &self.group_params,
+                    self.state.tstep,
+                    &mut self.state.rng,
+                    &self.params,
+                    &self.cell_group_params,
                     &mut self.interaction_generator,
                 )
                 .unwrap_or_else(|e| {
                     self.finish_saving_history(save_cbor);
-                    panic!("tstep: {}\n{}", self.tstep, e);
+                    panic!("tstep: {}\n{}", self.state.tstep, e);
                 });
 
-            self.cells = new_cells;
-            self.tstep += 1;
-            if self.tstep % self.snap_freq == 0
+            self.state.cells = new_cells;
+            self.state.tstep += 1;
+            if self.state.tstep % self.snap_freq == 0
                 && self.writer.is_some()
             {
-                let snapshot = self.take_snapshot();
                 if let Some(hw) = self.writer.as_mut() {
-                    if self.tstep % self.snap_freq == 0 {
-                        hw.push(snapshot);
+                    if self.state.tstep % self.snap_freq == 0 {
+                        hw.push(self.state.clone());
                     }
                 }
             }
@@ -301,12 +293,13 @@ impl World {
         WorldInfo {
             snap_freq: self.snap_freq,
             char_quants: self.char_quants,
-            world_params: self.world_params.clone(),
+            world_params: self.params.clone(),
             cell_params: self
+                .state
                 .cells
                 .states
                 .iter()
-                .map(|s| self.group_params[s.group_ix].clone())
+                .map(|s| self.cell_group_params[s.group_ix])
                 .collect::<Vec<Parameters>>(),
         }
     }
