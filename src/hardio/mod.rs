@@ -1,4 +1,4 @@
-pub mod pycomp;
+pub mod py_compare;
 
 use crate::cell::chemistry::RacRandState;
 use crate::cell::states::{ChemState, Core, MechState};
@@ -6,7 +6,7 @@ use crate::cell::Cell;
 use crate::interactions::Interactions;
 use crate::parameters::Parameters;
 use crate::utils::pcg32::Pcg32;
-use crate::world::{Cells, World, WorldInfo, WorldState};
+use crate::world::{Cells, WorldInfo, WorldState};
 use bincode::{deserialize_from, serialize_into};
 use serde::{Deserialize, Serialize};
 use serde_cbor::ser::IoWrite;

@@ -143,9 +143,7 @@ impl Writer {
         cil_mag: u32,
         coa_mag: u32,
     ) -> Writer {
-        let file_dir = String::from(
-            "B:\\rust-ncc\\model-comparison\\rust-out\\",
-        );
+        let file_dir = String::from("./output/");
         let file_path = PathBuf::from(format!(
             "{}out_euler_T={}_E={}_NC={}_CIL={}_COA={}.dat",
             file_dir,

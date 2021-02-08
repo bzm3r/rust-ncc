@@ -1,9 +1,44 @@
 import experiment_templates as ets
 import hardio as fw
 import numpy as np
+import argparse
 
-TIME_IN_HOURS = 0.01
+parser = argparse.ArgumentParser()
+parser.add_argument("t_in_secs",
+                    help="simulation run time, in seconds",
+                    type=float)
+parser.add_argument("num_int_steps",
+                    help="number of intermediate integration "
+                         "steps in the forward euler timestepper",
+                    type=float)
+parser.add_argument("num_cells",
+                    help="number of cells in simulation",
+                    type=int)
+parser.add_argument("arrangement",
+                    help="a string specifying the name of the arrangement "
+                         "according to which the simulation is initially set",
+                    type=int)
+parser.add_argument("box_height",
+                    help="height of box in which cells are initially placed",
+                    type=int)
+parser.add_argument("cil",
+                    help="cil mag",
+                    type=int)
+parser.add_argument("coa",
+                    help="coa mag",
+                    type=int)
+args = parser.parse_args()
+
 T = 2.0
+TIME_IN_SECS = args.t_in_secs
+NUM_TSTEPS = int(TIME_IN_SECS / T)
+NUM_INT_STEPS = args.num_int_steps
+NUM_CELLS = args.num_cells
+BOX_WIDTH = 2
+BOX_HEIGHT = 1
+COA = 0
+CIL = 0
+
 L = 1e-6
 F = 1e-9
 ETA = 0.1
@@ -11,16 +46,7 @@ L3D = 10e-6
 K_MEM_ON = 0.02
 K_MEM_OFF = 0.15
 KGTP = 1e-4
-COA = 0
-CIL = 0
 INIT_RAC = np.array([0.3 / 4.0] * 4 + [0.0] * (16 - 4))
-
-NUM_CELLS = 2
-BOX_WIDTH = 2
-BOX_HEIGHT = 1
-NUM_INT_STEPS = 10
-TIME_IN_SECS = TIME_IN_HOURS * 3600.0
-NUM_TSTEPS = int(TIME_IN_SECS / T)
 NVERTS = 16
 RAND_SCHEME = None
 

@@ -30,8 +30,8 @@ OTHERS = ["edge_strains", "uevs", "poly_area", "coa_update", "cil_update"]
 DATA_LABELS = BASICS + GEOMETRY + RAC_RATES + RHO_RATES + FORCES + \
               CALC_KGTPS_RAC + DIFFUSION + OTHERS
 
-WRITE_FOLDER = "B:\\rust-ncc\\model-comparison\\py-out\\"
-WRITE_FILE_NAME_TEMPLATE = "out_euler_T={}_E={}_NC={}_CIL={}_COA={}.dat"
+WRITE_FOLDER = "./output"
+WRITE_FILE_NAME_TEMPLATE = "out_euler_t={}_IS={}_NC={}_ARR={}_CIL={}_COA={}.dat"
 
 
 def make_params_list(params):

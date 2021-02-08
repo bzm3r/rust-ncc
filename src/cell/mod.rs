@@ -7,7 +7,7 @@
 // except according to those terms.
 pub mod chemistry;
 pub mod mechanics;
-pub mod pycomp;
+pub mod py_compare;
 pub mod rkdp5;
 pub mod states;
 

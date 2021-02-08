@@ -8,7 +8,7 @@
 use crate::cell::chemistry::RacRandState;
 
 use crate::cell::states::Core;
-use crate::hardio::pycomp::{IntStepData, Writer};
+use crate::hardio::py_compare::{IntStepData, Writer};
 use crate::interactions::{ContactData, Interactions};
 use crate::math::geometry::calc_poly_area;
 
@@ -24,7 +24,7 @@ use serde::{Deserialize, Serialize};
 #[derive(
     Copy, Clone, Deserialize, Serialize, PartialEq, Default, Debug,
 )]
-pub struct PyCompCell {
+pub struct Cell {
     /// Index of cell within world.
     pub ix: usize,
     /// Index of group that cell belongs to.
@@ -42,8 +42,8 @@ pub struct PyCompCell {
     Copy, Clone, Deserialize, Serialize, PartialEq, Default, Debug,
 )]
 pub struct PrintOptions {
-    deltas: bool,
-    interaction_updates: bool,
+    pub deltas: bool,
+    pub interaction_updates: bool,
 }
 
 impl PrintOptions {
@@ -52,7 +52,7 @@ impl PrintOptions {
     }
 }
 
-impl PyCompCell {
+impl Cell {
     pub fn new(
         ix: usize,
         group_ix: usize,
@@ -61,13 +61,13 @@ impl PyCompCell {
         parameters: &Parameters,
         rng: &mut Pcg32,
         print_opts: PrintOptions,
-    ) -> PyCompCell {
+    ) -> Cell {
         let rac_rand = if parameters.randomization {
             RacRandState::new(rng, parameters)
         } else {
             RacRandState::default()
         };
-        PyCompCell {
+        Cell {
             ix,
             group_ix,
             core,
@@ -221,7 +221,7 @@ impl PyCompCell {
         parameters: &Parameters,
         rng: &mut Pcg32,
         writer: &mut Writer,
-    ) -> Result<PyCompCell, String> {
+    ) -> Result<Cell, String> {
         self.print_tstep_header(tstep);
 
         let coa_updates = Self::find_updates(
@@ -294,7 +294,7 @@ impl PyCompCell {
         #[cfg(feature = "validate")]
         state.validate("euler")?;
 
-        Ok(PyCompCell {
+        Ok(Cell {
             ix: self.ix,
             group_ix: self.group_ix,
             rac_rand: self.rac_rand.update(

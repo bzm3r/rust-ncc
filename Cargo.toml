@@ -3,6 +3,7 @@ name = "rust-ncc"
 version = "0.1.0"
 authors = ["Brian Merchant <bhmerchant@gmail.com>, Ezgi Soylemezoglu <ezgisoylemezoglu@gmail.com>"]
 edition = "2018"
+default-run = "simulate"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
@@ -48,4 +49,10 @@ validate = []
 
 [profile.release]
 debug = 2
+
+[[bin]]
+name = "simulate"
+
+[[bin]]
+name = "py_compare"
 
