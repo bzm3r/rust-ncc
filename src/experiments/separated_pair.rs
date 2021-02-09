@@ -53,6 +53,7 @@ fn group_bbox(
 fn cell_groups(
     rng: &mut Pcg32,
     cq: &CharQuantities,
+    randomization: bool,
 ) -> Vec<CellGroup> {
     let group0_marked = [
         false, true, true, true, true, true, true, true, false,
@@ -64,13 +65,13 @@ fn cell_groups(
     ];
     let raw_params0 = gen_default_raw_params(
         rng,
-        true,
+        randomization,
         group0_marked,
         group1_marked,
     );
     let raw_params1 = gen_default_raw_params(
         rng,
-        true,
+        randomization,
         group1_marked,
         group0_marked,
     );
@@ -148,21 +149,25 @@ fn raw_world_parameters(
 }
 
 /// Generate the experiment, so that it can be run.
-pub fn generate(seed: Option<u64>) -> Experiment {
+pub fn generate(
+    seed: Option<u64>,
+    randomization: bool,
+) -> Experiment {
     let mut rng = match seed {
         Some(s) => Pcg32::seed_from_u64(s),
         None => Pcg32::from_entropy(),
     };
-    let cil = 60.0;
+    let cil = 30.0;
     let cal: Option<f64> = None;
-    let adh: Option<f64> = None;
+    let adh: Option<f64> = Some(10.0);
     let coa: Option<f64> = Some(24.0);
 
     let char_quants = gen_default_char_quants();
     let world_parameters =
         raw_world_parameters(coa, adh, cal, cil, &char_quants)
             .refine(&char_quants);
-    let cell_groups = cell_groups(&mut rng, &char_quants);
+    let cell_groups =
+        cell_groups(&mut rng, &char_quants, randomization);
 
     //convert the option into string
     let cal = if let Some(i) = cal {
@@ -189,10 +194,13 @@ pub fn generate(seed: Option<u64>) -> Experiment {
         "None".to_string()
     };
 
+    let random_string =
+        if randomization == true { "rt" } else { "rf" };
+
     Experiment {
         file_name: format!(
-            "separated_pair_cil={}_cal={}_adh={}_coa={}_seed={}",
-            cil, cal, adh, coa, seed_string
+            "separated_pair_cil={}_cal={}_adh={}_coa={}_seed={}_{}",
+            cil, cal, adh, coa, seed_string, random_string
         ),
         char_quants,
         world_parameters,
