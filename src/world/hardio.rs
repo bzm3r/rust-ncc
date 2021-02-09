@@ -115,6 +115,7 @@ impl AsyncWriter {
             Sender<Vec<Snapshot>>,
             Receiver<Vec<Snapshot>>,
         ) = channel();
+        println!("path: {:?}", path);
         let mut file = OpenOptions::new()
             .create(true)
             .write(true)
