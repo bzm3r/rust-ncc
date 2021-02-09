@@ -6,7 +6,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+pub mod cal_test;
 pub mod cil_test;
+pub mod model_compare;
 pub mod n_cells;
 pub mod separated_pair;
 

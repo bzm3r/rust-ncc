@@ -1,10 +1,16 @@
-use crate::reader::HistoryReader;
+use crate::reader::{AsyncReader, FetchResult};
 use crate::AppState;
 use druid::{
-    commands, AppDelegate, Command, DelegateCtx, Env, Handled, Target,
+    commands, AppDelegate, Command, DelegateCtx, Env, ExtEventSink,
+    Handled, Selector, Target,
 };
 
-pub struct Delegate;
+pub const FETCH_FULFILL: Selector<FetchResult> =
+    Selector::new("fragment.fetch-fulfill");
+
+pub struct Delegate {
+    pub event_sink: ExtEventSink,
+}
 
 impl AppDelegate<AppState> for Delegate {
     fn command(
@@ -17,8 +23,8 @@ impl AppDelegate<AppState> for Delegate {
     ) -> Handled {
         let open_command = cmd.get(commands::OPEN_FILE);
         if let Some(file_info) = open_command {
-            app.read_channel.send()
-            app.read_channel = HistoryReader::from(file_info.path());
+            app.reader =
+                AsyncReader::spawn_for_path(file_info.path());
             return Handled::Yes;
         }
         Handled::No

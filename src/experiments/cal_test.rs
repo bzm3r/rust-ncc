@@ -1,21 +1,17 @@
-#![allow(unused)]
 use crate::cell::chemistry::{
     DistributionScheme, DistributionType, RgtpDistribution,
 };
 use crate::experiments::{
     gen_default_adhesion_mag, gen_default_char_quants,
-    gen_default_phys_contact_dist, gen_default_viscosity, CellGroup,
-    Experiment, GroupBBox,
+    gen_default_phys_contact_dist, gen_default_raw_params,
+    gen_default_vertex_viscosity, CellGroup, Experiment, GroupBBox,
 };
-use crate::interactions::dat_sym2d::SymCcDat;
 use crate::math::v2d::V2D;
-use crate::parameters::quantity::{
-    Force, Length, Quantity, Stress, Time,
-};
+use crate::parameters::quantity::{Length, Quantity};
 use crate::parameters::{
-    CharQuantities, CoaParams, PhysicalContactParams, RawCloseBounds,
-    RawCoaParams, RawInteractionParams, RawParameters,
-    RawPhysicalContactParams, RawWorldParameters,
+    CharQuantities, RawCloseBounds, RawCoaParams,
+    RawInteractionParams, RawParameters, RawPhysicalContactParams,
+    RawWorldParameters,
 };
 use crate::utils::pcg32::Pcg32;
 use crate::NVERTS;
@@ -66,18 +62,14 @@ fn cell_groups(
         false, false, false, false, false, false, false, false,
         false, true, true, true, true, true, true, true,
     ];
-    let raw_params0 = gen_default_raw_params_0(
+    let raw_params0 = gen_raw_params_0(
         rng,
         false,
         group0_marked,
         group0_marked_rho,
     );
-    let raw_params1 = gen_default_raw_params_1(
-        rng,
-        false,
-        group1_marked,
-        group0_marked,
-    );
+    let raw_params1 =
+        gen_raw_params_1(rng, false, group1_marked, group0_marked);
     let params0 = raw_params0.gen_parameters(cq);
     let params1 = raw_params1.gen_parameters(cq);
     let bottom_left0 = (Length(0.0), Length(0.0));
@@ -100,17 +92,6 @@ fn cell_groups(
     vec![group0_layout, group1_layout]
 }
 
-/// Generate CAL values between different cells.
-fn gen_cal_mat() -> SymCcDat<f64> {
-    SymCcDat::<f64>::new(2, 0.0)
-}
-
-/// Generate CIL values between different cells (see SI for
-/// justification).
-fn gen_cil_mat() -> SymCcDat<f64> {
-    SymCcDat::<f64>::new(2, 60.0)
-}
-
 /// Generate raw world parameters, in particular, how
 /// cells interact with each other, and any boundaries.
 fn raw_world_parameters(
@@ -125,7 +106,7 @@ fn raw_world_parameters(
     let one_at = gen_default_phys_contact_dist();
     let coa = RawCoaParams::default_with_mag(coa_mag);
     RawWorldParameters {
-        vertex_eta: gen_default_viscosity(),
+        vertex_eta: gen_default_vertex_viscosity(char_quants),
         interactions: RawInteractionParams {
             coa,
             chem_attr: None,
@@ -199,19 +180,12 @@ pub fn generate(seed: Option<u64>) -> Experiment {
     }
 }
 
-fn gen_default_raw_params_0(
+fn gen_raw_params_0(
     rng: &mut Pcg32,
     randomization: bool,
     marked_rac: [bool; NVERTS],
     marked_rho: [bool; NVERTS],
 ) -> RawParameters {
-    //println!("marking: {:?}", &marked_rac);
-
-    let rgtp_d = (Length(0.1_f64.sqrt()).micro().pow(2.0).g()
-        / Time(1.0).g())
-    .to_diffusion()
-    .unwrap();
-
     let init_rac = RgtpDistribution::generate(
         DistributionScheme {
             frac: 0.03,
@@ -237,51 +211,20 @@ fn gen_default_raw_params_0(
         rng,
     )
     .unwrap();
-    RawParameters {
-        cell_diam: Length(40.0).micro(),
-        stiffness_cortex: Stress(8.0).kilo(),
-        lm_h: Length(200.0).nano(),
-        halfmax_rgtp_max_f_frac: 0.3,
-        halfmax_rgtp_frac: 0.4,
-        lm_ss: Stress(10.0).kilo(),
-        rho_friction: 0.2,
-        stiffness_ctyo: Force(1e-7),
-        diffusion_rgtp: rgtp_d,
-        tot_rac: 2.5e6,
-        tot_rho: 1e6,
-        kgtp_rac: 24.0,
-        kgtp_rac_auto: 500.0,
-        kdgtp_rac: 8.0,
-        kdgtp_rho_on_rac: 4000.0,
-        halfmax_tension_inhib: 0.1,
-        tension_inhib: 40.0,
-        kgtp_rho: 28.0,
-        kgtp_auto_rho: 390.0,
-        kdgtp_rho: 60.0,
-        kdgtp_rac_on_rho: 400.0,
-        randomization,
-        rand_avg_t: Time(40.0 * 60.0),
-        rand_std_t: Time(0.2 * 40.0 * 60.0),
-        rand_mag: 10.0,
-        rand_vs: 0.25,
-        init_rac,
-        init_rho,
-    }
+
+    let mut raw_params = gen_default_raw_params(rng, randomization);
+    raw_params.modify_init_rac(init_rac);
+    raw_params.modify_init_rho(init_rho);
+
+    raw_params
 }
 
-fn gen_default_raw_params_1(
+fn gen_raw_params_1(
     rng: &mut Pcg32,
     randomization: bool,
     marked_rac: [bool; NVERTS],
     marked_rho: [bool; NVERTS],
 ) -> RawParameters {
-    //println!("marking: {:?}", &marked_rac);
-
-    let rgtp_d = (Length(0.1_f64.sqrt()).micro().pow(2.0).g()
-        / Time(1.0).g())
-    .to_diffusion()
-    .unwrap();
-
     let init_rac = RgtpDistribution::generate(
         DistributionScheme {
             frac: 0.1,
@@ -307,34 +250,10 @@ fn gen_default_raw_params_1(
         rng,
     )
     .unwrap();
-    RawParameters {
-        cell_diam: Length(40.0).micro(),
-        stiffness_cortex: Stress(8.0).kilo(),
-        lm_h: Length(200.0).nano(),
-        halfmax_rgtp_max_f_frac: 0.3,
-        halfmax_rgtp_frac: 0.4,
-        lm_ss: Stress(10.0).kilo(),
-        rho_friction: 0.2,
-        stiffness_ctyo: Force(1e-7),
-        diffusion_rgtp: rgtp_d,
-        tot_rac: 2.5e6,
-        tot_rho: 1e6,
-        kgtp_rac: 24.0,
-        kgtp_rac_auto: 500.0,
-        kdgtp_rac: 8.0,
-        kdgtp_rho_on_rac: 4000.0,
-        halfmax_tension_inhib: 0.1,
-        tension_inhib: 40.0,
-        kgtp_rho: 28.0,
-        kgtp_auto_rho: 390.0,
-        kdgtp_rho: 60.0,
-        kdgtp_rac_on_rho: 400.0,
-        randomization,
-        rand_avg_t: Time(40.0 * 60.0),
-        rand_std_t: Time(0.2 * 40.0 * 60.0),
-        rand_mag: 10.0,
-        rand_vs: 0.25,
-        init_rac,
-        init_rho,
-    }
+
+    let mut raw_params = gen_default_raw_params(rng, randomization);
+    raw_params.modify_init_rac(init_rac);
+    raw_params.modify_init_rho(init_rho);
+
+    raw_params
 }

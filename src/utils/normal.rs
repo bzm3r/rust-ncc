@@ -39,16 +39,16 @@ impl<'de> Deserialize<'de> for NormalDistrib {
             Std,
         }
 
-        struct NdVistor;
+        struct NdVisitor;
 
-        impl<'de> Visitor<'de> for NdVistor {
+        impl<'de> Visitor<'de> for NdVisitor {
             type Value = NormalDistrib;
 
             fn expecting(
                 &self,
                 formatter: &mut fmt::Formatter,
             ) -> fmt::Result {
-                formatter.write_str("struct NormalDistrb")
+                formatter.write_str("struct NormalDistrib")
             }
 
             fn visit_seq<V>(
@@ -115,11 +115,11 @@ impl<'de> Deserialize<'de> for NormalDistrib {
             }
         }
 
-        const FIELDS: &'static [&'static str] = &["mean", "std"];
+        const FIELDS: &[&str] = &["mean", "std"];
         deserializer.deserialize_struct(
             "NormalDistrib",
             FIELDS,
-            NdVistor,
+            NdVisitor,
         )
     }
 }

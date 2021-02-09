@@ -9,7 +9,7 @@
 **/*.rs.bk
 
 # animation
-*.mp4
+**/*.mp4
 
 # macos files to ignore
 .DS_Store

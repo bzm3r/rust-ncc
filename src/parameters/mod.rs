@@ -7,15 +7,14 @@
 // except according to those terms.
 
 pub mod quantity;
-
-use crate::cell::calc_init_cell_area;
 use crate::cell::chemistry::RgtpDistribution;
-use crate::math::geometry::BBox;
+use crate::math::geometry::{calc_poly_area, BBox};
 use crate::math::v2d::V2D;
 use crate::parameters::quantity::{
     Diffusion, Force, Length, Quantity, Stress, Time, Tinv, Viscosity,
 };
 use crate::NVERTS;
+use modify_derive::Modify;
 use serde::{Deserialize, Serialize};
 use std::f64::consts::PI;
 
@@ -49,7 +48,9 @@ impl CharQuantities {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(
+    Clone, Copy, Debug, Default, Deserialize, Serialize, PartialEq,
+)]
 pub struct RawCloseBounds {
     pub zero_at: Length,
     pub one_at: Length,
@@ -61,7 +62,7 @@ impl RawCloseBounds {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default, Deserialize, Serialize, PartialEq)]
 pub struct RawPhysicalContactParams {
     pub range: RawCloseBounds,
     pub adh_mag: Option<Force>,
@@ -88,7 +89,9 @@ impl RawPhysicalContactParams {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(
+    Deserialize, Serialize, Clone, Copy, PartialEq, Default, Debug,
+)]
 pub struct RawCoaParams {
     /// Factor controlling to what extent line-of-sight blockage should be
     /// penalized.
@@ -128,7 +131,9 @@ impl RawCoaParams {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(
+    Deserialize, Serialize, Clone, Copy, PartialEq, Default, Debug,
+)]
 pub struct RawChemAttrParams {
     center: [Length; 2],
     center_mag: f64,
@@ -149,9 +154,11 @@ impl RawChemAttrParams {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(
+    Deserialize, Serialize, Clone, Copy, PartialEq, Default, Debug,
+)]
 pub struct RawBdryParams {
-    shape: Vec<[Length; 2]>,
+    shape: [[Length; 2]; 4],
     skip_bb_check: bool,
     mag: f64,
 }
@@ -176,7 +183,7 @@ impl RawBdryParams {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Deserialize, Serialize, Clone, PartialEq, Default, Debug)]
 pub struct RawInteractionParams {
     pub coa: Option<RawCoaParams>,
     pub chem_attr: Option<RawChemAttrParams>,
@@ -198,7 +205,7 @@ impl RawInteractionParams {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Deserialize, Serialize, Clone, PartialEq, Default, Debug)]
 pub struct RawWorldParameters {
     pub vertex_eta: Viscosity,
     pub interactions: RawInteractionParams,
@@ -309,6 +316,7 @@ impl RawWorldParameters {
 }
 
 /// The "raw", unprocessed, parameters that are supplied by the user.
+#[derive(Modify)]
 pub struct RawParameters {
     /// Cell diameter.
     pub cell_diam: Length,
@@ -369,7 +377,9 @@ pub struct RawParameters {
     pub rand_vs: f64,
 }
 
-#[derive(Clone, Deserialize, Serialize, Default, Debug, PartialEq)]
+#[derive(
+    Copy, Clone, Deserialize, Serialize, Default, Debug, PartialEq,
+)]
 pub struct Parameters {
     /// Resting cell radius.
     pub cell_r: f64,
@@ -486,4 +496,19 @@ impl RawParameters {
             num_rand_vs: (self.rand_vs * NVERTS as f64) as u32,
         }
     }
+}
+
+/// Calculate the area of an "ideal" initial cell of radius R, if it has
+/// `NVERTS`  vertices.
+pub fn calc_init_cell_area(r: f64) -> f64 {
+    let poly_coords = (0..NVERTS)
+        .map(|vix| {
+            let theta = (vix as f64) / (NVERTS as f64) * 2.0 * PI;
+            V2D {
+                x: r * theta.cos(),
+                y: r * theta.sin(),
+            }
+        })
+        .collect::<Vec<V2D>>();
+    calc_poly_area(&poly_coords)
 }

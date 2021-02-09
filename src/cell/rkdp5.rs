@@ -1,19 +1,17 @@
-#![allow(unused)]
-use crate::cell::{chemistry::RacRandState, states::CoreState};
+use crate::cell::states::DCoreDt;
+use crate::cell::{chemistry::RacRandState, states::Core};
 use crate::interactions::Interactions;
-use crate::math::{max_f64, min_f64};
+use crate::math::min_f64;
 use crate::parameters::{Parameters, WorldParameters};
 
 type CellDynamicsFn = fn(
-    state: &CoreState,
+    state: &Core,
     rac_random_state: &RacRandState,
     interactions: &Interactions,
     world_parameters: &WorldParameters,
     parameters: &Parameters,
-) -> CoreState;
+) -> DCoreDt;
 
-const C: [f64; 7] =
-    [0.0, 1.0 / 5.0, 3.0 / 10.0, 4.0 / 5.0, 8.0 / 9.0, 1.0, 1.0];
 // A0s are all zeros
 const A1: f64 = 1.0 / 5.0;
 const A2: [f64; 2] = [3.0 / 40.0, 9.0 / 40.0];
@@ -68,44 +66,32 @@ pub struct AuxArgs {
     pub init_h_factor: Option<f64>,
 }
 
-pub struct SolverArgs {
-    f: fn(
-        dt: f64,
-        state: &CoreState,
-        parameters: &Parameters,
-    ) -> CoreState,
-    init_state: CoreState,
-    t0: f64,
-    t1: f64,
-}
-
 pub struct Solution {
-    pub y: Result<CoreState, String>,
+    pub y: Result<Core, String>,
     pub num_rejections: u32,
     pub num_iters: u32,
 }
 
 pub struct Ks {
-    k0: CoreState,
-    k1: CoreState,
-    k2: CoreState,
-    k3: CoreState,
-    k4: CoreState,
-    k5: CoreState,
-    k6: CoreState,
+    k0: DCoreDt,
+    k1: DCoreDt,
+    k2: DCoreDt,
+    k3: DCoreDt,
+    k4: DCoreDt,
+    k5: DCoreDt,
+    k6: DCoreDt,
 }
 
 impl Ks {
     fn calc(
         f: CellDynamicsFn,
         h: f64,
-        init_state: CoreState,
+        init_state: Core,
         rand_state: &RacRandState,
         inter_state: &Interactions,
         world_parameters: &WorldParameters,
         parameters: &Parameters,
     ) -> Ks {
-        // since C[0] = 0.0, the function evaluated at that point will return 0
         let k0 = f(
             &init_state,
             rand_state,
@@ -115,7 +101,7 @@ impl Ks {
         );
 
         let k1 = {
-            let kp = init_state + h * A1 * k0;
+            let kp = init_state + h * k0.time_step(A1);
             f(
                 &kp,
                 rand_state,
@@ -126,7 +112,8 @@ impl Ks {
         };
 
         let k2 = {
-            let kp = init_state + h * (A2[0] * k0 + A2[1] * k1);
+            let kp = init_state
+                + h * (k0.time_step(A2[0]) + k1.time_step(A2[1]));
             f(
                 &kp,
                 rand_state,
@@ -138,7 +125,9 @@ impl Ks {
 
         let k3 = {
             let kp = init_state
-                + h * (A3[0] * k0 + A3[1] * k1 + A3[2] * k2);
+                + h * (k0.time_step(A3[0])
+                    + k1.time_step(A3[1])
+                    + k2.time_step(A3[2]));
             f(
                 &kp,
                 rand_state,
@@ -150,10 +139,10 @@ impl Ks {
 
         let k4 = {
             let kp = init_state
-                + h * (A4[0] * k0
-                    + A4[1] * k1
-                    + A4[2] * k2
-                    + A4[3] * k3);
+                + h * (k0.time_step(A4[0])
+                    + k1.time_step(A4[1])
+                    + k2.time_step(A4[2])
+                    + k3.time_step(A4[3]));
             f(
                 &kp,
                 rand_state,
@@ -165,11 +154,11 @@ impl Ks {
 
         let k5 = {
             let kp = init_state
-                + h * (A5[0] * k0
-                    + A5[1] * k1
-                    + A5[2] * k2
-                    + A5[3] * k3
-                    + A5[4] * k4);
+                + h * (k0.time_step(A5[0])
+                    + k1.time_step(A5[1])
+                    + k2.time_step(A5[2])
+                    + k3.time_step(A5[3])
+                    + k4.time_step(A5[4]));
             f(
                 &kp,
                 rand_state,
@@ -181,12 +170,12 @@ impl Ks {
 
         let k6 = {
             let kp = init_state
-                + h * (A6[0] * k0
-                    + A6[1] * k1
-                    + A6[2] * k2
-                    + A6[3] * k3
-                    + A6[4] * k4
-                    + A6[5] * k5);
+                + h * (k0.time_step(A6[0])
+                    + k1.time_step(A6[1])
+                    + k2.time_step(A6[2])
+                    + k3.time_step(A6[3])
+                    + k4.time_step(A6[4])
+                    + k5.time_step(A6[5]));
             f(
                 &kp,
                 rand_state,
@@ -208,15 +197,16 @@ impl Ks {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn integrator(
     mut dt: f64,
     f: CellDynamicsFn,
-    init_state: &CoreState,
+    init_state: &Core,
     rand_state: &RacRandState,
-    inter_state: &Interactions,
+    interactions: &Interactions,
     world_parameters: &WorldParameters,
     parameters: &Parameters,
-    mut aux_args: AuxArgs,
+    aux_args: AuxArgs,
 ) -> Solution {
     let mut y0 = *init_state;
 
@@ -252,19 +242,19 @@ pub fn integrator(
             h,
             y0,
             rand_state,
-            inter_state,
+            interactions,
             world_parameters,
             parameters,
         );
 
         let y1 = y0
-            + h * (B[0] * k0
-                + B[1] * k1
-                + B[2] * k2
-                + B[3] * k3
-                + B[4] * k4
-                + B[5] * k5
-                + B[6] * k6);
+            + B[0] * k0.time_step(h)
+            + B[1] * k1.time_step(h)
+            + B[2] * k2.time_step(h)
+            + B[3] * k3.time_step(h)
+            + B[4] * k4.time_step(h)
+            + B[5] * k5.time_step(h)
+            + B[6] * k6.time_step(h);
 
         if last_iter {
             assert!((h - dt).abs() < f64::EPSILON);
@@ -276,18 +266,17 @@ pub fn integrator(
         }
 
         let y1_hat = y0
-            + h * (B_HAT[0] * k0
-                + B_HAT[1] * k1
-                + B_HAT[2] * k2
-                + B_HAT[3] * k3
-                + B_HAT[4] * k4
-                + B_HAT[5] * k5
-                + B_HAT[6] * k6);
+            + h * (k0.time_step(B_HAT[0])
+                + k1.time_step(B_HAT[1])
+                + k2.time_step(B_HAT[2])
+                + k3.time_step(B_HAT[3])
+                + k4.time_step(B_HAT[4])
+                + k5.time_step(B_HAT[5])
+                + k6.time_step(B_HAT[6]));
 
         // Equations 4.10, 4.11, Hairer,Wanner&Norsett Solving ODEs Vol. 1
-        let sc =
-            y0.abs().max(&y1.abs()).scalar_mul(rtol).scalar_add(atol);
-        let error = ((y1 - y1_hat).powi(2) / sc).average().sqrt();
+        let sc = rtol * y0.abs().max(&y1.abs()) + atol;
+        let error = ((y1 - y1_hat).square() / sc).flat_avg().sqrt();
         let mut h_new =
             h * min_f64(fac_max, FAC * (1.0 / error).powf(INV_QP1));
 

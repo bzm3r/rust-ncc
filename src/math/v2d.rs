@@ -157,6 +157,25 @@ impl Add for &V2D {
     }
 }
 
+impl Add<f64> for V2D {
+    type Output = Self;
+
+    fn add(self, rhs: f64) -> Self::Output {
+        V2D {
+            x: self.x + rhs,
+            y: self.y + rhs,
+        }
+    }
+}
+
+impl Add<V2D> for f64 {
+    type Output = V2D;
+
+    fn add(self, rhs: V2D) -> Self::Output {
+        rhs + self
+    }
+}
+
 impl Div for V2D {
     type Output = Self;
 
@@ -201,17 +220,6 @@ impl Mul<V2D> for &f64 {
     }
 }
 
-impl Add<V2D> for f64 {
-    type Output = V2D;
-
-    fn add(self, rhs: V2D) -> Self::Output {
-        V2D {
-            x: self + rhs.x,
-            y: self + rhs.y,
-        }
-    }
-}
-
 impl Sub for V2D {
     type Output = Self;
 
@@ -240,7 +248,6 @@ impl Display for V2D {
     }
 }
 
-#[allow(unused)]
 pub fn poly_to_string(poly: &[V2D]) -> String {
     let mut r = "[".to_string();
     for p in poly {
@@ -248,4 +255,35 @@ pub fn poly_to_string(poly: &[V2D]) -> String {
     }
     write!(r, "]").unwrap();
     r
+}
+
+/// Square of a 2D vector with `f64` elements.
+#[derive(
+    Clone, Copy, Debug, Default, Deserialize, Serialize, PartialEq,
+)]
+pub struct SqV2D {
+    pub x: f64,
+    pub y: f64,
+}
+
+impl Mul<V2D> for V2D {
+    type Output = SqV2D;
+
+    fn mul(self, rhs: Self) -> Self::Output {
+        SqV2D {
+            x: self.x * rhs.x,
+            y: self.y * rhs.y,
+        }
+    }
+}
+
+impl Div<V2D> for SqV2D {
+    type Output = V2D;
+
+    fn div(self, rhs: V2D) -> Self::Output {
+        V2D {
+            x: self.x / rhs.x,
+            y: self.y / rhs.y,
+        }
+    }
 }

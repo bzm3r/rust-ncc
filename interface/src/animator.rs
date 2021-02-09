@@ -1,4 +1,4 @@
-use crate::reader::{Msg, Request};
+use crate::reader::{FetchRequest, Msg};
 use crate::AppState;
 use druid::kurbo::Line;
 use druid::{
@@ -58,10 +58,10 @@ impl Widget<AppState> for Animator {
                         // increment scene by one frame
                         if app.snap_offset == app.snapshots.len() {
                             app.snapshots = match app
-                                .read_channel
+                                .read_tx
                                 .tx_to_reader
                                 .send(Msg::FromApp(
-                                    Request::FetchNext,
+                                    FetchRequest::FetchNext,
                                 )) {
                                 Ok() => {}
                                 Err(_) => {}

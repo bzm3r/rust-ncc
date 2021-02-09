@@ -1,22 +1,16 @@
-#![allow(unused)]
-use crate::cell::chemistry::{
-    DistributionScheme, DistributionType, RgtpDistribution,
-};
 use crate::experiments::{
     gen_default_adhesion_mag, gen_default_char_quants,
     gen_default_phys_contact_dist, gen_default_raw_params,
     gen_default_vertex_viscosity, CellGroup, Experiment, GroupBBox,
 };
-use crate::interactions::dat_sym2d::SymCcDat;
 use crate::math::v2d::V2D;
-use crate::parameters::quantity::{Force, Length, Quantity};
+use crate::parameters::quantity::{Length, Quantity};
 use crate::parameters::{
-    CharQuantities, CoaParams, PhysicalContactParams, RawCloseBounds,
-    RawCoaParams, RawInteractionParams, RawParameters,
-    RawPhysicalContactParams, RawWorldParameters,
+    CharQuantities, RawCloseBounds, RawCoaParams,
+    RawInteractionParams, RawPhysicalContactParams,
+    RawWorldParameters,
 };
 use crate::utils::pcg32::Pcg32;
-use crate::NVERTS;
 use rand::SeedableRng;
 
 /// Generate the group layout to use for this experiment.
@@ -59,17 +53,6 @@ fn cell_groups(
                 .gen_parameters(cq),
         })
         .collect()
-}
-
-/// Generate CAL values between different cells.
-fn gen_cal_mat() -> SymCcDat<f64> {
-    SymCcDat::<f64>::new(2, 0.0)
-}
-
-/// Generate CIL values between different cells (see SI for
-/// justification).
-fn gen_cil_mat() -> SymCcDat<f64> {
-    SymCcDat::<f64>::new(2, 60.0)
 }
 
 /// Generate raw world parameters, in particular, how
