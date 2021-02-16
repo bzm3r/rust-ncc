@@ -1,0 +1,3 @@
+out_dir = "./output"
+exp_dir = "./experiments"
+py_main = "./py_model/main.py"

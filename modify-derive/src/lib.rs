@@ -35,8 +35,9 @@ pub fn derive(
     let methods = method_names.zip(fids.iter().zip(ftys)).map(
         |(mn, (fid, fty))| {
             quote!(
-                pub fn #mn(&mut self, val: #fty) {
+                pub fn #mn(mut self, val: #fty) -> Self {
                     self.#fid = val;
+                    self
                 }
             )
         },

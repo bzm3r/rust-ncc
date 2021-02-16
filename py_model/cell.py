@@ -24,15 +24,14 @@ class Cell:
             cell_group_ix,
             cell_ix,
             params,
+            dt,
     ):
         self.cell_group_ix = cell_group_ix
         self.cell_ix = cell_ix
-
-        self.num_tsteps = params["num_tsteps"]
-        self.num_tpoints = self.num_tsteps + 1
         self.num_int_steps = params["num_int_steps"]
 
-        self.curr_tstep = 0
+        self.dt = dt
+        self.tpoint = 0.0
         self.num_cells = params["num_cells"]
 
         self.tot_rac = params["tot_rac"]
@@ -45,7 +44,7 @@ class Cell:
             )
         )
 
-        self.l = params["l"]
+        self.length = params["l"]
         self.t = params["t"]
         self.f = params["f"]
 
@@ -201,7 +200,6 @@ class Cell:
                 self.init_rho, self.init_rac,
             )
 
-
         rac_acts = self.curr_state[:, parameters.rac_act_ix]
         rho_acts = self.curr_state[:, parameters.rho_act_ix]
 
@@ -330,7 +328,7 @@ class Cell:
 
     # -----------------------------------------------------------------
     def calculate_when_randomization_event_occurs(self):
-        return self.curr_tstep + 1200
+        return self.tpoint + 1200
 
     # -----------------------------------------------------------------
     def set_rgtp_distrib(
@@ -376,14 +374,14 @@ class Cell:
             x_cils,
             x_coas,
     ):
-        self.curr_tstep += 1
+        self.tpoint += self.dt
         self.insert_state_array_into_system_history(next_state_array)
 
         verts = self.curr_state[:, [parameters.x_ix, parameters.y_ix]]
 
         edge_displacement_vectors_plus = geometry.calculate_edge_vectors(
             verts)
-        edge_lengths = geometry.calculate_2D_vector_mags(
+        edge_lengths = geometry.calculate_vec_mags(
             edge_displacement_vectors_plus)
 
         self.curr_state[:, parameters.edge_lengths_ix] = edge_lengths
@@ -391,14 +389,14 @@ class Cell:
         self.curr_state[:, parameters.old_x_cil_ix] = x_cils
 
         # ==================================
-        if self.curr_tstep == self.next_randomization_event_tpoint:
+        if self.tpoint == self.next_randomization_event_tpoint:
             self.next_randomization_event_tpoint += 1200
 
             # randomization event has occurred, so renew Rac kgtp rate
             # multipliers
             self.rac_rands = \
                 self.renew_rac_rands(
-                    self.curr_tstep)
+                    self.tpoint)
 
         # store the Rac randomization factors for this timestep
         self.curr_state[:, parameters.rac_rands_ix] = self.rac_rands
@@ -535,9 +533,9 @@ class Cell:
         # print("-----------------------------------")
         # np.set_printoptions(suppress=True)
         # print("tstep: {}, cell: {}".format(self.curr_tstep, self.cell_ix))
-        coa_update = np.abs(self.curr_state[:, parameters.old_x_coa_ix] -
-                            x_coas) > 1e-4
-        # if np.any(coa_update):
+        coa_updates = np.abs(self.curr_state[:, parameters.old_x_coa_ix] -
+                             x_coas) > 1e-4
+        # if np.any(coa_updates):
         #     print("old_coa = {}".format([float(x) if not x.is_integer() else
         #                                  int(x) for x in
         #                                  np.round(self.curr_state[:,
@@ -548,9 +546,9 @@ class Cell:
         #     print("old_coa = no change")
         #     print("new_coa = no change")
 
-        cil_update = np.abs(x_cils -
-                            self.curr_state[:, parameters.old_x_cil_ix]) > 1e-4
-        # if np.any(cil_update):
+        cil_updates = np.abs(x_cils -
+                             self.curr_state[:, parameters.old_x_cil_ix]) > 1e-4
+        # if np.any(cil_updates):
         #     print("old_cil = {}".format([float(x) if not x.is_integer() else
         #                                  int(x) for x in
         #                                  np.round(self.curr_state[:,
@@ -598,14 +596,13 @@ class Cell:
             self.halfmax_tension_inhib,
             self.tension_inhib,
             self.rac_rands,
-            coa_update,
-            cil_update,
+            coa_updates,
+            cil_updates,
         )
 
     # -----------------------------------------------------------------
     def execute_step(
             self,
-            this_cell_ix,
             all_cells_verts,
             close_point_smoothness_factors,
             x_cils,
@@ -613,8 +610,6 @@ class Cell:
             writer,
     ):
         dynamics.print_var = True
-
-        num_cells = all_cells_verts.shape[0]
 
         state_array = dynamics.pack_state_array_from_system_history(
             self.phase_var_indices,
@@ -627,8 +622,8 @@ class Cell:
                                            x_cils, x_coas)
 
         output_array = dynamics.eulerint(
-            dynamics.cell_dynamics, state_array, np.array([0, 1]),
-            rhs_args, self.num_int_steps, self.cell_ix, self.curr_tstep,
+            dynamics.cell_dynamics, state_array, 0.0, 1.0,
+            rhs_args, self.num_int_steps, self.cell_ix, self.tpoint,
             self.rac_act_ix, self.rac_inact_ix,
             self.rho_act_ix, self.rho_inact_ix,
             self.x_ix, self.y_ix, writer)
@@ -641,5 +636,75 @@ class Cell:
             x_cils,
             x_coas,
         )
+
+    # -----------------------------------------------------------------
+    def save_with_writer(
+            self,
+            x_cils, x_coas,
+            writer,
+    ):
+        writer.begin_cell_initial_save()
+        coa_updates = \
+            np.abs(self.curr_state[:, parameters.old_x_coa_ix] - x_coas) \
+            > 1e-4
+        cil_updates = \
+            np.abs(x_cils - self.curr_state[:, parameters.old_x_cil_ix]) \
+            > 1e-4
+
+        xs = self.curr_state[:, parameters.x_ix]
+        ys = self.curr_state[:, parameters.y_ix]
+        rac_acts = self.curr_state[:, parameters.rac_act_ix]
+        rac_inacts = self.curr_state[:, parameters.rac_inact_ix]
+        rho_acts = self.curr_state[:, parameters.rho_act_ix]
+        rho_inacts = self.curr_state[:, parameters.rho_inact_ix]
+        sum_forces_xs = self.curr_state[:, parameters.sum_forces_x_ix]
+        sum_forces_ys = self.curr_state[:, parameters.sum_forces_y_ix]
+        uiv_xs = self.curr_state[:, parameters.uiv_x_ix]
+        uiv_ys = self.curr_state[:, parameters.uiv_y_ix]
+        rgtp_force_xs = self.curr_state[:, parameters.rgtp_forces_x_ix]
+        rgtp_force_ys = self.curr_state[:, parameters.rgtp_forces_y_ix]
+        edge_force_xs = self.curr_state[:, parameters.edge_forces_plus_x_ix]
+        edge_force_ys = self.curr_state[:, parameters.edge_forces_plus_y_ix]
+        cyto_force_xs = self.curr_state[:, parameters.cyto_forces_x_ix]
+        cyto_force_ys = self.curr_state[:, parameters.cyto_forces_y_ix]
+        kgtps_rac = self.curr_state[:, parameters.kgtp_rac_ix]
+        kdgtps_rac = self.curr_state[:, parameters.kdgtp_rac_ix]
+        kgtps_rho = self.curr_state[:, parameters.kgtp_rho_ix]
+        kdgtps_rho = self.curr_state[:, parameters.kdgtp_rho_ix]
+        local_strains = self.curr_state[:, parameters.local_strains_ix]
+        poly = [list([float(x), float(y)]) for x, y in
+                zip(xs, ys)]
+        poly_area = geometry.calculate_polygon_area(np.array(poly))
+        data = [("tpoint", self.tpoint),
+                ("poly", poly),
+                ("rac_acts", [float(v) for v in rac_acts]),
+                ("rac_inacts", [float(v) for v in rac_inacts]),
+                ("rho_acts", [float(v) for v in rho_acts]),
+                ("rho_inacts", [float(v) for v in rho_inacts]),
+                ("sum_forces", [list([float(x), float(y)]) for x, y in
+                                zip(sum_forces_xs, sum_forces_ys)]),
+                ("uivs", [list([float(x), float(y)]) for x, y in
+                          zip(uiv_xs, uiv_ys)]),
+                ("rgtp_forces", [list([float(x), float(y)]) for x, y in
+                                 zip(rgtp_force_xs, rgtp_force_ys)]),
+                ("edge_forces",
+                 [list([float(x), float(y)]) for x, y in
+                  zip(edge_force_xs, edge_force_ys)]),
+                ("cyto_forces", [list([float(x), float(y)]) for x, y in
+                                 zip(cyto_force_xs, cyto_force_ys)]),
+                ("kgtps_rac", [float(v) for v in kgtps_rac]),
+                ("kdgtps_rac", [float(v) for v in kdgtps_rac]),
+                ("kgtps_rho", [float(v) for v in kgtps_rho]),
+                ("kdgtps_rho", [float(v) for v in kdgtps_rho]),
+                ("x_cils", [float(v) for v in x_cils]),
+                ("x_coas", [float(v) for v in x_coas]),
+                ("local_strains", [float(v) for v in local_strains]),
+                ("poly_area", poly_area),
+                ("coa_updates", [bool(v) for v in coa_updates]),
+                ("cil_updates", [bool(v) for v in cil_updates])]
+        # for d in data:
+        #     logging.log(level=99, msg="{}: {}".format(d[0], d[1]))
+        writer.save_initial_cell(data)
+        writer.finish_cell_initial_save()
 
 # ===============================================================

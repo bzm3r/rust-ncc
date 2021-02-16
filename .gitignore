@@ -8,6 +8,11 @@
 # rustfmt backup
 **/*.rs.bk
 
+# Python stuff - Byte-compiled / optimized / DLL files
+**/__pycache__/
+*.py[cod]
+*$py.class
+
 # macos metadata
 .DS_Store
 
@@ -17,9 +22,11 @@
 **/*.trace
 **/*.dat
 **/*.out
+**/*.log
 
-# animation
+# animations and images
 **/*.mp4
+**/*.png
 
 # binary locks
 /interface/Cargo.lock
@@ -27,3 +34,4 @@
 /playground/bincode_read/Cargo.lock
 /playground/cbor_read_write/Cargo.lock
 /playground/modify_derive_test/Cargo.lock
+/executor/Cargo.lock

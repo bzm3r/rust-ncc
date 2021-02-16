@@ -5,7 +5,7 @@ use druid::{
 };
 use rust_ncc::cell::Cell;
 use rust_ncc::interactions::RelativeRgtpActivity;
-use rust_ncc::math::v2d::V2D;
+use rust_ncc::math::p2d::P2d;
 use rust_ncc::parameters::Parameters;
 use rust_ncc::utils::circ_ix_plus;
 use rust_ncc::world::Snapshot;
@@ -24,7 +24,7 @@ impl Default for Scene {
     }
 }
 
-pub fn line_from_v2ds(u: V2D, v: V2D) -> Line {
+pub fn line_from_p2ds(u: P2d, v: P2d) -> Line {
     Line::new(
         Point {
             x: u.x as f64,
@@ -68,7 +68,7 @@ impl Scene {
                     let u = cell.core.poly[ix];
                     let v = cell.core.poly[circ_ix_plus(ix, NVERTS)];
                     ctx.stroke(
-                        PathSeg::Line(line_from_v2ds(u, v)),
+                        PathSeg::Line(line_from_p2ds(u, v)),
                         color,
                         2.0,
                     );

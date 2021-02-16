@@ -1,0 +1,19 @@
+description = "Experiment for comparison with a Python model (NC=1)."
+experiment_type = "PyCompare"
+final_t = 10
+num_cells = 1
+cil = 60
+coa = 24
+snap_period = 1
+seeds = [{}]
+
+[int_opts]
+integrator = "EulerDebug"
+num_int_step = 10
+
+[[ani-opts]]
+label_verts = false
+label_cells = false
+follow_group = true
+show_trails = false
+rgtp_scale = 50

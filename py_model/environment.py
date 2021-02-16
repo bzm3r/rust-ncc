@@ -49,20 +49,21 @@ class Environment:
     """
 
     def __init__(
-            self, params
+            self, out_dir, name, log_level, params
     ):
         self.params = params
 
         self.curr_tpoint = 0
         self.t = params["t"]
-
-        self.num_tsteps = params["num_tsteps"]
+        self.dt = 1.0
+        self.num_tsteps = int(np.ceil(params["final_t"]/self.t))
         self.num_tpoints = self.num_tsteps + 1
         self.timepoints = np.arange(0, self.num_tpoints)
         self.num_int_steps = params["num_int_steps"]
         self.num_cells = params["num_cells"]
+        self.snap_period = params["snap_period"]
 
-        self.writer = Writer(params)
+        self.writer = Writer(out_dir, name, log_level, params, self.snap_period)
         self.writer.save_header(params)
 
         self.env_cells = self.make_cells()
@@ -72,14 +73,14 @@ class Environment:
         )
 
         self.all_geometry_tasks = np.array(
-            geometry.create_dist_and_line_segment_interesection_test_args(
+            geometry.create_dist_and_line_segment_intersection_test_args(
                 self.num_cells, 16
             ),
             dtype=np.int64,
         )
         self.geometry_tasks_per_cell = np.array(
             [
-                geometry.create_dist_and_line_segment_interesection_test_args_relative_to_specific_cell(
+                geometry.create_dist_and_line_segment_intersection_test_args_relative_to_specific_cell(
                     ci, self.num_cells, 16
                 )
                 for ci in range(self.num_cells)
@@ -177,6 +178,7 @@ class Environment:
                 0,
                 ci,
                 params,
+                self.dt,
             )
 
             cells_in_group.append(new_cell)
@@ -273,7 +275,7 @@ class Environment:
 
         edge_vectors = geometry.calculate_edge_vectors(cell_verts)
 
-        edge_lengths = geometry.calculate_2D_vector_mags(edge_vectors)
+        edge_lengths = geometry.calculate_vec_mags(edge_vectors)
 
         rest_edge_len = np.average(edge_lengths)
 
@@ -320,14 +322,15 @@ class Environment:
                     current_cell.close_one_at,
                     env_cells_verts, are_nodes_inside_other_cells)
 
+            self.writer.begin_cell_save()
             current_cell.execute_step(
-                ci,
                 env_cells_verts,
                 close_point_smoothness_factors,
                 x_cils,
                 x_coas,
                 self.writer,
             )
+            self.writer.finish_cell_save()
 
             this_cell_coords = current_cell.curr_verts
 
@@ -345,8 +348,8 @@ class Environment:
                 sequential=True,
             )
 
-        self.update_coa_cil(env_cells_verts, cells_node_distance_matrix,
-                            cells_line_segment_intersection_matrix)
+            self.update_coa_cil(env_cells_verts, cells_node_distance_matrix,
+                                cells_line_segment_intersection_matrix)
 
         return (
             cells_node_distance_matrix,
@@ -423,27 +426,32 @@ class Environment:
         for a_cell in self.env_cells:
             cell_group_indices.append(a_cell.cell_group_ix)
 
-        if self.curr_tpoint == 0 or self.curr_tpoint < self.num_tsteps:
-            for t in self.timepoints[self.curr_tpoint: -1]:
-                (
-                    cells_node_distance_matrix,
-                    cell_bbs,
-                    cells_line_segment_intersection_matrix,
-                    all_cell_verts,
-                ) = self.execute_system_dynamics_in_random_sequence(
-                    t,
-                    cells_node_distance_matrix,
-                    cell_bbs,
-                    cells_line_segment_intersection_matrix,
-                    all_cell_verts,
-                    environment_cells,
-                )
-                self.curr_tpoint += 1
-        else:
-            raise Exception("max_t has already been reached.")
+        # self.writer.begin_initial_save()
+        # for (ci, cell) in enumerate(self.env_cells):
+        #     x_cils = self.x_cils_per_cell[ci]
+        #     x_coas = self.x_coas_per_cell[ci]
+        #     cell.save_with_writer(x_cils, x_coas, self.writer)
+        # self.writer.finish_initial_save()
+
+        for t in self.timepoints:
+            self.writer.begin_tpoint_save(t)
+            (
+                cells_node_distance_matrix,
+                cell_bbs,
+                cells_line_segment_intersection_matrix,
+                all_cell_verts,
+            ) = self.execute_system_dynamics_in_random_sequence(
+                t,
+                cells_node_distance_matrix,
+                cell_bbs,
+                cells_line_segment_intersection_matrix,
+                all_cell_verts,
+                environment_cells,
+            )
+            self.writer.finish_tpoint_save()
 
         simulation_et = time.time()
-        self.writer.close()
+        self.writer.finish()
 
         simulation_time = np.round(simulation_et - simulation_st, decimals=2)
 

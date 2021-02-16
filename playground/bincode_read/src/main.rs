@@ -1,5 +1,5 @@
 use bincode::deserialize_from;
-use rust_ncc::world::{hardio, WorldInfo, WorldSnapshot};
+use simulator::world::{hardio, WorldInfo, WorldSnapshot};
 use std::borrow::Borrow;
 use std::fs::OpenOptions;
 use std::io;

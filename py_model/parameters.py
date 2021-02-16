@@ -58,7 +58,6 @@ info_indices_dict = {
     x: i for i, x in enumerate(output_mech_labels + output_chem_labels)
 }
 
-
 parameter_labels = ["cell_r",
                     "rest_edge_len",
                     "rest_area",
@@ -92,10 +91,11 @@ parameter_labels = ["cell_r",
                     "num_rand_vs",
                     "total_rgtp"]
 
+
 # -----------------------------------------------------------------
-def calc_coa_distrib_exp(coa_range):
-    if coa_range > 1e-3:
-        return np.log(0.5) / (0.5 * coa_range)
+def calc_coa_distrib_exp(coa_halfmax_dist):
+    if coa_halfmax_dist > 1e-3:
+        return np.log(0.5) / coa_halfmax_dist
     else:
         return 0.0
 
@@ -104,10 +104,10 @@ def refine_raw_params(raw_params):
     params = copy.deepcopy(raw_params)
 
     params["coa_mag"] = raw_params["coa_mag"] / 16
-    params["coa_range"] = raw_params["coa_range"] / params["l"]
-    params["coa_distrib_exp"] = calc_coa_distrib_exp(params["coa_range"])
+    params["coa_halfmax_dist"] = raw_params["coa_halfmax_dist"] / params["l"]
+    params["coa_distrib_exp"] = calc_coa_distrib_exp(params["coa_halfmax_dist"])
     params["init_cyto_rgtp"] = 1 - raw_params["init_inact_rgtp"] - \
-                                    raw_params["init_act_rgtp"]
+                               raw_params["init_act_rgtp"]
     # --------------
     params["kgtp_rac"] = (
             params["kgtp"] * raw_params["kgtp_rac"] * params["t"]
@@ -117,7 +117,8 @@ def refine_raw_params(raw_params):
     )  # per second
     # --------------
     params["kgtp_rho"] = (params["kgtp"] * raw_params["kgtp_rho"]) * params["t"]
-    params["kdgtp_rho"] = (params["kgtp"] * raw_params["kdgtp_rho"]) * params["t"]
+    params["kdgtp_rho"] = (params["kgtp"] * raw_params["kdgtp_rho"]) * params[
+        "t"]
     # --------------
     params["kgtp_rac_auto"] = \
         raw_params["kgtp_rac_autoact"] * params["kgtp"] * params["t"]
@@ -125,11 +126,11 @@ def refine_raw_params(raw_params):
         raw_params["kgtp_rho_autoact"] * params["kgtp"] * params["t"]
     # --------------
     params["kdgtp_rho_on_rac"] = (
-            params["kdgtp"]
+            params["kgtp"]
             * raw_params["kdgtp_rho_on_rac"] * params["t"]
     )  # per second
     params["kdgtp_rac_on_rho"] = (
-            params["kdgtp"]
+            params["kgtp"]
             * raw_params["kdgtp_rac_on_rho"] * params["t"]
     )  # per second
     # --------------
@@ -158,15 +159,15 @@ def refine_raw_params(raw_params):
         )
     )
     edge_vectors = geometry.calculate_edge_vectors(cell_verts)
-    edge_lengths = geometry.calculate_2D_vector_mags(edge_vectors)
+    edge_lengths = geometry.calculate_vec_mags(edge_vectors)
 
     params["rest_edge_len"] = np.average(edge_lengths)
     params["rest_area"] = geometry.calculate_polygon_area(cell_verts)
     params["halfmax_vertex_rgtp_conc"] = params["halfmax_vertex_rgtp_act"] / \
-                                      params["rest_edge_len"]
+                                         params["rest_edge_len"]
 
     params["vertex_eta"] = (params["vertex_eta"] * params["eta"] / 16) / \
-        (params["f"] / (params["l"] / params["t"]))
+                           (params["f"] / (params["l"] / params["t"]))
     params["stiffness_edge"] = \
         raw_params["stiffness_edge"] * \
         params["l3d"] * \
@@ -185,14 +186,16 @@ def refine_raw_params(raw_params):
     params["close_one_at"] = raw_params["close_one_at"] / params["l"]
     # --------------
     params["rand_avg_t"] = raw_params[
-        "rand_avg_t"
-    ] * 60.0 / params["t"]
+                               "rand_avg_t"
+                           ] * 60.0 / params["t"]
     params["rand_std_t"] = raw_params[
-        "rand_std_t"
-    ] * 60.0 / params["t"]
+                               "rand_std_t"
+                           ] * 60.0 / params["t"]
     params["rand_mag"] = raw_params[
         "rand_mag"
     ]
+
+    params["snap_period"] = raw_params["snap_period"] / params["t"]
     return params
 
 

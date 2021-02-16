@@ -6,6 +6,7 @@ Created on Tue May 12 13:27:54 2015
 
 import numba as nb
 import numpy as np
+from hardio import COA_INFO
 
 
 # -----------------------------------------------------------------
@@ -22,7 +23,7 @@ def hill_function3(thresh, sig):
 
 
 def calculate_kgtp_rac(
-        conc_rac_acts,
+        rac_act_net_fluxes,
         halfmax_vertex_rgtp_conc,
         kgtp_rac,
         kgtp_rac_auto,
@@ -31,7 +32,7 @@ def calculate_kgtp_rac(
         intercellular_contact_factors,
         close_point_smoothness_factors,
 ):
-    num_vertices = conc_rac_acts.shape[0]
+    num_vertices = rac_act_net_fluxes.shape[0]
     result = np.empty(num_vertices, dtype=np.float64)
 
     for i in range(num_vertices):
@@ -51,7 +52,7 @@ def calculate_kgtp_rac(
 
         rac_autoact_hill_effect = hill_function3(
             halfmax_vertex_rgtp_conc,
-            conc_rac_acts[i])
+            rac_act_net_fluxes[i])
         kgtp_rac_autoact = (
                 kgtp_rac_auto
                 * rac_autoact_hill_effect
@@ -69,7 +70,7 @@ def calculate_kgtp_rac(
 
 
 # -----------------------------------------------------------------
-#@nb.jit(nopython=True)
+# @nb.jit(nopython=True)
 def calculate_kgtp_rho(
         conc_rho_act,
         intercellular_contact_factors,
@@ -82,7 +83,7 @@ def calculate_kgtp_rho(
         kgtp_rho_autoact = kgtp_rho_auto * hill_function3(
             halfmax_vertex_rgtp_conc,
             conc_rho_act[i]
-            )
+        )
 
         i_plus1 = (i + 1) % 16
         i_minus1 = (i - 1) % 16
@@ -100,7 +101,7 @@ def calculate_kgtp_rho(
 
 
 # -----------------------------------------------------------------
-#@nb.jit(nopython=True)
+# @nb.jit(nopython=True)
 def calculate_kdgtp_rac(
         conc_rho_acts,
         halfmax_vertex_rgtp_conc,
@@ -150,7 +151,7 @@ def calculate_kdgtp_rac(
 # -----------------------------------------------------------------
 @nb.jit(nopython=True)
 def calculate_kdgtp_rho(
-        conc_rac_acts,
+        rac_act_net_fluxes,
         halfmax_vertex_rgtp_conc,
         kdgtp_rho,
         kdgtp_rac_on_rho,
@@ -162,7 +163,7 @@ def calculate_kdgtp_rho(
                 kdgtp_rac_on_rho
                 * hill_function3(
             halfmax_vertex_rgtp_conc,
-            conc_rac_acts[i],
+            rac_act_net_fluxes[i],
         )
         )
 
@@ -284,15 +285,17 @@ def calculate_x_coas(
                     dist_squared_between_nodes = \
                         relevant_dist_squared_slice[other_ni]
 
-                    # print("====================")
-                    # print("(ci: {}, vi: {}, ovi: {}, oci: {}):".format(
-                    #     this_cell_ix, ni, other_ci, other_ni))
-                    # print("dist: {}".format(np.sqrt(
+                    # logging.log(level=COA_INFO, msg="====================")
+                    # logging.log(level=COA_INFO,
+                    #             msg="(ci: {}, vi: {}, ovi: {}, oci: {}):".format(
+                    #                 this_cell_ix, ni, other_ci, other_ni))
+                    # logging.log(level=COA_INFO, msg="dist: {}".format(np.sqrt(
                     #     dist_squared_between_nodes)))
-                    # print("num_intersects: {}".format(
+                    # logging.log(level=COA_INFO, msg="num_intersects: {}".format(
                     #     line_segment_between_node_intersects_polygon))
-                    # print("coa_los_penalty: {}".format(
-                    #     intersection_factor))
+                    # logging.log(level=COA_INFO,
+                    #             msg="coa_los_penalty: {}".format(
+                    #                 intersection_factor))
 
                     coa_signal = 0.0
                     if dist_squared_between_nodes > too_close_dist_squared:
@@ -305,11 +308,13 @@ def calculate_x_coas(
                         )
                     old_x_coa = this_node_x_coa
                     this_node_x_coa += coa_mag * coa_signal
-                    # print("coa_signal: {}".format(coa_signal))
-                    # print("coa_mag: {}".format(coa_mag))
-                    # print(
-                    #     "new = {} + {}".format(old_x_coa,
-                    #                            coa_mag * coa_signal))
+                    # logging.log(level=COA_INFO,
+                    #             msg="coa_signal: {}".format(coa_signal))
+                    # logging.log(level=COA_INFO,
+                    #             msg="coa_mag: {}".format(coa_mag))
+                    # logging.log(level=COA_INFO,
+                    #             msg="new = {} + {}".format(old_x_coa,
+                    #                                        coa_mag * coa_signal))
 
         x_coas[ni] = this_node_x_coa
 

@@ -1,7 +1,7 @@
 use bincode::deserialize_from;
-use rust_ncc::world::{WorldInfo, WorldSnapshot};
 use serde::{Deserialize, Serialize};
 use serde_cbor::ser::IoWrite;
+use simulator::world::{WorldInfo, WorldSnapshot};
 use std::borrow::Borrow;
 use std::fs::OpenOptions;
 use std::io;

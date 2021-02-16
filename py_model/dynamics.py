@@ -13,6 +13,7 @@ import copy
 import chemistry
 import geometry
 import mechanics
+from hardio import BASIC_INFO, DYNAMICS_INFO, VOL_EX_INFO, DETAILED_VOL_EX_INFO
 
 
 # ----------------------------------------------------------------------------------------
@@ -116,77 +117,74 @@ def calculate_sum(num_elements, sequence):
 
 
 # ----------------------------------------------------------------------------------------
-def eulerint(f, current_state, tpoints, args, num_int_steps, cell_ix,
-             tstep, rac_act_ix, rac_inact_ix,
+def eulerint(f, current_state, t0, t1, args, num_int_steps, cell_ix,
+             curr_tpoint, rac_act_ix, rac_inact_ix,
              rho_act_ix, rho_inact_ix,
              x_ix, y_ix, writer):
-    talkative = True
     focus_verts = [0, 15]
-    
-    num_tpoint_pairs = tpoints.shape[0] - 1
-    tpoint_pairs = np.zeros((num_tpoint_pairs, 2), dtype=np.float64)
     states = np.zeros(
-        (tpoints.shape[0],
+        (2,
          current_state.shape[0]),
         dtype=np.float64)
 
-    states[0] = current_state
+    states[0] = copy.deepcopy(current_state)
+    # logging.log(level=BASIC_INFO, msg="-----------------------------------")
+    # logging.log(level=BASIC_INFO, msg="curr_tpoint: {}, cell: {}"
+    #             .format(curr_tpoint, cell_ix))
+    dt = (t1 - t0) / num_int_steps
 
-    for i in range(num_tpoint_pairs):
-        int_step = 2 * i
-        tpoint_pairs[i] = tpoints[int_step:int_step + 2]
+    for int_step in range(num_int_steps):
+        # logging.log(level=DYNAMICS_INFO,
+        #             msg="-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+")
+        _, _, _, _, init_poly \
+            = interpret_state_array(rac_act_ix, rac_inact_ix,
+                                    rho_act_ix, rho_inact_ix,
+                                    x_ix, y_ix, current_state)
+        # for ix in focus_verts:
+        #     logging.log(level=DYNAMICS_INFO,
+        #                 msg="init poly[{}]: {}".format(ix,
+        #                                                init_poly[
+        #                                                    ix]))
+        deltas, sum_forces, edge_forces_plus, edge_forces_minus, \
+        rgtp_forces, cyto_forces, verts_before_ve, verts_after_ve = f(
+            focus_verts,
+            curr_tpoint, int_step, dt, writer, cell_ix, current_state, *args)
+        current_state = current_state + dt * deltas
+        _, _, _, _, final_poly = interpret_state_array(rac_act_ix,
+                                                       rac_inact_ix,
+                                                       rho_act_ix,
+                                                       rho_inact_ix,
+                                                       x_ix, y_ix,
+                                                       current_state)
 
-    writer.confirm_int_steps_empty()
-    if talkative:
-        print("-----------------------------------")
-        print("tstep: {}, cell: {}".format(tstep, cell_ix))
-    for i in range(tpoint_pairs.shape[0]):
-        init_t, end_t = tpoint_pairs[i]
-        current_state = states[i]
-        dt = (end_t - init_t) / num_int_steps
+        # for ix in focus_verts:
+        #     logging \
+        #         .log(level=DYNAMICS_INFO,
+        #              msg="actual Delta poly({}): {}"
+        #              .format(ix,
+        #                      verts_before_ve[ix] -
+        #                      init_poly[ix])
+        #              )
+        #     logging \
+        #         .log(level=DYNAMICS_INFO,
+        #              msg="Delta poly after VE({}): {}"
+        #              .format(ix, verts_after_ve[ix] - init_poly[ix])
+        #              )
+        #     logging \
+        #         .log(level=DYNAMICS_INFO,
+        #              msg="final poly[{}]: {}"
+        #              .format(ix, final_poly[0])
+        #              )
+        curr_tpoint += dt
 
-        for int_step in range(num_int_steps):
-            if talkative:
-                print("-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+")
-            _, _, _, _, init_poly \
-                = interpret_state_array(rac_act_ix, rac_inact_ix,
-                                        rho_act_ix, rho_inact_ix,
-                                        x_ix, y_ix, current_state)
-            if talkative:
-                for ix in focus_verts:
-                    print("init poly[{}]: {}".format(ix, init_poly[ix]))
-            deltas, sum_forces, edge_forces_plus, edge_forces_minus, \
-            rgtp_forces, cyto_forces, verts_before_ve, verts_after_ve = f(
-                talkative, focus_verts,
-                tstep, int_step, dt, writer, cell_ix, current_state, *args)
-            current_state = current_state + dt * deltas
-            _, _, _, _, final_poly = interpret_state_array(rac_act_ix,
-                                                           rac_inact_ix,
-                                                           rho_act_ix,
-                                                           rho_inact_ix,
-                                                           x_ix, y_ix,
-                                                           current_state)
-            if talkative:
-                for ix in focus_verts:
-                    print("actual Delta poly({}): {}".format(ix,
-                                                             verts_before_ve[
-                                                                 ix] -
-                                                             init_poly[ix]))
-                    print("Delta poly after VE({}): {}".format(ix,
-                                                               verts_after_ve[
-                                                                   ix] -
-                                                               init_poly[ix]))
-                    print("final poly[{}]: {}".format(ix, final_poly[0]))
-
-        states[i + 1] = current_state
+    states[1] = copy.deepcopy(current_state)
 
     return states
 
 
 def cell_dynamics(
-        talkative,
         focus_verts,
-        tstep,
+        tpoint,
         int_step,
         dt,
         writer,
@@ -227,8 +225,8 @@ def cell_dynamics(
         halfmax_tension_inhib,
         tension_inhib,
         rac_rands,
-        coa_update,
-        cil_update
+        coa_updates,
+        cil_updates
 ):
     phase_vars = state_array
 
@@ -395,75 +393,34 @@ def cell_dynamics(
     np.zeros(2, dtype=np.float64)
     np.zeros(2, dtype=np.float64)
 
-    if talkative:
-        print("tstep: {}, int_step: {}".format(tstep, int_step))
-        print("eta: {}".format(vertex_eta))
-        print("1/eta: {}".format(1 / vertex_eta))
-        for ix in focus_verts:
-            print("rgtp_forces[{}]: {}".format(ix, rgtp_forces[ix]))
-            print("edge_forces[{}]: {}".format(ix, edge_forces_plus[ix]))
-            print("edge_forces_minus[{}]: {}".format(ix, edge_forces_minus[ix]))
-            print("cyto_forces[{}]: {}".format(ix, cyto_forces[ix]))
-            print(
-                "expected sum forces ({}) = {}".format(ix,
-                                                       rgtp_forces[ix] +
-                                                       edge_forces_plus[ix] +
-                                                       edge_forces_minus[ix] +
-                                                       cyto_forces[ix]))
-            print("sum_forces[{}]: {}".format(ix, sum_forces[ix]))
-
-    for ni in range(16):
-        old_coord = poly[ni]
-
-        new_verts[ni][0] = old_coord[0] + dt * sum_forces_x[ni] / vertex_eta
-        new_verts[ni][1] = old_coord[1] + dt * sum_forces_y[ni] / vertex_eta
-
-    if talkative:
-        for ix in focus_verts:
-            print("delta.poly[{}]: {}".format(ix, (new_verts[0] - poly[0]) /
-                                              dt))
-            print("expected Delta poly 0 ({}): {}".format(ix, dt * sum_forces[
-                0] / vertex_eta))
-
-    verts_before_ve = copy.deepcopy(new_verts)
-
-    # calculate volume exclusion effects
-    num_bisection_iterations = 10
-    max_movement_mag = dt * const_protrusive / vertex_eta
-
-    for other_ci in range(num_cells):
-        if other_ci != cell_ix:
-            if talkative:
-                print("testing poly: {}".format(other_ci))
-                print("coords: {}".format(all_cells_verts[other_ci]))
-                print("max movement mag: {}".format(max_movement_mag))
-            are_new_nodes_inside_other_cell = \
-                geometry.are_points_inside_polygon(
-                    new_verts, all_cells_verts[other_ci], talkative=False
-                )
-            if talkative:
-                print("in poly: {}".format(
-                    [i for (i, x) in
-                     enumerate(are_new_nodes_inside_other_cell) if x])
-                )
-            for ni in range(16):
-                if are_new_nodes_inside_other_cell[ni]:
-                    if talkative:
-                        print("fixing vertex {} violation (current: {})".format(
-                            ni, new_verts[ni]))
-                    new_verts[ni] = enforce_volume_exclusion_for_vertex(
-                        talkative,
-                        poly[ni],
-                        new_verts[ni],
-                        uivs[ni],
-                        all_cells_verts[other_ci],
-                        num_bisection_iterations,
-                        max_movement_mag,
-                    )
-    verts_after_ve = copy.deepcopy(new_verts)
+    # logging.log(level=DYNAMICS_INFO,
+    #             msg="tstep: {}, int_step: {}".format(tpoint, int_step))
+    # logging.log(level=DYNAMICS_INFO, msg="eta: {}".format(vertex_eta))
+    # logging.log(level=DYNAMICS_INFO, msg="1/eta: {}".format(1 / vertex_eta))
+    # for ix in focus_verts:
+    #     logging.log(level=DYNAMICS_INFO,
+    #                 msg="rgtp_forces[{}]: {}".format(ix, rgtp_forces[ix]))
+    #     logging.log(level=DYNAMICS_INFO,
+    #                 msg="edge_forces[{}]: {}".format(ix,
+    #                                                  edge_forces_plus[ix]))
+    #     logging.log(level=DYNAMICS_INFO,
+    #                 msg="cyto_forces[{}]: {}".format(ix, cyto_forces[ix]))
+    #     logging.log(level=DYNAMICS_INFO,
+    #                 msg="expected sum forces ({}) = {}".format(ix,
+    #                                                            rgtp_forces[
+    #                                                                ix] +
+    #                                                            edge_forces_plus[
+    #                                                                ix] +
+    #                                                            edge_forces_minus[
+    #                                                                ix] +
+    #                                                            cyto_forces[
+    #                                                                ix]))
+    #     logging.log(level=DYNAMICS_INFO,
+    #                 msg="sum_forces[{}]: {}".format(ix, sum_forces[ix]))
 
     poly_area = geometry.calculate_polygon_area(poly)
-    data = [("poly", [[float(v) for v in x] for x in new_verts]),
+    data = [("tpoint", tpoint),
+            ("poly", [[float(v) for v in x] for x in poly]),
             ("rac_acts", [float(v) for v in rac_acts]),
             ("rac_inacts", [float(v) for v in rac_inacts]),
             ("rho_acts", [float(v) for v in rho_acts]),
@@ -473,25 +430,72 @@ def cell_dynamics(
             ("uivs", [[float(v) for v in x] for x in uivs]),
             ("rgtp_forces", [[float(v) for v in x] for x in rgtp_forces]),
             ("edge_forces", [[float(v) for v in x] for x in edge_forces_plus]),
-            ("edge_forces_minus",
-             [[float(v) for v in x] for x in edge_forces_minus]),
             ("cyto_forces", [[float(v) for v in x] for x in cyto_forces]),
             ("kgtps_rac", [float(v) for v in kgtps_rac]),
             ("kdgtps_rac", [float(v) for v in kdgtps_rac]),
             ("kgtps_rho", [float(v) for v in kgtps_rho]),
             ("kdgtps_rho", [float(v) for v in kdgtps_rho]),
-            ("conc_rac_acts", [float(v) for v in conc_rac_acts]),
             ("x_cils", [float(v) for v in x_cils]),
             ("x_coas", [float(v) for v in x_coas]),
-            ("rac_act_net_fluxes", [float(v) for v in diffusion_rac_acts]),
-            ("edge_strains", [float(v) for v in edge_strains]),
-            ("uevs", [[float(v) for v in x] for x in uevs]),
-            ("poly_area", poly_area), ("coa_update",
-                                       [bool(v) for v in coa_update]),
-            ("cil_update", [bool(v) for v in cil_update])]
+            ("local_strains", [float(v) for v in local_strains]),
+            ("poly_area", poly_area), ("coa_updates",
+                                       [bool(v) for v in coa_updates]),
+            ("cil_updates", [bool(v) for v in cil_updates])]
     # for d in data:
-    #     print("{}: {}".format(d[0], d[1]))
-    writer.save_int_step(cell_ix, data)
+    #     logging.log(level=99, msg="{}: {}".format(d[0], d[1]))
+    writer.save_int_step(data)
+
+    for ni in range(16):
+        old_coord = poly[ni]
+
+        new_verts[ni][0] = old_coord[0] + dt * sum_forces_x[ni] / vertex_eta
+        new_verts[ni][1] = old_coord[1] + dt * sum_forces_y[ni] / vertex_eta
+
+    # for ix in focus_verts:
+    #     logging.log(level=DYNAMICS_INFO, msg="delta.poly[{}]: {}"
+    #                 .format(ix, (new_verts[0] - poly[0]) / dt)
+    #                 )
+    #     logging.log(level=DYNAMICS_INFO,
+    #                 msg="expected Delta poly 0 ({}): {}"
+    #                 .format(ix, dt * sum_forces[0] / vertex_eta)
+    #                 )
+
+    verts_before_ve = copy.deepcopy(new_verts)
+
+    # calculate volume exclusion effects
+    num_bisection_iterations = 10
+    max_movement_mag = dt * const_protrusive / vertex_eta
+
+    for other_ci in range(num_cells):
+        if other_ci != cell_ix:
+            # logging.log(level=VOL_EX_INFO, msg="testing poly: {}".format(
+            #     other_ci))
+            # logging.log(level=VOL_EX_INFO,
+            #             msg="coords: {}".format(all_cells_verts[other_ci]))
+            # logging.log(level=VOL_EX_INFO,
+            #             msg="max movement mag: {}".format(max_movement_mag))
+            are_new_nodes_inside_other_cell = \
+                geometry.are_points_inside_polygon(
+                    new_verts, all_cells_verts[other_ci]
+                )
+            # logging.log(level=VOL_EX_INFO, msg="in poly: {}".format(
+            #     [i for (i, x) in
+            #      enumerate(are_new_nodes_inside_other_cell) if x])
+            #             )
+            for ni in range(16):
+                if are_new_nodes_inside_other_cell[ni]:
+                    # logging.log(level=VOL_EX_INFO,
+                    #             msg="fixing vertex {} violation (current: {})".format(
+                    #                 ni, new_verts[ni]))
+                    new_verts[ni] = enforce_volume_exclusion_for_vertex(
+                        poly[ni],
+                        new_verts[ni],
+                        uivs[ni],
+                        all_cells_verts[other_ci],
+                        num_bisection_iterations,
+                        max_movement_mag,
+                    )
+    verts_after_ve = copy.deepcopy(new_verts)
 
     for ni in range(16):
         new_coord = new_verts[ni]
@@ -556,7 +560,6 @@ def cell_dynamics(
 
 # -----------------------------------------------------------------
 def enforce_volume_exclusion_for_vertex(
-        talkative,
         old_coord,
         new_coord,
         unit_inside_pointing_vector,
@@ -568,50 +571,49 @@ def enforce_volume_exclusion_for_vertex(
     #     polygon)
 
     is_old_in_poly = geometry.is_point_in_polygon_without_bb_check(
-        old_coord, polygon, talkative=False
+        old_coord, polygon
     )
 
     while is_old_in_poly:
         old_coord = old_coord + max_movement_mag * \
                     unit_inside_pointing_vector
-        if talkative:
-            print(
-                "trial old v: {}".format(old_coord)
-            )
+
+        # logging.log(level=DETAILED_VOL_EX_INFO, msg="trial old v: {}".format(
+        #     old_coord))
         # num_bisection_iterations = int(num_bisection_iterations*1.5)
         is_old_in_poly = geometry.is_point_in_polygon_without_bb_check(
-            old_coord, polygon, talkative=False)
+            old_coord, polygon)
 
     # if we have reached here, then we know that the old_coord is in the
     # polygon, and the new coord is not in the polygon
     ok_coord = old_coord
-    if talkative:
-        print("settling with okay v: {} (in poly: {})".format(old_coord,
-                                                              geometry.is_point_in_polygon_without_bb_check(
-                                                                  old_coord,
-                                                                  polygon,
-                                                                  talkative=False)))
+
+    # logging.log(level=DETAILED_VOL_EX_INFO,
+    #             msg="settling with okay v: {} (in poly: {})".format(
+    #                 old_coord,
+    #                 geometry.is_point_in_polygon_without_bb_check(
+    #                     old_coord,
+    #                     polygon)))
     problem_coord = new_coord
     np.zeros(2, dtype=np.float64)
 
-    if talkative:
-        print("problem v: {}".format(problem_coord))
+    # logging.log(level=DETAILED_VOL_EX_INFO,
+    #             msg="problem v: {}".format(problem_coord))
     for i in range(num_bisection_iterations):
         test_coord = 0.5 * (ok_coord + problem_coord)
-        if talkative:
-            print("testing: {}".format(test_coord))
+
+        # logging.log(level=DETAILED_VOL_EX_INFO,
+        #             msg="testing: {}".format(test_coord))
 
         if geometry.is_point_in_polygon_without_bb_check(
-                test_coord, polygon, talkative=False
+                test_coord, polygon
         ):
-            if talkative:
-                print("setting as problem")
+            # logging.log(level=DETAILED_VOL_EX_INFO, msg="setting as problem")
             problem_coord = test_coord
         else:
-            if talkative:
-                print("setting as ok")
+            # logging.log(level=DETAILED_VOL_EX_INFO, msg="setting as ok")
             ok_coord = test_coord
 
-    if talkative:
-        print("returning ok: {}".format(ok_coord))
+    # logging.log(level=DETAILED_VOL_EX_INFO,
+    #             msg="returning ok: {}".format(ok_coord))
     return ok_coord

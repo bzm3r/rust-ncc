@@ -12,8 +12,11 @@ import numpy as np
 
 def rust_comparison_test(
         raw_params,
-        box_width=4,
-        box_height=4,
+        out_dir,
+        name,
+        log_level,
+        box_width=2,
+        box_height=1,
 ):
     params = parameters.refine_raw_params(raw_params)
     cell_d = 2 * params["cell_r"]
@@ -33,7 +36,8 @@ def rust_comparison_test(
     )
     params["cell_group_bbox"] = cell_group_bbox
 
-    an_environment = environment.Environment(params)
+    an_environment = environment.Environment(out_dir, name,
+                                             log_level, params)
 
     an_environment.execute_system_dynamics()
 

@@ -2,42 +2,56 @@ import experiment_templates as ets
 import hardio as fw
 import numpy as np
 import argparse
+import os
 
+print("Simulating with Python model.")
 parser = argparse.ArgumentParser()
-parser.add_argument("t_in_secs",
+parser.add_argument("--name", help="name", type=str)
+parser.add_argument("--final_t",
                     help="simulation run time, in seconds",
                     type=float)
-parser.add_argument("num_int_steps",
-                    help="number of intermediate integration "
-                         "steps in the forward euler timestepper",
+# parser.add_argument("--num_int_steps",
+#                     help="number of intermediate integration "
+#                          "steps in the forward euler timestepper",
+#                     type=float)
+parser.add_argument("--snap_period", help="period between saved snapshots",
                     type=float)
-parser.add_argument("num_cells",
+parser.add_argument("--num_cells",
                     help="number of cells in simulation",
                     type=int)
-parser.add_argument("arrangement",
-                    help="a string specifying the name of the arrangement "
-                         "according to which the simulation is initially set",
-                    type=int)
-parser.add_argument("box_height",
-                    help="height of box in which cells are initially placed",
-                    type=int)
-parser.add_argument("cil",
+# parser.add_argument("--arrangement",
+#                     help="a string specifying the name of the arrangement "
+#                          "according to which the simulation is initially set",
+#                     type=int)
+# parser.add_argument("--box_height",
+#                     help="height of box in which cells are initially placed",
+#                     type=int)
+parser.add_argument("--cil",
                     help="cil mag",
                     type=int)
-parser.add_argument("coa",
+parser.add_argument("--coa",
                     help="coa mag",
                     type=int)
+parser.add_argument("--out_dir", help="python output dir", type=str)
+
 args = parser.parse_args()
 
 T = 2.0
-TIME_IN_SECS = args.t_in_secs
-NUM_TSTEPS = int(TIME_IN_SECS / T)
-NUM_INT_STEPS = args.num_int_steps
+NAME = args.name
+FINAL_T = args.final_t
+SNAP_PERIOD = args.snap_period
+NUM_INT_STEPS = 10
 NUM_CELLS = args.num_cells
 BOX_WIDTH = 2
 BOX_HEIGHT = 1
-COA = 0
-CIL = 0
+COA = args.coa
+CIL = args.cil
+OUT_DIR = os.path.normpath(args.out_dir)
+if not os.path.exists(OUT_DIR):
+    print("creating non-existent out dir: {}".format(OUT_DIR))
+    os.mkdir(OUT_DIR)
+else:
+    print("out dir: {}".format(OUT_DIR))
 
 L = 1e-6
 F = 1e-9
@@ -50,6 +64,8 @@ INIT_RAC = np.array([0.3 / 4.0] * 4 + [0.0] * (16 - 4))
 NVERTS = 16
 RAND_SCHEME = None
 
+LOG_LEVEL = fw.NO_LOG
+
 
 def u(x):
     if x > 0:
@@ -60,7 +76,7 @@ def u(x):
 
 params = dict([
     ("16", NVERTS),
-    ("num_tsteps", NUM_TSTEPS),
+    ("final_t", FINAL_T),
     ("num_cells", NUM_CELLS),
     ("num_int_steps", NUM_INT_STEPS),
     ("t", T),
@@ -71,11 +87,10 @@ params = dict([
     ("k_mem_on", K_MEM_ON),
     ("k_mem_off", K_MEM_OFF),
     ("kgtp", KGTP),
-    ("kdgtp", KGTP),
     ("cil_mag", CIL),
     ("coa_mag", COA),
     ("coa_los_penalty", 2.0 * u(COA)),
-    ("coa_range", 220e-6 * u(COA)),
+    ("coa_halfmax_dist", 0.5 * 220e-6 * u(COA)),
     ("close_zero_at", 1.5e-6),
     ("close_one_at", 0.5e-6),
     ("randomization", False),
@@ -114,6 +129,7 @@ params = dict([
     ("init_rac", INIT_RAC),
     ("init_rho", np.roll(INIT_RAC, 8)),
     ("vertex_eta", 2.9),
+    ("snap_period", SNAP_PERIOD),
 ])
 
 # coa_dict = {
@@ -131,6 +147,9 @@ if __name__ == "__main__":
 
     ets.rust_comparison_test(
         params,
+        OUT_DIR,
+        NAME,
+        99,
         box_width=BOX_WIDTH,
         box_height=BOX_HEIGHT,
     )
