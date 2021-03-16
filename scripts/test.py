@@ -6,13 +6,13 @@ import os
 import subprocess
 import toml
 
-
+run_experiments = True
+exec_mode = "release"
 root_dir = os.getcwd()
-exp_tomls = ["py_comp_2_long", "py_comp_2_long_reduced_cil"]
+exp_tomls = ["py_comp_1_rkdp5", "py_comp_1_euler"]
 for exp_toml in exp_tomls:
-    exec_mode = "release"
     exec_path = os.path.join(root_dir, "target", exec_mode, "executor.exe")
-    if True:
+    if run_experiments:
         build_out = subprocess.run(["cargo", "build"] + make_exec_mode_arg(
             exec_mode) + ["-p", "executor"])
         run_out = subprocess.run([exec_path] +

@@ -8,15 +8,16 @@ use crate::parameters::{
     CharQuantities, RawCloseBounds, RawInteractionParams,
     RawParameters, RawPhysicalContactParams,
 };
-use crate::utils::pcg32::Pcg32;
-use crate::{Directories, NVERTS};
-use rand::SeedableRng;
+use crate::Directories;
 
 use crate::exp_setup::defaults::{
     ADH_MAG, CHAR_QUANTS, PHYS_CLOSE_DIST,
     RAW_COA_PARAMS_WITH_ZERO_MAG, RAW_PARAMS, RAW_WORLD_PARAMS,
 };
 use crate::exp_setup::exp_parser::ExperimentArgs;
+use crate::exp_setup::markers::mark_verts;
+use crate::utils::pcg32::Pcg32;
+use rand::SeedableRng;
 
 /// Generate the group layout to use for this experiment.
 fn group_bbox(
@@ -45,12 +46,8 @@ fn group_bbox(
 }
 
 fn raw_params(group_ix: usize, randomization: bool) -> RawParameters {
-    #![allow(unused_attributes)]
-    #[macro_use]
-    use crate::mark_verts;
-
-    let right = mark_verts!(0, 1, 2, 3);
-    let left = mark_verts!(8, 9, 10, 11);
+    let right = mark_verts(vec![0, 1, 2, 3]);
+    let left = mark_verts(vec![8, 9, 10, 11]);
 
     let (specific_rac, specific_rho) = match group_ix {
         0 => (right, left),
@@ -68,8 +65,8 @@ fn raw_params(group_ix: usize, randomization: bool) -> RawParameters {
 
     RAW_PARAMS
         .modify_randomization(randomization)
-        .modify_init_rac(init_rac)
-        .modify_init_rho(init_rho)
+        .modify_init_rac_acts(init_rac)
+        .modify_init_rho_acts(init_rho)
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -113,6 +110,7 @@ pub fn generate(
         coa_mag,
         adh_scale,
         cal_mag,
+        randomization,
         seeds,
         toml_name,
         snap_period,
@@ -137,10 +135,7 @@ pub fn generate(
     seeds
         .iter()
         .map(|&seed| {
-            let (rng, randomization) = match seed {
-                Some(s) => (Pcg32::seed_from_u64(s), true),
-                None => (Pcg32::from_entropy(), false),
-            };
+            let rng = Pcg32::seed_from_u64(seed);
 
             let char_quants = *CHAR_QUANTS;
             let raw_world_params = RAW_WORLD_PARAMS
@@ -167,15 +162,9 @@ pub fn generate(
                 num_cells,
             );
 
-            let seed_string = if let Some(i) = seed {
-                i.to_string()
-            } else {
-                "None".to_string()
-            };
-
             Experiment {
                 ty: (&ty).clone(),
-                name: format!("{}_seed={}", toml_name, seed_string,),
+                name: format!("{}_seed={}", toml_name, seed,),
                 final_t,
                 char_quants,
                 world_params,

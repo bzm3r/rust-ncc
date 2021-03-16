@@ -1,0 +1,27 @@
+description = "one cell experiment"
+experiment_type = "NCells"
+final_t = 5400
+num_cells = 1
+cil = 60
+coa = 24
+snap_period = 10
+randomization = true
+seeds = [7, 77, 777]
+
+[rgtp_distrib_defs]
+[rgtp_distrib_def.rac]
+[rgtp_distrib_def.rac.acts]
+[rgtp_distrib_def.rac.inacts]
+[rgtp_distrib_def.rho]
+[rgtp_distrib_def.rac.acts]
+[rgtp_distrib_def.rac.inacts]
+
+[int_opts]
+integrator = "Rkdp5"
+
+[[ani-opts]]
+label_verts = false
+label_cells = false
+follow_group = true
+show_trails = false
+rgtp_scale = 50

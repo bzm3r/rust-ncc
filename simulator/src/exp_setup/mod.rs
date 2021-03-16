@@ -6,7 +6,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use crate::exp_setup::exp_parser::ExperimentArgs;
+use crate::exp_setup::exp_parser::{ExperimentArgs, RgtpDistribDefs};
 use crate::math::v2d::V2d;
 use crate::parameters::{
     CharQuantities, Parameters, WorldParameters,
@@ -16,9 +16,9 @@ use crate::world::IntegratorOpts;
 use crate::Directories;
 
 pub mod defaults;
-pub mod markers;
-//pub mod n_cells;
 pub mod exp_parser;
+pub mod markers;
+pub mod n_cells;
 pub mod pair;
 pub mod py_compare;
 
@@ -28,9 +28,12 @@ use std::path::PathBuf;
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub enum ExperimentType {
-    NCells,
+    NCells {
+        num_cells: usize,
+    },
     Pair {
         sep_in_cell_diams: usize,
+        rgtp_distrib_defs_per_cell: Vec<RgtpDistribDefs>,
     },
     PyCompare {
         num_cells: usize,
@@ -46,14 +49,12 @@ pub fn generate(
 ) -> Vec<Experiment> {
     dirs.make();
     match &args.ty {
-        ExperimentType::NCells => {
-            unimplemented!()
+        ExperimentType::NCells { .. } => {
+            n_cells::generate(dirs, args)
         }
-        ExperimentType::Pair { .. } => {
-            pair::generate(dirs, args.into())
-        }
+        ExperimentType::Pair { .. } => pair::generate(dirs, args),
         ExperimentType::PyCompare { .. } => {
-            py_compare::generate(dirs, args.into())
+            py_compare::generate(dirs, args)
         }
     }
 }
@@ -97,7 +98,7 @@ pub struct Experiment {
     pub rng: Pcg32,
     /// Seed that was used to initialize rng, if it generated from a
     /// seed.
-    pub seed: Option<u64>,
+    pub seed: u64,
     pub snap_period: Time,
     pub max_on_ram: usize,
     pub int_opts: IntegratorOpts,

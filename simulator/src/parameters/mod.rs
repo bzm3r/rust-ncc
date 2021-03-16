@@ -463,9 +463,9 @@ pub struct Parameters {
     pub kdgtp_rac_on_rho: f64,
     /// Enable randomization of bursts in Rac1 activity?
     pub randomization: bool,
-    /// Average time between random events, in timesteps.
+    /// Average time between random events, in timepoints.
     pub rand_avg_t: f64,
-    /// Standard deviation of time between random events, in timesteps.
+    /// Standard deviation of time between random events, in timepoints.
     pub rand_std_t: f64,
     /// Magnitude of factor randomly applied to Rac1 activation rate.
     pub rand_mag: f64,

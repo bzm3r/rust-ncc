@@ -17,11 +17,13 @@ pub fn mark_between_angles(
 
 pub const ALL: [bool; NVERTS] = [true; NVERTS];
 
-#[macro_export]
-macro_rules! mark_verts {
-    ( $( $x:literal ),* ) => {{
-        let mut marks = [false; NVERTS];
-        $(marks[$x] = true;)*
-        marks
-    }};
+pub fn mark_verts(verts: Vec<usize>) -> [bool; NVERTS] {
+    if verts.len() > NVERTS {
+        panic!("verts.len() = {} > NVERTS = {}", verts.len(), NVERTS);
+    }
+    let mut r = [false; NVERTS];
+    for v in verts {
+        r[v] = true;
+    }
+    r
 }

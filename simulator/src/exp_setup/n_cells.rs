@@ -18,21 +18,18 @@ use rand::SeedableRng;
 fn group_bbox(
     num_cells: usize,
     char_quants: &CharQuantities,
-    bottom_left: (Length, Length),
-    width: usize,
-    height: usize,
 ) -> Result<GroupBBox, String> {
-    // specify initial location of group bottom left
-    let bottom_left = V2d {
-        x: char_quants.normalize(&bottom_left.0),
-        y: char_quants.normalize(&bottom_left.1),
+    // specify initial location of group centroid
+    let centroid = V2d {
+        x: char_quants.normalize(&Length(0.0)),
+        y: char_quants.normalize(&Length(0.0)),
     };
+    let side_len = (num_cells as f64).sqrt();
     let r = GroupBBox {
-        width,
-        height,
-        bottom_left,
+        width: side_len.ceil() as usize,
+        height: (num_cells as f64 / side_len).ceil() as usize,
+        bottom_left: centroid,
     };
-
     if r.width * r.height < num_cells {
         Err(String::from(
             "Group layout area is too small to contain required number of cells.",
@@ -44,7 +41,7 @@ fn group_bbox(
 
 fn raw_params(
     rng: &mut Pcg32,
-    rgtp_distrib_defs: &RgtpDistribDefs,
+    rgtp_distrib_defns: &RgtpDistribDefs,
     randomization: bool,
 ) -> RawParameters {
     let RgtpDistribDefs {
@@ -52,7 +49,7 @@ fn raw_params(
         rac_inacts,
         rho_acts,
         rho_inacts,
-    } = rgtp_distrib_defs;
+    } = rgtp_distrib_defns;
 
     let init_rac = RgtpDistribution::new(
         rac_acts.into_distrib(rng),
@@ -69,67 +66,24 @@ fn raw_params(
         .modify_init_rho(init_rho)
 }
 
-#[allow(clippy::too_many_arguments)]
-fn make_cell_group(
-    rng: &mut Pcg32,
-    char_quants: &CharQuantities,
-    randomization: bool,
-    rgtp_distrib_defs: &RgtpDistribDefs,
-    bot_left: (Length, Length),
-    num_cells: usize,
-    box_width: usize,
-    box_height: usize,
-) -> CellGroup {
-    let raw_params =
-        raw_params(rng, rgtp_distrib_defs, randomization);
-    let parameters = raw_params.refine(char_quants);
-    CellGroup {
-        num_cells,
-        layout: group_bbox(
-            num_cells,
-            char_quants,
-            bot_left,
-            box_width,
-            box_height,
-        )
-        .unwrap(),
-        parameters,
-    }
-}
-
 /// Define the cell groups that will exist in this experiment.
 fn make_cell_groups(
     rng: &mut Pcg32,
     char_quants: &CharQuantities,
-    rgtp_distrib_defs_per_cell: &[RgtpDistribDefs],
+    num_cells: usize,
+    rgtp_distrib_defns: &RgtpDistribDefs,
     randomization: bool,
-    sep_in_cell_diams: usize,
 ) -> Vec<CellGroup> {
-    let group_zero = make_cell_group(
-        rng,
-        char_quants,
-        randomization,
-        &rgtp_distrib_defs_per_cell[0],
-        (Length(0.0), Length(0.0)),
-        1,
-        1,
-        1,
-    );
-    let group_one = make_cell_group(
-        rng,
-        char_quants,
-        randomization,
-        &rgtp_distrib_defs_per_cell[1],
-        (
-            Length(0.0),
-            defaults::CELL_DIAMETER.scale(sep_in_cell_diams as f64),
-        ),
-        1,
-        1,
-        1,
-    );
-
-    vec![group_zero, group_one]
+    vec![CellGroup {
+        num_cells,
+        layout: group_bbox(num_cells, char_quants).unwrap(),
+        parameters: raw_params(
+            rng,
+            rgtp_distrib_defns,
+            randomization,
+        )
+        .refine(char_quants),
+    }]
 }
 
 pub fn generate(
@@ -146,22 +100,22 @@ pub fn generate(
         adh_scale,
         snap_period,
         max_on_ram,
-        randomization,
+        rgtp_distrib_defs: rgtp_distribs,
         seeds,
         int_opts,
-        ..
+        randomization,
     } = args;
 
-    let (sep_in_cell_diams, rgtp_distrib_defs_per_cell) =
-        if let ExperimentType::Pair {
-            sep_in_cell_diams,
-            rgtp_distrib_defs_per_cell,
-        } = &ty
-        {
-            (*sep_in_cell_diams, rgtp_distrib_defs_per_cell.clone())
-        } else {
-            panic!("Expected a Pair experiment, but got: {:?}", ty)
-        };
+    let num_cells = if let ExperimentType::NCells { num_cells } = &ty
+    {
+        *num_cells
+    } else {
+        panic!("Expected an n_cell experiment, but got: {:?}", ty)
+    };
+    println!("cil_mag: {:?}", cil_mag);
+    println!("coa_mag: {:?}", coa_mag);
+    println!("cal_mag: {:?}", cal_mag);
+    println!("adh_scale: {:?}", adh_scale);
 
     seeds
         .iter()
@@ -169,9 +123,8 @@ pub fn generate(
             let mut rng = Pcg32::seed_from_u64(seed);
 
             let char_quants = *defaults::CHAR_QUANTS;
-            let raw_world_params = *defaults::RAW_WORLD_PARAMS;
-            raw_world_params.modify_interactions(
-                RawInteractionParams {
+            let raw_world_params = defaults::RAW_WORLD_PARAMS
+                .modify_interactions(RawInteractionParams {
                     coa: coa_mag.map(|mag| {
                         RAW_COA_PARAMS_WITH_ZERO_MAG.modify_mag(mag)
                     }),
@@ -188,15 +141,30 @@ pub fn generate(
                         cal_mag,
                         cil_mag,
                     },
-                },
+                });
+            println!(
+                "raw_world_params.interactions.cil: {:?}",
+                raw_world_params.interactions.phys_contact.cil_mag
+            );
+            println!(
+                "raw_world_params.interactions.coa: {:?}",
+                raw_world_params.interactions.coa
+            );
+            println!(
+                "raw_world_params.interactions.cal: {:?}",
+                raw_world_params.interactions.phys_contact.cal_mag
+            );
+            println!(
+                "raw_world_params.interactions.adh: {:?}",
+                raw_world_params.interactions.phys_contact.adh_mag
             );
             let world_params = raw_world_params.refine(&char_quants);
             let cgs = make_cell_groups(
                 &mut rng,
                 &char_quants,
-                &rgtp_distrib_defs_per_cell,
+                num_cells,
+                &rgtp_distribs,
                 randomization,
-                sep_in_cell_diams,
             );
 
             Experiment {

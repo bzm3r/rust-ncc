@@ -5,7 +5,48 @@ sep_in_cell_diams = 2
 cil = 60
 coa = 24
 snap_period = 10
-seeds = [{}]
+randomization = false
+seeds = [7]
+
+[[rgtp_distrib_defs_per_cell]]
+[rgtp_distrib_defs_per_cell.rgtp_distrib_def.rac]
+[rgtp_distrib_defs_per_cell.rgtp_distrib_def.rac.acts]
+ty = "SpecificUniform"
+frac = 0.1
+marked_verts = [14, 15, 0, 1, 2]
+[rgtp_distrib_defs_per_cell.rgtp_distrib_def.rac.inacts]
+ty = "SpecificUniform"
+frac = 0.1
+marked_verts = [14, 15, 0, 1, 2]
+[rgtp_distrib_defs_per_cell.rgtp_distrib_def.rho]
+[rgtp_distrib_defs_per_cell.rgtp_distrib_def.rho.acts]
+ty = "SpecificUniform"
+frac = 0.1
+marked_verts = [6, 7, 8, 9, 10]
+[rgtp_distrib_defs_per_cell.rgtp_distrib_def.rho.inacts]
+ty = "SpecificUniform"
+frac = 0.1
+marked_verts = [6, 7, 8, 9, 10]
+
+[[rgtp_distrib_defs_per_cell]]
+[rgtp_distrib_def.rac]
+[rgtp_distrib_def.rac.acts]
+ty = "SpecificUniform"
+frac = 0.1
+marked_verts = [6, 7, 8, 9, 10]
+[rgtp_distrib_def.rac.inacts]
+ty = "SpecificUniform"
+frac = 0.1
+marked_verts = [6, 7, 8, 9, 10]
+[rgtp_distrib_def.rho]
+[rgtp_distrib_def.rho.acts]
+ty = "SpecificUniform"
+frac = 0.1
+marked_verts = [14, 15, 0, 1, 2]
+[rgtp_distrib_def.rho.inacts]
+ty = "SpecificUniform"
+frac = 0.1
+marked_verts = [14, 15, 0, 1, 2]
 
 [int_opts]
 integrator = "Rkdp5"
@@ -15,18 +56,4 @@ label_verts = false
 label_cells = false
 follow_group = true
 show_trails = false
-rgtp_scale = 50
-
-[[ani-opts]]
-label_verts = false
-label_cells = false
-follow_group = true
-show_trails = true
-rgtp_scale = 50
-
-[[ani-opts]]
-label_verts = false
-label_cells = false
-follow_group = false
-show_trails = true
 rgtp_scale = 50
