@@ -20,6 +20,8 @@ use std::path::PathBuf;
 use toml::value::Table;
 use toml::Value;
 
+pub struct ParsedExpArgs {}
+
 fn get_exp_type(
     raw_exp_args: &Table,
 ) -> Result<ExperimentType, ParseErr> {
@@ -173,13 +175,11 @@ pub fn get_rgtp_distrib(
                     marked_verts: get_marked_verts(&raw_distrib)
                         .unwrap(),
                 },
-                "SpecificUniform" => {
-                    DistribDef::SpecificUniform {
-                        frac,
-                        marked_verts: get_marked_verts(&raw_distrib)
-                            .unwrap(),
-                    }
-                }
+                "SpecificUniform" => DistribDef::SpecificUniform {
+                    frac,
+                    marked_verts: get_marked_verts(&raw_distrib)
+                        .unwrap(),
+                },
                 s => Err(ParseErr::UnknownRgtpDistribDefn(s.into()))
                     .unwrap(),
             }
@@ -332,14 +332,12 @@ impl DistribDef {
     pub fn into_distrib(self, rng: &mut Pcg32) -> [f64; NVERTS] {
         match self {
             DistribDef::Random { frac } => random(rng, frac),
-            DistribDef::SpecificRandom {
-                frac,
-                marked_verts,
-            } => specific_random(rng, frac, mark_verts(marked_verts)),
-            DistribDef::SpecificUniform {
-                frac,
-                marked_verts,
-            } => specific_uniform(frac, mark_verts(marked_verts)),
+            DistribDef::SpecificRandom { frac, marked_verts } => {
+                specific_random(rng, frac, mark_verts(marked_verts))
+            }
+            DistribDef::SpecificUniform { frac, marked_verts } => {
+                specific_uniform(frac, mark_verts(marked_verts))
+            }
         }
     }
 }
@@ -361,4 +359,3 @@ pub struct RgtpDistribDefs {
     rac: RgtpDistribDef,
     rho: RgtpDistribDef,
 }
-

@@ -12,6 +12,7 @@ exclude = [
     "./playground/cbor_read_write",
     "./playground/bincode_read",
     "./playground/modify_derive_test",
+    "./playground/json_tests",
 ]
 
 [profile.release]
