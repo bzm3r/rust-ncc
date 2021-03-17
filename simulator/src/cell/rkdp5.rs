@@ -3,7 +3,7 @@ use crate::cell::{chemistry::RacRandState, states::Core};
 use crate::interactions::Interactions;
 use crate::math::min_f64;
 use crate::parameters::{Parameters, WorldParameters};
-use crate::world::Rkdp5Opts;
+use crate::world::RkOpts;
 
 type CellDynamicsFn = fn(
     state: &Core,
@@ -200,9 +200,9 @@ pub fn integrator(
     interactions: &Interactions,
     world_parameters: &WorldParameters,
     parameters: &Parameters,
-    int_opts: Rkdp5Opts,
+    int_opts: RkOpts,
 ) -> Solution {
-    let Rkdp5Opts {
+    let RkOpts {
         max_iters,
         atol,
         rtol,

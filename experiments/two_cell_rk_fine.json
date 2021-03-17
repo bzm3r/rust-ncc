@@ -1,8 +1,8 @@
 {
-  "description": "one cell experiment",
+  "description": "two cell experiment",
   "ty": {
     "NCells": {
-      "num_cells": 1
+      "num_cells": 2
     }
   },
   "final_t": 5400,
@@ -10,7 +10,7 @@
   "coa_mag": 24,
   "snap_period": 10,
   "randomization": true,
-  "seeds": [7, 77, 777],
+  "seeds": [7],
   "rgtp_distrib_defs": {
     "rac": {
       "acts": {
@@ -38,7 +38,11 @@
     }
   },
   "int_opts": {
-    "RkDp5": {}
+    "RkDp5": {
+      "rtol": 1e-6,
+      "atol": 1e-6,
+      "max_iters": 100
+    }
   },
   "ani_opts": [
     {

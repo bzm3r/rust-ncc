@@ -1,15 +1,15 @@
 {
   "description": "one cell experiment",
-  "experiment_type": {
+  "ty": {
     "NCells": {
       "num_cells": 1
     }
   },
-  "final_t": 5400,
-  "cil": 60,
-  "coa": 24,
+  "final_t": 100,
+  "cil_mag": 60,
+  "coa_mag": 24,
   "snap_period": 10,
-  "randomization": true,
+  "randomization": false,
   "seeds": [7, 77, 777],
   "rgtp_distrib_defs": {
     "rac": {

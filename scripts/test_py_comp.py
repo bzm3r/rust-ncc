@@ -8,15 +8,8 @@ import orjson
 
 run_experiments = True
 exec_mode = "release"
-
 root_dir = os.getcwd()
-out_dir = os.path.join(root_dir, "output")
-exp_jsons = ["two_cell_euler_ufine"]
-poly_ls = ["-", ":"]
-
-vec_ani_opts = []
-sim_dats = []
-
+exp_jsons = ["py_comp_1_rkdp5", "py_comp_1_euler"]
 for exp_json in exp_jsons:
     exec_path = os.path.join(root_dir, "target", exec_mode, "executor.exe")
     if run_experiments:
@@ -32,7 +25,19 @@ for exp_json in exp_jsons:
         json_str = f.read()
 
     exp_dict = orjson.loads(json_str)
-    seeds, file_names = determine_file_names(exp_json, exp_dict)
-    for (ix, file_name) in enumerate(file_names):
-        sim_dat = SimulationData()
-        sim_dat.load_rust_dat(out_dir, file_name)
+    file_names = determine_file_names(exp_json, exp_dict)
+    out_dir = os.path.join(root_dir, "output")
+    for file_name in file_names:
+        rust_dat = SimulationData()
+        rust_dat.load_rust_dat(out_dir, file_name)
+        rust_dat.tag = "rust"
+        py_dat = SimulationData()
+        py_dat.load_py_dat(out_dir, file_name)
+        py_dat.tag = "python"
+        vec_ani_opts = get_vec_ani_opts(exp_dict)
+        # rust_dat.animate(vec_ani_opts)
+        # py_dat.animate(vec_ani_opts)
+        comp_dat = SharedSimData(out_dir, [rust_dat, py_dat], ["-", ":"],
+                                 file_name +
+                                 "_rust_and_py")
+        comp_dat.animate(vec_ani_opts)

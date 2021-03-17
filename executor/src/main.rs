@@ -37,26 +37,29 @@ fn main() {
     let cfg_path = parsed_args
         .value_of("config")
         .map_or_else(|| default_cfg_path, PathBuf::from);
-    let directories = Directories::try_from(&cfg_path).unwrap();
+    let directories = Directories::try_from(&cfg_path).map_or_else(
+        |e| panic!("{}: {:?}", &cfg_path.display(), e),
+        |d| d,
+    );
 
-    let exp_tomls: Vec<String> = parsed_args
+    let exp_jsons: Vec<String> = parsed_args
         .values_of("experiments")
         .unwrap()
         .map(|s| s.into())
         .collect();
 
-    let mut exp_toml_args = vec![];
-    for exp_toml in exp_tomls.iter() {
+    let mut exp_json_args = vec![];
+    for exp_json in exp_jsons.iter() {
         let fp: PathBuf = [
             &directories.exp,
-            &PathBuf::from(format!("{}.toml", exp_toml)),
+            &PathBuf::from(format!("{}.json", exp_json)),
         ]
         .iter()
         .collect();
-        exp_toml_args.push(ExperimentArgs::try_from(&fp).unwrap());
+        exp_json_args.push(ExperimentArgs::try_from(&fp).unwrap());
     }
 
-    for exp_args in exp_toml_args {
+    for exp_args in exp_json_args {
         let exps = exp_setup::generate(directories.clone(), exp_args);
 
         for exp in exps {

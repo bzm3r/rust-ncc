@@ -4,19 +4,15 @@ pub mod hardio;
 pub mod interactions;
 pub mod math;
 pub mod parameters;
-pub mod toml_parse;
 pub mod utils;
 pub mod world;
 
-use crate::toml_parse::{
-    get_value, parse_path, parse_table, ParseErr,
-};
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
+use std::error;
 use std::fs::{create_dir_all, OpenOptions};
 use std::io::Read;
 use std::path::PathBuf;
-use toml::Value;
 
 /// Number of vertices per model cell.
 pub const NVERTS: usize = 16;
@@ -39,45 +35,15 @@ impl Directories {
 }
 
 impl TryFrom<&PathBuf> for Directories {
-    type Error = ParseErr;
+    type Error = Box<dyn error::Error>;
 
-    fn try_from(toml_path: &PathBuf) -> Result<Self, Self::Error> {
-        let mut f = OpenOptions::new()
-            .read(true)
-            .open(toml_path)
-            .map_err(|e| {
-                ParseErr::FileOpen(format!(
-                    "{:?}: {}",
-                    e,
-                    toml_path.to_str().unwrap()
-                ))
-            })?;
-        let raw_cfg = {
-            let mut out = String::new();
-            let _ = f.read_to_string(&mut out).map_err(|_| {
-                ParseErr::FileParse(String::from(
-                    toml_path.to_str().unwrap(),
-                ))
-            })?;
-            let value = out.parse::<Value>().map_err(|_| {
-                ParseErr::FileParse(String::from(
-                    toml_path.to_str().unwrap(),
-                ))
-            })?;
-            parse_table(&value)?
-        };
-        let out = {
-            let value = get_value(&raw_cfg, "out_dir")?;
-            parse_path(&value)?
-        };
-        let exp = {
-            let value = get_value(&raw_cfg, "exp_dir")?;
-            parse_path(&value)?
-        };
-        let py_main = {
-            let value = get_value(&raw_cfg, "py_main")?;
-            parse_path(&value)?
-        };
-        Ok(Directories { out, exp, py_main })
+    fn try_from(
+        json_path: &PathBuf,
+    ) -> Result<Self, Box<dyn error::Error>> {
+        let mut f = OpenOptions::new().read(true).open(json_path)?;
+        let mut json_out = String::new();
+        f.read_to_string(&mut json_out)?;
+        let directories = serde_json::from_str(&json_out)?;
+        Ok(directories)
     }
 }

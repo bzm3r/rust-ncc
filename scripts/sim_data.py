@@ -16,15 +16,41 @@ class SimulationData:
     mp4_file_path = None
     dat_file_path = None
     tpoints = None
+    
     poly_per_c_per_s = None
     centroids_per_c_per_s = None
     uivs_per_c_per_s = None
     uovs_per_c_per_s = None
+    
     rac_acts_per_c_per_s = None
+    rac_inacts_per_c_per_s = None
     rac_act_arrows_per_c_per_s = None
+    
     rho_acts_per_c_per_s = None
+    rho_inacts_per_c_per_s = None
     rho_act_arrows_per_c_per_s = None
-    adhs_per_c_per_s = None
+
+    kgtps_rac_per_c_per_s = None
+    kdgtps_rac_per_c_per_s = None
+    kgtps_rho_per_c_per_s = None
+    kdgtps_rho_per_c_per_s = None
+    rac_act_net_fluxes_per_c_per_s = None
+    rac_inact_net_fluxes_per_c_per_s = None
+    rho_act_net_fluxes_per_c_per_s = None
+    rho_inact_net_fluxes_per_c_per_s = None
+    x_tens_per_c_per_s = None
+    
+    x_cils_per_c_per_s = None
+    x_coas_per_c_per_s = None
+    x_adhs_per_c_per_s = None
+
+    edge_strains_per_c_per_s = None
+    rgtp_forces_per_c_per_s = None
+    edge_forces_per_c_per_s = None
+    cyto_forces_per_c_per_s = None
+    sum_forces_per_c_per_s = None
+    avg_tens_strain_per_c_per_s = None
+
     snap_ix = None
     default_xlim = None
     default_ylim = None
@@ -38,7 +64,7 @@ class SimulationData:
     snap_period = None
     char_t = None
 
-    def load_data(self, out_dir, file_name):
+    def load_dat(self, out_dir, file_name):
         self.out_dir = out_dir
         self.file_name = file_name
         self.cbor_file_path = self.file_name + ".cbor"
@@ -91,16 +117,62 @@ class SimulationData:
         self.uovs_per_c_per_s = -1 * self.uivs_per_c_per_s
         self.rac_acts_per_c_per_s = \
             cb.extract_scalars_from_data(['core', 'rac_acts'], data)
+        self.rac_inacts_per_c_per_s = \
+            cb.extract_scalars_from_data(['core', 'rac_inacts'], data)
         self.rac_act_arrows_per_c_per_s = \
             self.rac_acts_per_c_per_s[:, :, :, np.newaxis] * \
             self.uovs_per_c_per_s
         self.rho_acts_per_c_per_s = \
             cb.extract_scalars_from_data(['core', 'rho_acts'], data)
+        self.rho_acts_per_c_per_s = \
+            cb.extract_scalars_from_data(['core', 'rho_inacts'], data)
         self.rho_act_arrows_per_c_per_s = \
             self.rho_acts_per_c_per_s[:, :, :, np.newaxis] * \
             self.uivs_per_c_per_s
-        self.adhs_per_c_per_s = \
+
+        self.x_cils_per_c_per_s = \
+            cb.extract_scalars_from_data(['interactions', 'x_cils'], data)
+        self.x_coas_per_c_per_s = \
+            cb.extract_scalars_from_data(['interactions', 'x_coas'], data)
+        self.x_adhs_per_c_per_s = \
             cb.extract_p2ds_from_data(['interactions', 'x_adhs'], data)
+
+        self.kgtps_rac_per_c_per_s = \
+            cb.extract_scalars_from_data(['core', 'chem', 'kgtps_rac'], data)
+        self.kdgtps_rac_per_c_per_s = \
+            cb.extract_scalars_from_data(['core', 'chem', 'kdgtps_rac'], data)
+        self.kgtps_rho_per_c_per_s = \
+            cb.extract_scalars_from_data(['core', 'chem', 'kgtps_rho'], data)
+        self.kdgtps_rho_per_c_per_s = \
+            cb.extract_scalars_from_data(['core', 'chem', 'kdgtps_rho'], data)
+
+        self.rac_act_net_fluxes_per_c_per_s = \
+            cb.extract_scalars_from_data(['core', 'chem', 'rac_act_net_fluxes'],
+                                      data)
+        self.rac_inact_net_fluxes_per_c_per_s = \
+            cb.extract_scalars_from_data(['core', 'chem',
+                                       'rac_inact_net_fluxes'], data)
+        self.rho_act_net_fluxes_per_c_per_s = \
+            cb.extract_scalars_from_data(['core', 'chem', 'rho_act_net_fluxes'],
+                                      data)
+        self.rho_inact_net_fluxes_per_c_per_s = \
+            cb.extract_scalars_from_data(['core', 'chem',
+                                          'rho_inact_net_fluxes'], data)
+
+        self.x_tens_per_c_per_s = \
+            cb.extract_scalars_from_data(['core', 'chem', 'x_tens'], data)
+        self.edge_strains_per_c_per_s = \
+            cb.extract_scalars_from_data(['core', 'mech', 'x_tens'], data)
+        self.rgtp_forces_per_c_per_s = \
+            cb.extract_p2ds_from_data(['core', 'mech', 'x_tens'], data)
+        self.edge_forces_per_c_per_s = \
+            cb.extract_p2ds_from_data(['core', 'mech', 'x_tens'], data)
+        self.cyto_forces_per_c_per_s = \
+            cb.extract_p2ds_from_data(['core', 'mech', 'x_tens'], data)
+        self.sum_forces_per_c_per_s = \
+            cb.extract_p2ds_from_data(['core', 'mech', 'x_tens'], data)
+        self.avg_tens_strain_per_c_per_s = \
+            cb.extract_scalars_from_data(['core', 'mech', 'x_tens'], data)
 
     def load_rust_dat(self, out_dir, file_name):
         self.out_dir = out_dir
@@ -162,7 +234,7 @@ class SimulationData:
         self.rho_act_arrows_per_c_per_s = \
             self.rho_acts_per_c_per_s[:, :, :, np.newaxis] * \
             self.uivs_per_c_per_s
-        self.adhs_per_c_per_s = \
+        self.x_adhs_per_c_per_s = \
             cb.extract_p2ds_from_data(['interactions', 'x_adhs'], data)
 
     def load_py_dat(self, out_dir, file_name):
@@ -204,7 +276,7 @@ class SimulationData:
         self.rho_act_arrows_per_c_per_s = \
             self.rho_acts_per_c_per_s[:, :, :, np.newaxis] * \
             self.uivs_per_c_per_s
-        self.adhs_per_c_per_s = np.zeros_like(self.poly_per_c_per_s)
+        self.x_adhs_per_c_per_s = np.zeros_like(self.poly_per_c_per_s)
 
     def probe(self, ani_opts):
         self.ani_opts = ani_opts
@@ -287,7 +359,7 @@ class SimulationData:
         for poly_ix, poly, adhs in zip(
                 np.arange(0, len(self.poly_per_c_per_s[0])),
                 self.poly_per_c_per_s[snap_ix],
-                self.adhs_per_c_per_s[snap_ix]):
+                self.x_adhs_per_c_per_s[snap_ix]):
             if poly_ix == 0:
                 adh_arrow_color = "magenta"
             else:
@@ -424,6 +496,16 @@ class SharedSimData:
         self.mp4_file_name = mp4_file_name
         self.poly_line_styles = poly_line_styles
 
+        self.vert_plot_ix = 0
+        self.curr_inner_ix = 0
+        self.plot_x_max = 0
+        self.dat_group_ix = 0
+        self.cell_plot_ix = 0
+        self.num_cells = 0
+        self.dat_groups = 0
+        self.active_dat_group_ix = 0
+        self.num_label_groups = 0
+
         self.common_ts, self.snap_ixs_per_sim = self.get_common_snaps()
         self.snap_ix = 0
         self.default_xlim = [-40, 200]
@@ -448,6 +530,138 @@ class SharedSimData:
         # common time points shared by all simulations
         common_ts, snap_ixs_per_sim = find_common_ts(cropped_ixs_ts_per_sim)
         return common_ts, snap_ixs_per_sim
+
+    def investigate(self, d_vertex_plot, d_data_plot, d_max_plot, 
+                    d_cell_plot, d_data_group_plot):
+        ax.cla()
+    
+        if abs(d_data_group_plot) > 0:
+            DATA_GROUP_IX = (DATA_GROUP_IX + d_data_group_plot) % len(
+                DATA_GROUPS)
+            ACTIVE_DG = DATA_GROUPS[DATA_GROUP_IX]
+            print(ACTIVE_DG.labels)
+            NUM_LABEL_GROUPS = len(ACTIVE_DG.label_groups)
+            CURR_INNER_IX = 0
+    
+        CURR_INNER_IX = (CURR_INNER_IX + d_data_plot) % NUM_LABEL_GROUPS
+        label_group = ACTIVE_DG.label_groups[CURR_INNER_IX]
+    
+        VERT_PLOT_IX = (VERT_PLOT_IX + d_vertex_plot) % len(
+            VERTEX_PLOT_TYPE)
+        CELL_PLOT_IX = (CELL_PLOT_IX + d_cell_plot) % len(CELL_PLOT_TYPE)
+    
+        vert = VERTEX_PLOT_TYPE[VERT_PLOT_IX]
+        cell = CELL_PLOT_TYPE[CELL_PLOT_IX]
+    
+        if abs(d_max_plot) > 0:
+            PLOT_X_MAX = (PLOT_X_MAX + d_max_plot) % (
+                    NUM_TSTEPS * NUM_INT_STEPS)
+            for g in DATA_GROUPS:
+                g.recalc_ylims(PLOT_X_MAX)
+    
+        for m in range(NUM_CELLS):
+            if m == cell or cell == "all":
+                py_cell_data = ACTIVE_DG.py_dat[m]
+                rust_cell_data = ACTIVE_DG.rust_dat[m]
+                if type(label_group) != tuple:
+                    tupleized_label_group = (label_group,)
+                else:
+                    tupleized_label_group = label_group
+    
+                for label in tupleized_label_group:
+                    color = gh.LABEL_COLOR_DICT[label]
+                    if len(py_cell_data[label].shape) == 1:
+                        ax.plot(
+                            rust_cell_data[label][:PLOT_X_MAX],
+                            color=color, label=label)
+                        ax.plot(
+                            py_cell_data[label][:PLOT_X_MAX],
+                            color=color,
+                            linestyle="dashed", label=label)
+                    # ax.set_ylim(ACTIVE_DG.grouped_ylims_dict[label_group])
+                    else:
+                        for n in range(16):
+                            if n == vert or vert == "all":
+                                ax.plot(
+                                    rust_cell_data[label][:PLOT_X_MAX, n],
+                                    color=color, label=label)
+                                ax.plot(
+                                    py_cell_data[label][:PLOT_X_MAX, n],
+                                    color=color,
+                                    linestyle="dashed", label=label)
+                                # ax.set_ylim(ACTIVE_DG.grouped_ylims_dict[
+                                # label_group])
+    
+        inter_tick_len = np.max([1, np.ceil(PLOT_X_MAX / 20)])
+        xticks = np.arange(0, PLOT_X_MAX, inter_tick_len)[:20]
+    
+        ax.set_xticks(xticks)
+        ax.grid(which="major", axis="x")
+        ax.legend(loc="best")
+        ax.set_title("{}\n{}, vert: {}, cell: {}".format(ACTIVE_DG.description,
+                                                         label_group,
+                                                         vert, cell))
+        fig.canvas.draw()
+
+
+    def on_press(event):
+        global VERT_PLOT_IX
+        global CURR_INNER_IX
+        global PLOT_X_MAX
+        global DATA_GROUP_IX
+        global CELL_PLOT_IX
+        global fig
+        print("pressed: {}".format(event.key))
+        if event.key == "down":  # vertex plot change
+            paint(-1, 0, 0, 0, 0)
+            print(VERT_PLOT_IX)
+        elif event.key == "up":  # vertex plot change
+            paint(1, 0, 0, 0, 0)
+            print(VERT_PLOT_IX)
+        elif event.key == "left":  # inner data plot
+            paint(0, -1, 0, 0, 0)
+            print(CURR_INNER_IX)
+        elif event.key == "right":  # inner data plot
+            paint(0, 1, 0, 0, 0)
+            print(CURR_INNER_IX)
+        elif event.key == "z":  # max plot
+            paint(0, 0, -1, 0, 0)
+            print(PLOT_X_MAX)
+        elif event.key == "x":  # max plot
+            paint(0, 0, 1, 0, 0)
+            print(PLOT_X_MAX)
+        elif event.key == "c":  # max plot
+            paint(0, 0, -10, 0, 0)
+            print(PLOT_X_MAX)
+        elif event.key == "v":  # max plot
+            paint(0, 0, 10, 0, 0)
+            print(PLOT_X_MAX)
+        elif event.key == "b":  # max plot
+            paint(0, 0, -1000, 0, 0)
+            print(PLOT_X_MAX)
+        elif event.key == "n":  # max plot
+            paint(0, 0, 1000, 0, 0)
+            print(PLOT_X_MAX)
+        elif event.key == "home":  # cell plot
+            paint(0, 0, 0, 1, 0)
+            print(CELL_PLOT_IX)
+        elif event.key == "end":  # cell plot
+            paint(0, 0, 0, -1, 0)
+            print(CELL_PLOT_IX)
+        elif event.key == "pagedown":  # data group
+            paint(0, 0, 0, 0, -1)
+            print(DATA_GROUP_IX)
+        elif event.key == "pageup":  # data group
+            paint(0, 0, 0, 0, 1)
+            print(DATA_GROUP_IX)
+        elif event.key == "r":
+            VERT_PLOT_IX = 0
+            CURR_INNER_IX = 0
+            # PLOT_X_MIN = 0
+            PLOT_X_MAX = NUM_TSTEPS * NUM_INT_STEPS
+            CELL_PLOT_IX = 0
+            DATA_GROUP_IX = 0
+            paint(0, 0, 0, 0, 0)
 
     def combined_paint_animation(self, common_t_ix, ax):
         ax.cla()

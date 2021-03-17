@@ -46,8 +46,8 @@ fn group_bbox(
 }
 
 fn raw_params(group_ix: usize, randomization: bool) -> RawParameters {
-    let right = mark_verts(vec![0, 1, 2, 3]);
-    let left = mark_verts(vec![8, 9, 10, 11]);
+    let right = mark_verts(&[0, 1, 2, 3]);
+    let left = mark_verts(&[8, 9, 10, 11]);
 
     let (specific_rac, specific_rho) = match group_ix {
         0 => (right, left),
@@ -65,8 +65,8 @@ fn raw_params(group_ix: usize, randomization: bool) -> RawParameters {
 
     RAW_PARAMS
         .modify_randomization(randomization)
-        .modify_init_rac_acts(init_rac)
-        .modify_init_rho_acts(init_rho)
+        .modify_init_rac(init_rac)
+        .modify_init_rho(init_rho)
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -108,14 +108,15 @@ pub fn generate(
         final_t,
         cil_mag,
         coa_mag,
-        adh_scale,
+        adh_mag: adh_scale,
         cal_mag,
         randomization,
         seeds,
-        toml_name,
+        file_name: toml_name,
         snap_period,
         max_on_ram,
         int_opts,
+        ..
     } = args;
 
     let (num_cells, py_main) =

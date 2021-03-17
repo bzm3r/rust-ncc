@@ -15,7 +15,7 @@ use crate::cell::states::Core;
 use crate::interactions::{ContactData, Interactions};
 use crate::parameters::{Parameters, WorldParameters};
 use crate::utils::pcg32::Pcg32;
-use crate::world::{EulerOpts, Rkdp5Opts};
+use crate::world::{EulerOpts, RkOpts};
 use serde::{Deserialize, Serialize};
 
 /// Cell state structure.
@@ -156,7 +156,7 @@ impl Cell {
         world_parameters: &WorldParameters,
         parameters: &Parameters,
         rng: &mut Pcg32,
-        int_opts: Rkdp5Opts,
+        int_opts: RkOpts,
     ) -> Result<Cell, String> {
         let mut result = rkdp5::integrator(
             dt,

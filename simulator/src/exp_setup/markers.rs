@@ -17,12 +17,12 @@ pub fn mark_between_angles(
 
 pub const ALL: [bool; NVERTS] = [true; NVERTS];
 
-pub fn mark_verts(verts: Vec<usize>) -> [bool; NVERTS] {
+pub fn mark_verts(verts: &[usize]) -> [bool; NVERTS] {
     if verts.len() > NVERTS {
         panic!("verts.len() = {} > NVERTS = {}", verts.len(), NVERTS);
     }
     let mut r = [false; NVERTS];
-    for v in verts {
+    for &v in verts {
         r[v] = true;
     }
     r

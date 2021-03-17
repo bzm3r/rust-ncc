@@ -1,8 +1,9 @@
 use crate::cell::chemistry::RgtpDistribution;
 use crate::exp_setup::defaults::RAW_COA_PARAMS_WITH_ZERO_MAG;
-use crate::exp_setup::exp_parser::{ExperimentArgs, RgtpDistribDefs};
+use crate::exp_setup::exp_parser::ExperimentArgs;
 use crate::exp_setup::{
     defaults, CellGroup, Experiment, ExperimentType, GroupBBox,
+    PairRgtpDistribDefs, RgtpDistribDefs,
 };
 use crate::math::v2d::V2d;
 use crate::parameters::quantity::{Length, Quantity};
@@ -47,20 +48,15 @@ fn raw_params(
     rgtp_distrib_defs: &RgtpDistribDefs,
     randomization: bool,
 ) -> RawParameters {
-    let RgtpDistribDefs {
-        rac_acts,
-        rac_inacts,
-        rho_acts,
-        rho_inacts,
-    } = rgtp_distrib_defs;
+    let RgtpDistribDefs { rac, rho } = rgtp_distrib_defs;
 
     let init_rac = RgtpDistribution::new(
-        rac_acts.into_distrib(rng),
-        rac_inacts.into_distrib(rng),
+        rac.acts.into_distrib(rng),
+        rac.inacts.into_distrib(rng),
     );
     let init_rho = RgtpDistribution::new(
-        rho_acts.into_distrib(rng),
-        rho_inacts.into_distrib(rng),
+        rho.acts.into_distrib(rng),
+        rho.inacts.into_distrib(rng),
     );
 
     defaults::RAW_PARAMS
@@ -101,7 +97,7 @@ fn make_cell_group(
 fn make_cell_groups(
     rng: &mut Pcg32,
     char_quants: &CharQuantities,
-    rgtp_distrib_defs_per_cell: &[RgtpDistribDefs],
+    rgtp_distrib_defs_per_cell: &PairRgtpDistribDefs,
     randomization: bool,
     sep_in_cell_diams: usize,
 ) -> Vec<CellGroup> {
@@ -109,7 +105,7 @@ fn make_cell_groups(
         rng,
         char_quants,
         randomization,
-        &rgtp_distrib_defs_per_cell[0],
+        &rgtp_distrib_defs_per_cell.cell0,
         (Length(0.0), Length(0.0)),
         1,
         1,
@@ -119,7 +115,7 @@ fn make_cell_groups(
         rng,
         char_quants,
         randomization,
-        &rgtp_distrib_defs_per_cell[1],
+        &rgtp_distrib_defs_per_cell.cell1,
         (
             Length(0.0),
             defaults::CELL_DIAMETER.scale(sep_in_cell_diams as f64),
@@ -137,13 +133,13 @@ pub fn generate(
     args: ExperimentArgs,
 ) -> Vec<Experiment> {
     let ExperimentArgs {
-        toml_name,
+        file_name: toml_name,
         ty,
         final_t,
         cil_mag,
         coa_mag,
         cal_mag,
-        adh_scale,
+        adh_mag: adh_scale,
         snap_period,
         max_on_ram,
         randomization,

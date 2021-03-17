@@ -6,14 +6,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use crate::exp_setup::exp_parser::{ExperimentArgs, RgtpDistribDefs};
+use crate::exp_setup::exp_parser::ExperimentArgs;
 use crate::math::v2d::V2d;
 use crate::parameters::{
     CharQuantities, Parameters, WorldParameters,
 };
 use crate::utils::pcg32::Pcg32;
 use crate::world::IntegratorOpts;
-use crate::Directories;
+use crate::{Directories, NVERTS};
 
 pub mod defaults;
 pub mod exp_parser;
@@ -22,6 +22,10 @@ pub mod n_cells;
 pub mod pair;
 pub mod py_compare;
 
+use crate::cell::chemistry::distrib_gens::{
+    random, specific_random, specific_uniform,
+};
+use crate::exp_setup::markers::mark_verts;
 use crate::parameters::quantity::Time;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
@@ -33,12 +37,63 @@ pub enum ExperimentType {
     },
     Pair {
         sep_in_cell_diams: usize,
-        rgtp_distrib_defs_per_cell: Vec<RgtpDistribDefs>,
+        rgtp_distrib_defs_per_cell: PairRgtpDistribDefs,
     },
     PyCompare {
         num_cells: usize,
         py_main: Option<PathBuf>,
     },
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub enum DistribDef {
+    Random { frac: f64 },
+    SpecificRandom { frac: f64, marked_verts: Vec<usize> },
+    SpecificUniform { frac: f64, marked_verts: Vec<usize> },
+}
+
+impl DistribDef {
+    pub fn into_distrib(&self, rng: &mut Pcg32) -> [f64; NVERTS] {
+        match self {
+            DistribDef::Random { frac } => random(rng, *frac),
+            DistribDef::SpecificRandom { frac, marked_verts } => {
+                specific_random(rng, *frac, mark_verts(&marked_verts))
+            }
+            DistribDef::SpecificUniform { frac, marked_verts } => {
+                specific_uniform(*frac, mark_verts(&marked_verts))
+            }
+        }
+    }
+}
+
+impl Default for DistribDef {
+    fn default() -> Self {
+        DistribDef::Random { frac: 0.1 }
+    }
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, Default)]
+pub struct RgtpDistribDef {
+    acts: DistribDef,
+    inacts: DistribDef,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, Default)]
+pub struct RgtpDistribDefs {
+    rac: RgtpDistribDef,
+    rho: RgtpDistribDef,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, Default)]
+pub struct PairRgtpDistribDefs {
+    cell0: RgtpDistribDefs,
+    cell1: RgtpDistribDefs,
+}
+
+impl Default for ExperimentType {
+    fn default() -> Self {
+        ExperimentType::NCells { num_cells: 1 }
+    }
 }
 
 /// Generate the experiment, so that it can be run.

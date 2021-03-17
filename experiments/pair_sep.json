@@ -1,6 +1,6 @@
 {
   "description": "one cell experiment",
-  "experiment_type": {
+  "ty": {
     "Pair": {
       "sep_in_cell_diams": 2,
       "rgtp_distrib_defs_per_cell": {
@@ -68,13 +68,13 @@
     }
   },
   "final_t": 5400,
-  "cil": 60,
-  "coa": 24,
+  "cil_mag": 60,
+  "coa_mag": 24,
   "snap_period": 10,
   "randomization": true,
   "seeds": [7, 77, 777],
   "int_opts": {
-    "Rkdp5": {}
+    "RkDp5": {}
   },
   "ani_opts": [
     {

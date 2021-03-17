@@ -55,16 +55,16 @@ impl Default for EulerOpts {
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq)]
-pub struct Rkdp5Opts {
+pub struct RkOpts {
     pub max_iters: usize,
     pub atol: f64,
     pub rtol: f64,
     pub init_h_scale: f64,
 }
 
-impl Default for Rkdp5Opts {
+impl Default for RkOpts {
     fn default() -> Self {
-        Rkdp5Opts {
+        RkOpts {
             max_iters: 20,
             atol: 1e-3,
             rtol: 1e-3,
@@ -77,12 +77,12 @@ impl Default for Rkdp5Opts {
 pub enum IntegratorOpts {
     Euler(EulerOpts),
     EulerDebug(EulerOpts),
-    Rkdp5(Rkdp5Opts),
+    Rkdp5(RkOpts),
 }
 
 impl Default for IntegratorOpts {
     fn default() -> Self {
-        IntegratorOpts::Rkdp5(Rkdp5Opts::default())
+        IntegratorOpts::Rkdp5(RkOpts::default())
     }
 }
 
@@ -94,7 +94,7 @@ impl WorldCells {
         world_parameters: &WorldParameters,
         group_parameters: &[Parameters],
         interaction_generator: &mut InteractionGenerator,
-        int_opts: Rkdp5Opts,
+        int_opts: RkOpts,
     ) -> Result<WorldCells, String> {
         let mut new_cells = self.cells.clone();
         let shuffled_cells = {
@@ -447,7 +447,7 @@ impl World {
     }
 
     pub fn periodic_save(&mut self, last_saved: f64) -> f64 {
-        if (self.state.tpoint - last_saved) > self.snap_period {
+        if (self.state.tpoint - last_saved) >= self.snap_period {
             if let Some(writer) = &mut self.writer {
                 writer.push(self.state.clone());
             }
@@ -479,11 +479,11 @@ impl World {
     pub fn simulate_rkdp5(
         &mut self,
         save_cbor: bool,
-        int_opts: Rkdp5Opts,
+        int_opts: RkOpts,
     ) {
         // Save initial state.
         self.save_state();
-        let mut last_saved = self.state.tpoint;
+        let mut last_saved = 0.0;
         while self.state.tpoint < self.final_t {
             let new_cells: WorldCells = self
                 .state

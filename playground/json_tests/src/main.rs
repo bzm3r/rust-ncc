@@ -89,7 +89,7 @@ pub struct AnimationOptions {
 }
 
 #[derive(Clone, Deserialize, Serialize, Debug)]
-pub struct ParsedExpArgs {
+pub struct ExperimentArgs {
     description: String,
     experiment_type: ExperimentType,
     final_t: f64,
@@ -112,7 +112,7 @@ fn main() {
         .unwrap();
     let mut test_json_out = String::new();
     test_json_file.read_to_string(&mut test_json_out).unwrap();
-    let parsed_args: ParsedExpArgs =
+    let parsed_args: ExperimentArgs =
         serde_json::from_str(&test_json_out).unwrap();
     println!("{:#?}", parsed_args);
 }

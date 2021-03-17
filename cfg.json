@@ -1,0 +1,5 @@
+{
+  "out": "./output",
+  "exp": "./experiments",
+  "py_main": "./py_model/main.py"
+}

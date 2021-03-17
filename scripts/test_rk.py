@@ -5,14 +5,16 @@ from utils import *
 import os
 import subprocess
 import orjson
+import copy
 
 run_experiments = True
 exec_mode = "release"
 
 root_dir = os.getcwd()
 out_dir = os.path.join(root_dir, "output")
-exp_jsons = ["two_cell_euler_ufine"]
-poly_ls = ["-", ":"]
+exp_jsons = ["two_cell_rk_coarse", "two_cell_rk_medium",
+             "two_cell_rk_fine"]
+poly_ls = [":", "--", "-"]
 
 vec_ani_opts = []
 sim_dats = []
@@ -35,4 +37,10 @@ for exp_json in exp_jsons:
     seeds, file_names = determine_file_names(exp_json, exp_dict)
     for (ix, file_name) in enumerate(file_names):
         sim_dat = SimulationData()
-        sim_dat.load_rust_dat(out_dir, file_name)
+        sim_dat.load_dat(out_dir, file_name)
+        if ix == 0:
+            vec_ani_opts = get_vec_ani_opts(exp_dict)
+            sim_dats.append(copy.deepcopy(sim_dat))
+
+comp_dat = SharedSimData(out_dir, sim_dats, poly_ls, "euler_int_step_test")
+comp_dat.animate(vec_ani_opts)

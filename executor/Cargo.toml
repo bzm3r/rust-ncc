@@ -9,4 +9,3 @@ edition = "2018"
 [dependencies]
 simulator = { path = "../simulator" }
 clap = "2.33.3"
-toml = "0.5"
