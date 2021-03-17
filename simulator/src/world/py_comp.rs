@@ -30,6 +30,7 @@ pub fn execute_py_model(
         coa.unwrap_or(0.0),
         out_dir.display(),
     );
+    println!("executing command: {}", py_cmd);
     if cfg!(target_os = "windows") {
         Command::new("cmd")
             .args(&["/C", &py_cmd])

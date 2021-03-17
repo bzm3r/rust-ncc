@@ -327,6 +327,15 @@ def cell_dynamics(
     conc_rho_acts = chemistry.calc_concs(rho_acts, avg_edge_lengths
                                          )
 
+    global_tension = np.sum(only_tensile_local_strains) / 16
+    if global_tension < 0.0:
+        global_tension = 0.0
+    strain_inhibition = tension_inhib * \
+                        chemistry.hill_function3(
+                            halfmax_tension_inhib,
+                            global_tension
+                        )
+
     kdgtps_rac = chemistry.calculate_kdgtp_rac(
         conc_rho_acts,
         halfmax_vertex_rgtp_conc,
@@ -356,22 +365,22 @@ def cell_dynamics(
     conc_rac_inacts = chemistry.calc_concs(rac_inacts, avg_edge_lengths)
     conc_rho_inact = chemistry.calc_concs(rho_inacts, avg_edge_lengths)
 
-    diffusion_rac_acts = chemistry.calculate_diffusion(
+    rac_act_net_fluxes = chemistry.calculate_net_fluxes(
         conc_rac_acts,
         diffusion_rgtp,
         edgeplus_lengths,
     )
-    diffusion_rac_inacts = chemistry.calculate_diffusion(
+    rac_inact_net_fluxes = chemistry.calculate_net_fluxes(
         conc_rac_inacts,
         diffusion_rgtp,
         edgeplus_lengths,
     )
-    diffusion_rho_act = chemistry.calculate_diffusion(
+    rho_act_net_fluxes = chemistry.calculate_net_fluxes(
         conc_rho_acts,
         diffusion_rgtp,
         edgeplus_lengths,
     )
-    diffusion_rho_inacts = chemistry.calculate_diffusion(
+    rho_inact_net_fluxes = chemistry.calculate_net_fluxes(
         conc_rho_inact,
         diffusion_rgtp,
         edgeplus_lengths,
@@ -437,10 +446,14 @@ def cell_dynamics(
             ("kdgtps_rho", [float(v) for v in kdgtps_rho]),
             ("x_cils", [float(v) for v in x_cils]),
             ("x_coas", [float(v) for v in x_coas]),
-            ("local_strains", [float(v) for v in local_strains]),
-            ("poly_area", poly_area), ("coa_updates",
-                                       [bool(v) for v in coa_updates]),
-            ("cil_updates", [bool(v) for v in cil_updates])]
+            ("edge_strains", [float(v) for v in local_strains]),
+            ("avg_tens_strain", [float(global_tension) for _ in local_strains]),
+            ("poly_area", poly_area),
+            ("rac_act_net_fluxes", [float(v) for v in rac_act_net_fluxes]),
+            ("rac_inact_net_fluxes", [float(v) for v in rac_inact_net_fluxes]),
+            ("rho_act_net_fluxes", [float(v) for v in rho_act_net_fluxes]),
+            ("rho_inact_net_fluxes", [float(v) for v in rho_inact_net_fluxes]),
+            ("x_tens", [float(strain_inhibition) for _ in local_strains])]
     # for d in data:
     #     logging.log(level=99, msg="{}: {}".format(d[0], d[1]))
     writer.save_int_step(data)
@@ -527,26 +540,26 @@ def cell_dynamics(
         ode_array[i] = (
                 delta_rac_activated[i]
                 - delta_rac_inactivated[i]
-                + diffusion_rac_acts[i]
+                + rac_act_net_fluxes[i]
         )
 
         ode_array[i + 16] = (
                 delta_rac_inactivated[i]
                 - delta_rac_activated[i]
-                + diffusion_rac_inacts[i]
+                + rac_inact_net_fluxes[i]
                 + delta_rac_cytosol_to_membrane[i]
         )
 
         ode_array[i + 2 * 16] = (
                 delta_rho_activated[i]
                 - delta_rho_inactivated[i]
-                + diffusion_rho_act[i]
+                + rho_act_net_fluxes[i]
         )
 
         ode_array[i + 3 * 16] = (
                 delta_rho_inactivated[i]
                 - delta_rho_activated[i]
-                + diffusion_rho_inacts[i]
+                + rho_inact_net_fluxes[i]
                 + delta_rho_cytosol_to_membrane[i]
         )
 

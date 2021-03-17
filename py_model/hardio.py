@@ -3,9 +3,9 @@ import copy
 import orjson
 import numpy as np
 
-HEADER_LABELS = ["num_cells", "num_int_steps", "eta",
-                 "f", "l", "t", "l3d", "kgtp", "close_zero_at",
-                 "close_one_at", "cil_mag", "coa_los_penalty",
+HEADER_LABELS = ["num_cells", "num_int_steps", "vertex_eta",
+                 "f", "l", "t", "l3d", "kgtp", "zero_at",
+                 "one_at", "cil_mag", "coa_los_penalty",
                  "coa_halfmax_dist",
                  "coa_mag", "coa_distrib_exp", "vertex_eta", "cell_r",
                  "rest_edge_len", "rest_area", "stiffness_edge",
@@ -21,13 +21,16 @@ HEADER_LABELS = ["num_cells", "num_int_steps", "eta",
 BASICS = ["tpoint", "poly", "rac_acts", "rac_inacts", "rho_acts",
           "rho_inacts", "sum_forces"]
 GEOMETRY = ["uivs"]
+FORCES = ["rgtp_forces", "edge_forces", "cyto_forces"]
 RAC_RATES = ["kgtps_rac", "kdgtps_rac"]
 RHO_RATES = ["kgtps_rho", "kdgtps_rho"]
-FORCES = ["rgtp_forces", "edge_forces", "cyto_forces"]
 CALC_KGTPS_RAC = ["x_cils", "x_coas"]
-OTHERS = ["local_strains", "poly_area", "coa_updates", "cil_updates"]
+DIFFUSION = ["rac_act_net_fluxes", "rac_inact_net_fluxes",
+             "rho_act_net_fluxes", "rho_inact_net_fluxes"]
+OTHERS = ["edge_strains", "avg_tens_strain", "poly_area"] + DIFFUSION + [
+    "x_tens"]
 
-DATA_LABELS = BASICS + GEOMETRY + RAC_RATES + RHO_RATES + FORCES + \
+DATA_LABELS = BASICS + GEOMETRY + FORCES + RAC_RATES + RHO_RATES + \
               CALC_KGTPS_RAC + OTHERS
 FILE_NAME_TEMPLATE = "out_euler_T={final_t}_E={num_int_steps}_NC={" \
                      "num_cells}_CIL={cil}_COA={coa}.{ext}"
