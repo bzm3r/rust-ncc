@@ -182,8 +182,8 @@ def refine_raw_params(raw_params):
     )
     params["stiffness_cyto"] = raw_params["stiffness_cyto"] / params["f"] / 16
     # --------------
-    params["close_zero_at"] = raw_params["close_zero_at"] / params["l"]
-    params["close_one_at"] = raw_params["close_one_at"] / params["l"]
+    params["zero_at"] = raw_params["close_zero_at"] / params["l"]
+    params["one_at"] = raw_params["close_one_at"] / params["l"]
     # --------------
     params["rand_avg_t"] = raw_params[
                                "rand_avg_t"

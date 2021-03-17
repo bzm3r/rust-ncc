@@ -1,5 +1,6 @@
 from sim_data import SimulationData
 from sim_data import SharedSimData
+from sim_data import PythonRustComparisonData
 from paint_opts import *
 from utils import *
 import os
@@ -9,7 +10,7 @@ import orjson
 run_experiments = True
 exec_mode = "release"
 root_dir = os.getcwd()
-exp_jsons = ["py_comp_1_rkdp5", "py_comp_1_euler"]
+exp_jsons = ["py_comp_1"]
 for exp_json in exp_jsons:
     exec_path = os.path.join(root_dir, "target", exec_mode, "executor.exe")
     if run_experiments:
@@ -25,7 +26,7 @@ for exp_json in exp_jsons:
         json_str = f.read()
 
     exp_dict = orjson.loads(json_str)
-    file_names = determine_file_names(exp_json, exp_dict)
+    seeds, file_names = determine_file_names(exp_json, exp_dict)
     out_dir = os.path.join(root_dir, "output")
     for file_name in file_names:
         rust_dat = SimulationData()
@@ -37,7 +38,7 @@ for exp_json in exp_jsons:
         vec_ani_opts = get_vec_ani_opts(exp_dict)
         # rust_dat.animate(vec_ani_opts)
         # py_dat.animate(vec_ani_opts)
-        comp_dat = SharedSimData(out_dir, [rust_dat, py_dat], ["-", ":"],
-                                 file_name +
-                                 "_rust_and_py")
+        comp_dat = PythonRustComparisonData(out_dir, py_dat, rust_dat,
+                                            [":", "-"], file_name +
+                                            "_rust_and_py")
         comp_dat.animate(vec_ani_opts)

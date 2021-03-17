@@ -202,7 +202,7 @@ def calculate_flux_terms(concentrations, diffusion_rgtp, edgeplus_lengths):
 
 # -----------------------------------------------------------------
 # @nb.jit(nopython=True)
-def calculate_diffusion(concentrations, diffusion_rgtp, edgeplus_lengths):
+def calculate_net_fluxes(concentrations, diffusion_rgtp, edgeplus_lengths):
     result = np.empty(16, dtype=np.float64)
 
     fluxes = calculate_flux_terms(

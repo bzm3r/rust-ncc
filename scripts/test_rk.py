@@ -42,5 +42,5 @@ for exp_json in exp_jsons:
             vec_ani_opts = get_vec_ani_opts(exp_dict)
             sim_dats.append(copy.deepcopy(sim_dat))
 
-comp_dat = SharedSimData(out_dir, sim_dats, poly_ls, "euler_int_step_test")
+comp_dat = SharedSimData(out_dir, sim_dats, poly_ls, "rk_int_step_test")
 comp_dat.animate(vec_ani_opts)
