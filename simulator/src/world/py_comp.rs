@@ -38,7 +38,7 @@ pub fn execute_py_model(
             .expect("failed to execute process")
     } else {
         Command::new("sh")
-            .args(&["/C", &py_cmd])
+            .args(&[&py_cmd])
             .status()
             .expect("failed to execute process")
     };

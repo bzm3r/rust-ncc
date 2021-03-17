@@ -358,11 +358,13 @@ class SimulationData:
                 if self.ani_opts.label_verts:
                     ax.annotate(str(vix), (poly[vix, 0], poly[vix, 1]))
 
+            if self.ani_opts.label_cells and snap_ix > 0:
+                ax.annotate(str(ci), (self.centroids_per_c_per_s[-1, ci, 0], self.centroids_per_c_per_s[-1, ci, 1]))
+
             c_centers = self.centroids_per_c_per_s[:snap_ix, ci]
             if self.ani_opts.show_trails:
                 ax.plot(c_centers[:, 0], c_centers[:, 1])
-            if self.ani_opts.label_cells:
-                ax.annotate(str(ci), (c_centers[-1, 0], c_centers[-1, 1]))
+
 
         for poly, rac_act_arrows in zip(
                 self.poly_per_c_per_s[snap_ix],
@@ -659,8 +661,8 @@ class PythonRustComparisonData:
                 if delta > 1e-4:
                     raise Exception(
                         "parameter mismatch {}: rust = {}, py = {}. delta = {}"
-                        .format(key, self.rust_dat.header[key],
-                                self.py_dat.header[key], delta))
+                            .format(key, self.rust_dat.header[key],
+                                    self.py_dat.header[key], delta))
 
     def get_common_snaps(self):
         ixs_ts_per_sim = [sanitize_tpoints(sd.tpoints) for sd in self.sim_dats]
@@ -691,6 +693,23 @@ class PythonRustComparisonData:
         for pls, sim_dat in zip(self.poly_line_styles, self.sim_dats):
             sim_dat.ani_opts = copy.deepcopy(ani_opts)
             sim_dat.ani_opts.poly_line_style = pls
+
+    def plot(self):
+        rs = [self.rust_dat.x_coas_per_c_per_s, self.rust_dat.kgtps_rac_per_c_per_s]
+        ps = [self.py_dat.x_coas_per_c_per_s, self.py_dat.kgtps_rac_per_c_per_s]
+        data_labels = ["x_coas", "kgtps_rac"]
+
+        for r, p, l in zip(rs, ps, data_labels):
+            fig, ax = plt.subplots()
+            cell_ix = 0
+            ax.plot(r[:10, cell_ix, :1], label="rust")
+            ax.plot(p[:10, cell_ix, :1], label="python")
+            ax.set_title("{} for cell {}".format(l, cell_ix))
+            ax.legend(loc="best")
+            plot_path = os.path.join(self.out_dir, "{}.png".format(l))
+            fig.savefig(plot_path)
+            plt.close()
+
 
     def animate(self, vec_ani_opts):
         print("beginning combined animation...")

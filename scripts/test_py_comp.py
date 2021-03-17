@@ -7,12 +7,12 @@ import os
 import subprocess
 import orjson
 
-run_experiments = True
+run_experiments = False
 exec_mode = "release"
 root_dir = os.getcwd()
-exp_jsons = ["py_comp_1"]
+exp_jsons = ["py_comp_2"]
 for exp_json in exp_jsons:
-    exec_path = os.path.join(root_dir, "target", exec_mode, "executor.exe")
+    exec_path = os.path.join(root_dir, "target", exec_mode, "executor")
     if run_experiments:
         build_out = subprocess.run(["cargo", "build"] + make_exec_mode_arg(
             exec_mode) + ["-p", "executor"])
@@ -41,4 +41,5 @@ for exp_json in exp_jsons:
         comp_dat = PythonRustComparisonData(out_dir, py_dat, rust_dat,
                                             [":", "-"], file_name +
                                             "_rust_and_py")
+        comp_dat.plot()
         comp_dat.animate(vec_ani_opts)
