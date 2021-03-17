@@ -82,6 +82,8 @@ class SimulationData:
         for key in coa_params.keys():
             all_params["coa_" + key] = coa_params[key]
         all_params.update(self.world_info["cell_params"][0])
+        all_params["init_rac"] = all_params["init_rac"]["active"]
+        all_params["init_rho"] = all_params["init_rho"]["active"]
         self.header = copy.deepcopy(all_params)
 
     def load_rust_dat(self, out_dir, file_name):
@@ -380,17 +382,17 @@ class SimulationData:
                          color="r",
                          length_includes_head=True, head_width=0.0)
 
-        for poly_ix, poly, adhs in zip(
-                np.arange(0, len(self.poly_per_c_per_s[0])),
-                self.poly_per_c_per_s[snap_ix],
-                self.x_adhs_per_c_per_s[snap_ix]):
-            if poly_ix == 0:
-                adh_arrow_color = "magenta"
-            else:
-                adh_arrow_color = "cyan"
-            for p, adh in zip(poly, adhs):
-                ax.arrow(p[0], p[1], adh[0], adh[1], color=adh_arrow_color,
-                         length_includes_head=True, head_width=1.0)
+        # for poly_ix, poly, adhs in zip(
+        #         np.arange(0, len(self.poly_per_c_per_s[0])),
+        #         self.poly_per_c_per_s[snap_ix],
+        #         self.x_adhs_per_c_per_s[snap_ix]):
+        #     if poly_ix == 0:
+        #         adh_arrow_color = "magenta"
+        #     else:
+        #         adh_arrow_color = "cyan"
+        #     for p, adh in zip(poly, adhs):
+        #         ax.arrow(p[0], p[1], adh[0], adh[1], color=adh_arrow_color,
+        #                  length_includes_head=True, head_width=1.0)
 
     def paint_probe(self, delta):
         old_xlim = self.ax_probe.get_xlim()
@@ -625,23 +627,39 @@ class PythonRustComparisonData:
         self.fig, self.ax = plt.subplots()
 
     def verify_parameter_equality(self):
-        param_keys = self.rust_dat.header.keys()
-        for key in param_keys:
-            found_key = False
-            try:
+        rust_keys = self.rust_dat.header.keys()
+        py_keys = self.py_dat.header.keys()
+
+        not_in_py = []
+        for key in rust_keys:
+            if key not in py_keys:
+                not_in_py.append(key)
+
+        not_in_rust = []
+        for key in py_keys:
+            if key not in rust_keys:
+                not_in_rust.append(key)
+
+        print("not_in_py: {}".format(not_in_py))
+        print("not_in_rust: {}".format(not_in_rust))
+
+        for key in rust_keys:
+            if key in py_keys:
                 rust_param = self.rust_dat.header[key]
-                py_param = self.py_dat[key]
-                found_key = True
-            except:
-                print("Could not find  key: {}, skipping "
-                      "test".format(key))
-
-            if found_key:
-                if not abs(rust_param - py_param) < 1e-4:
-                    raise Exception("parameter mismatch {}: rust = {}, "
-                                    "py = {}".format(key, self.rust_dat.header[key],
-                                                     self.py_dat.header[key]))
-
+                py_param = self.py_dat.header[key]
+                print("{}: rust = {}, py = {}".format(key, rust_param,
+                                                      py_param))
+                if type(rust_param) == list:
+                    rust_param = np.array(rust_param)
+                    py_param = np.array(py_param)
+                    delta = np.max(abs(rust_param - py_param))
+                else:
+                    delta = abs(rust_param - py_param)
+                if delta > 1e-4:
+                    raise Exception(
+                        "parameter mismatch {}: rust = {}, py = {}. delta = {}"
+                        .format(key, self.rust_dat.header[key],
+                                self.py_dat.header[key], delta))
 
     def get_common_snaps(self):
         ixs_ts_per_sim = [sanitize_tpoints(sd.tpoints) for sd in self.sim_dats]
@@ -696,4 +714,3 @@ class PythonRustComparisonData:
             ani_save_path = os.path.join(self.out_dir, ani_file_path)
             cell_ani.save(ani_save_path, writer=writer)
             plt.close()
-

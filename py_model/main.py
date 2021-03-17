@@ -102,7 +102,7 @@ params = dict([
     ("diffusion_rgtp", 0.1e-12),
     ("kgdi", 1),
     ("kdgdi", 1),
-    ("halfmax_vertex_rgtp_act", 0.4),
+    ("halfmax_vertex_rgtp", 0.4),
     ("threshold_rho_activity", 0.4),
     ("stiffness_cyto", 1e-5),
     ("force_rho", 0.2),

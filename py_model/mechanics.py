@@ -143,7 +143,7 @@ def determine_rac_rho_domination(rac_acts, rho_acts):
 def calculate_rgtpase_mediated_forces(
         rac_acts,
         rho_acts,
-        halfmax_vertex_rgtp_act,
+        halfmax_vertex_rgtp,
         const_protrusive,
         const_retractive,
         uivs,
@@ -156,7 +156,7 @@ def calculate_rgtpase_mediated_forces(
 
         if rac_activity > rho_activity:
             mag_frac = capped_linear_function(
-                2 * halfmax_vertex_rgtp_act, rac_activity - rho_activity
+                2 * halfmax_vertex_rgtp, rac_activity - rho_activity
             )
             force_mag = const_protrusive * mag_frac
         else:
@@ -164,7 +164,7 @@ def calculate_rgtpase_mediated_forces(
                     -1
                     * const_retractive
                     * capped_linear_function(
-                2 * halfmax_vertex_rgtp_act, rho_activity - rac_activity
+                2 * halfmax_vertex_rgtp, rho_activity - rac_activity
             )
             )
 
@@ -186,7 +186,7 @@ def calculate_forces(
         rho_acts,
         rest_edge_len,
         stiffness_edge,
-        halfmax_vertex_rgtp_act,
+        halfmax_vertex_rgtp,
         const_protrusive,
         const_retractive,
         rest_area,
@@ -198,7 +198,7 @@ def calculate_forces(
     rgtpase_mediated_forces = calculate_rgtpase_mediated_forces(
         rac_acts,
         rho_acts,
-        halfmax_vertex_rgtp_act,
+        halfmax_vertex_rgtp,
         const_protrusive,
         const_retractive,
         uivs,
