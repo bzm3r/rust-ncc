@@ -1,0 +1,43 @@
+* drop frac_rgtp from CharQuants, it is not properly normalizing
+init Rho GTPase distributions
+
+* use cytoplasmic force of 1e-5
+
+* fix coa distribution exponent, under impl RawCoaParams refine.
+Should be 0.5f32.ln() / range, not 0.5f32.ln() / (range * 0.5)
+    -> more correctly, set coa_range = 220, so that halfmax
+    occurs at 0.5 * 220 = 110
+
+* in gen_coa, fix so that *x_coa[i] += ..., not *x_coa[i] = ...
+
+* replace line segment calculations with new ones in python-compare, just to be sure
+
+* set randomization std factor to 0.1
+
+* average CIL over neighbour nodes for kgtps_rho
+    -> should CIL/CAL be averaged over neighbour nodes?
+
+* consider putting in point in poly check for ClosePoint
+calcs (useful for CIL in particular?)
+
+
+Following are not errors, but recommended changes:
+1) remove char kgtp/kdgtp, and only have char kgtp
+2) rename halfmax_vertex_rgtp_act to halfmax_vertex_rgtp
+3) remove tot_rac, tot_rho
+4) replace tot_rgtp with 1.0
+5) should move k_mem_on/k_mem_off out of CharQuants and 
+    into WorldParameters
+6) make gen_default_viscosity use eta from CharQuants, and
+rename gen_default_viscosity to gen_default_vertex_velocity
+7) make connection between general eta, and "2D eta" that we
+use clear. In general:
+    F/A = eta * v/x
+    (v = velocity, F = force, A = area, x = length)
+A in our case can be taken to be the height of the
+lamellipod * the resting edge length. F is the protrusive
+force, and we know F/A, since we know the lamellipod
+stall stress. We know we want a v of around 3 micrometers/s
+It remains for us to determine what x should be. Idea:
+choose it to be 1 micrometer, so that eta is 1e5 * 1e-6 =
+1e-1 (1e5 comes from order of magnitude, 1e-6 is 1 microm)

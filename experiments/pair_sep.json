@@ -1,0 +1,88 @@
+{
+  "description": "one cell experiment",
+  "ty": {
+    "Pair": {
+      "sep_in_cell_diams": 2,
+      "rgtp_distrib_defs_per_cell": {
+        "0": {
+          "rac": {
+            "acts": {
+              "SpecificUniform": {
+                "frac": 0.1,
+                "marked_verts": [14, 15, 0, 1, 2]
+              }
+            },
+            "inacts": {
+              "SpecificUniform": {
+                "frac": 0.1,
+                "marked_verts": [14, 15, 0, 1, 2]
+              }
+            }
+          },
+          "rho": {
+            "acts": {
+              "SpecificUniform": {
+                "frac": 0.1,
+                "marked_verts": [6, 7, 8, 9, 10]
+              }
+            },
+            "inacts": {
+              "SpecificUniform": {
+                "frac": 0.1,
+                "marked_verts": [6, 7, 8, 9, 10]
+              }
+            }
+          }
+        },
+        "1": {
+          "rac": {
+            "acts": {
+              "SpecificUniform": {
+                "frac": 0.1,
+                "marked_verts": [6, 7, 8, 9, 10]
+              }
+            },
+            "inacts": {
+              "SpecificUniform": {
+                "frac": 0.1,
+                "marked_verts": [6, 7, 8, 9, 10]
+              }
+            }
+          },
+          "rho": {
+            "acts": {
+              "SpecificUniform": {
+                "frac": 0.1,
+                "marked_verts": [14, 15, 0, 1, 2]
+              }
+            },
+            "inacts": {
+              "SpecificUniform": {
+                "frac": 0.1,
+                "marked_verts": [14, 15, 0, 1, 2]
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "final_t": 5400,
+  "cil_mag": 60,
+  "coa_mag": 24,
+  "snap_period": 10,
+  "randomization": true,
+  "seeds": [7, 77, 777],
+  "int_opts": {
+    "RkDp5": {}
+  },
+  "ani_opts": [
+    {
+      "label_verts":  false,
+      "label_cells": false,
+      "follow_group": true,
+      "show_trails":  false,
+      "rgtp_scale":  50
+    }
+  ]
+}

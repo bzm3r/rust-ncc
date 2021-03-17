@@ -1,0 +1,57 @@
+{
+  "description": "one cell experiment",
+  "experiment_type": {
+    "NCells": {
+      "num_cells": 1
+    }
+  },
+  "final_t": 5400,
+  "cil": 60,
+  "coa": 24,
+  "snap_period": 10,
+  "randomization": true,
+  "seeds": [7, 77, 777],
+  "rgtp_distrib_defs": {
+    "rac": {
+      "acts": {
+        "Random": {
+          "frac": 0.1
+        }
+      },
+      "inacts": {
+        "Random": {
+          "frac": 0.1
+        }
+      }
+    },
+    "rho": {
+      "acts": {
+        "Random": {
+          "frac": 0.1
+        }
+      },
+      "inacts": {
+        "Random": {
+          "frac": 0.1
+        }
+      }
+    }
+  },
+  "int_opts": {
+    "Rkdp5": {
+      "max_iters": 20,
+      "atol": 1e-3,
+      "rtol": 1e-3,
+      "init_h_scale": 0.1
+    }
+  },
+  "ani_opts": [
+    {
+      "label_verts":  false,
+      "label_cells": false,
+      "follow_group": true,
+      "show_trails":  false,
+      "rgtp_scale":  50
+    }
+  ]
+}

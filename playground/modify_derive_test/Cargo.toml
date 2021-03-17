@@ -1,0 +1,10 @@
+[package]
+name = "modify_derive_test"
+version = "0.1.0"
+authors = ["bhmerchant@gmail.com <bhmerchant@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+modify-derive = { path = "../../modify-derive" }

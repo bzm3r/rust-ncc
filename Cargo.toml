@@ -1,0 +1,19 @@
+[workspace]
+members = [
+    "simulator",
+    "executor",
+    "interface",
+    "modify-derive",
+    "py-wrapper",
+]
+default-members = ["executor"]
+exclude = [
+    "./playground/async_bincode",
+    "./playground/cbor_read_write",
+    "./playground/bincode_read",
+    "./playground/modify_derive_test",
+    "./playground/json_tests",
+]
+
+[profile.release]
+debug = 2
