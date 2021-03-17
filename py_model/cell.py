@@ -66,7 +66,7 @@ class Cell:
         self.kgtp_rac = params["kgtp_rac"]
         self.kgtp_rac_auto = params["kgtp_rac_auto"]
 
-        self.halfmax_vertex_rgtp_act = params["halfmax_vertex_rgtp_act"]
+        self.halfmax_vertex_rgtp = params["halfmax_vertex_rgtp"]
         self.halfmax_vertex_rgtp_conc = params["halfmax_vertex_rgtp_conc"]
 
         self.kdgtp_rac = params["kdgtp_rac"]
@@ -92,9 +92,8 @@ class Cell:
 
         # ==============================================================
         self.cil_mag = params["cil_mag"]
-        self.coa_mag = params["coa_mag"]
+        self.coa_mag = params["coa_vertex_mag"]
 
-        self.coa_mag = params["coa_mag"]
         self.coa_distrib_exp = params["coa_distrib_exp"]
         self.coa_los_penalty = params[
             "coa_los_penalty"]
@@ -215,7 +214,7 @@ class Cell:
                 rho_acts,
                 self.rest_edge_len,
                 self.stiffness_edge,
-                self.halfmax_vertex_rgtp_act,
+                self.halfmax_vertex_rgtp,
                 self.const_protrusive,
                 self.const_retractive,
                 self.rest_area,
@@ -436,7 +435,7 @@ class Cell:
                 rho_acts,
                 self.rest_edge_len,
                 self.stiffness_edge,
-                self.halfmax_vertex_rgtp_act,
+                self.halfmax_vertex_rgtp,
                 self.const_protrusive,
                 self.const_retractive,
                 self.rest_area,
@@ -585,7 +584,7 @@ class Cell:
             self.diffusion_rgtp,
             self.vertex_eta,
             self.stiffness_edge,
-            self.halfmax_vertex_rgtp_act,
+            self.halfmax_vertex_rgtp,
             self.const_protrusive,
             self.const_retractive,
             self.rest_area,

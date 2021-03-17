@@ -70,7 +70,7 @@ parameter_labels = ["cell_r",
                     "diffusion_rgtp",
                     "init_rac",
                     "init_rho",
-                    "halfmax_vertex_rgtp_act",
+                    "halfmax_vertex_rgtp",
                     "halfmax_vertex_rgtp_conc",
                     "tot_rac",
                     "tot_rho",
@@ -103,7 +103,7 @@ def calc_coa_distrib_exp(coa_halfmax_dist):
 def refine_raw_params(raw_params):
     params = copy.deepcopy(raw_params)
 
-    params["coa_mag"] = raw_params["coa_mag"] / 16
+    params["coa_vertex_mag"] = raw_params["coa_mag"] / 16
     params["coa_halfmax_dist"] = raw_params["coa_halfmax_dist"] / params["l"]
     params["coa_distrib_exp"] = calc_coa_distrib_exp(params["coa_halfmax_dist"])
     params["init_cyto_rgtp"] = 1 - raw_params["init_inact_rgtp"] - \
@@ -145,8 +145,8 @@ def refine_raw_params(raw_params):
     params["diffusion_rgtp"] = \
         raw_params["diffusion_rgtp"] * (params["t"] / (params["l"] ** 2))
     # --------------
-    params["halfmax_vertex_rgtp_act"] = \
-        raw_params["halfmax_vertex_rgtp_act"] / 16
+    params["halfmax_vertex_rgtp"] = \
+        raw_params["halfmax_vertex_rgtp"] / 16
     # --------------
     params["cell_r"] = raw_params["cell_r"] / params["l"]
     vert_thetas = np.pi * np.linspace(0, 2, endpoint=False, num=16)
@@ -163,7 +163,7 @@ def refine_raw_params(raw_params):
 
     params["rest_edge_len"] = np.average(edge_lengths)
     params["rest_area"] = geometry.calculate_polygon_area(cell_verts)
-    params["halfmax_vertex_rgtp_conc"] = params["halfmax_vertex_rgtp_act"] / \
+    params["halfmax_vertex_rgtp_conc"] = params["halfmax_vertex_rgtp"] / \
                                          params["rest_edge_len"]
 
     params["vertex_eta"] = (params["vertex_eta"] * params["eta"] / 16) / \
