@@ -52,9 +52,9 @@ for exp_json in exp_jsons:
         comp_dat = PythonRustComparisonData(out_dir, py_dat, rust_dat,
                                             [":", "-"], file_name +
                                             "_rust_and_py")
-        comp_dat.plot()
-        comp_dat.animate(vec_ani_opts, "rgtps")
-        comp_dat.animate(vec_ani_opts, "x_cils")
-        comp_dat.animate(vec_ani_opts, "kgtps_rho")
-        comp_dat.animate(vec_ani_opts, "rgtp_forces")
-        comp_dat.animate(vec_ani_opts, "x_coas")
+        # comp_dat.plot()
+        # comp_dat.animate(vec_ani_opts, "rgtps")
+        # comp_dat.animate(vec_ani_opts, "x_cils")
+        # comp_dat.animate(vec_ani_opts, "kgtps_rho")
+        # comp_dat.animate(vec_ani_opts, "rgtp_forces")
+        # comp_dat.animate(vec_ani_opts, "x_coas")

@@ -1,11 +1,11 @@
 {
   "description": "one cell experiment",
   "ty": {
-    "PyCompare": {
+    "NCells": {
       "num_cells": 2
     }
   },
-  "final_t": 500,
+  "final_t": 5400,
   "cil_mag": 60,
   "coa_mag": 24,
   "snap_period": 10,
@@ -42,7 +42,7 @@
     }
   },
   "int_opts": {
-    "EulerDebug": {
+    "Euler": {
       "num_int_steps": 10
     }
   },

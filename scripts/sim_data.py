@@ -358,8 +358,8 @@ class SimulationData:
         self.load_animation_arrows()
 
     def animate(self, vec_ani_opts, ty):
-        self.default_xlim = [-40, 200]
-        self.default_ylim = [-40, 200]
+        self.default_xlim = [-20, 100]
+        self.default_ylim = [-20, 100]
         self.default_bbox_lim = \
             [self.default_xlim[1] - self.default_xlim[0],
              self.default_ylim[1] - self.default_ylim[0]]
@@ -434,13 +434,13 @@ class SimulationData:
                 if self.ani_opts.label_verts:
                     ax.annotate(str(vix), (poly[vix, 0], poly[vix, 1]))
 
-            if self.ani_opts.label_cells and snap_ix > 0:
-                ax.annotate(str(ci), (self.centroids_per_c_per_s[-1, ci, 0],
-                                      self.centroids_per_c_per_s[-1, ci, 1]))
-
             c_centers = self.centroids_per_c_per_s[:snap_ix, ci]
             if self.ani_opts.show_trails:
                 ax.plot(c_centers[:, 0], c_centers[:, 1])
+
+            if self.ani_opts.label_cells and snap_ix > 0:
+                ax.annotate(str(ci), (c_centers[-1, 0],
+                                      c_centers[-1, 1]))
 
         arrow_group = eval("self.{}_arrow_group".format(ty))
 
