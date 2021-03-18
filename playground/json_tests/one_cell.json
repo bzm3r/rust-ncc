@@ -51,7 +51,7 @@
       "label_cells": false,
       "follow_group": true,
       "show_trails":  false,
-      "rgtp_scale":  50
+      "arrow_scale":  50
     }
   ]
 }

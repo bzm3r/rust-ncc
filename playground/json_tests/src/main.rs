@@ -85,7 +85,7 @@ pub struct AnimationOptions {
     label_cells: bool,
     follow_group: bool,
     show_trails: bool,
-    rgtp_scale: f64,
+    arrow_scale: f64,
 }
 
 #[derive(Clone, Deserialize, Serialize, Debug)]

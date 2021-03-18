@@ -3,9 +3,9 @@ def default_ani_opts():
 
 
 class AniOpts:
-    def __init__(self, rgtp_scale, label_verts, label_cells,
+    def __init__(self, arrow_scale, label_verts, label_cells,
                  show_trails, follow_group):
-        self.rgtp_scale = rgtp_scale
+        self.arrow_scale = arrow_scale
         self.label_verts = label_verts
         self.label_cells = label_cells
         self.show_trails = show_trails
@@ -13,7 +13,7 @@ class AniOpts:
         self.poly_line_style = "-"
 
     def description(self):
-        ds = "_RS={}".format(self.rgtp_scale) + \
+        ds = "_RS={}".format(self.arrow_scale) + \
              "_SV={}".format(self.label_verts) + \
              "_SC={}".format(self.label_cells) + \
              "_ST={}".format(self.show_trails) + \
