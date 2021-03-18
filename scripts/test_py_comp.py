@@ -1,6 +1,6 @@
 from sim_data import SimulationData
-from sim_data import SharedSimData
-from sim_data import PythonRustComparisonData
+from shared_sim_data import SharedSimData
+from py_comp_data import PythonRustComparisonData
 from paint_opts import *
 from utils import *
 import os
@@ -36,10 +36,25 @@ for exp_json in exp_jsons:
         py_dat.load_py_dat(out_dir, file_name)
         py_dat.tag = "python"
         vec_ani_opts = get_vec_ani_opts(exp_dict)
-        # rust_dat.animate(vec_ani_opts)
-        # py_dat.animate(vec_ani_opts)
+
+        rust_dat.animate(vec_ani_opts, "rgtps")
+        rust_dat.animate(vec_ani_opts, "x_cils")
+        rust_dat.animate(vec_ani_opts, "kgtps_rho")
+        rust_dat.animate(vec_ani_opts, "rgtp_forces")
+        rust_dat.animate(vec_ani_opts, "x_coas")
+
+        py_dat.animate(vec_ani_opts, "rgtps")
+        py_dat.animate(vec_ani_opts, "x_cils")
+        py_dat.animate(vec_ani_opts, "kgtps_rho")
+        py_dat.animate(vec_ani_opts, "rgtp_forces")
+        py_dat.animate(vec_ani_opts, "x_coas")
+
         comp_dat = PythonRustComparisonData(out_dir, py_dat, rust_dat,
                                             [":", "-"], file_name +
                                             "_rust_and_py")
         comp_dat.plot()
-        comp_dat.animate(vec_ani_opts)
+        comp_dat.animate(vec_ani_opts, "rgtps")
+        comp_dat.animate(vec_ani_opts, "x_cils")
+        comp_dat.animate(vec_ani_opts, "kgtps_rho")
+        comp_dat.animate(vec_ani_opts, "rgtp_forces")
+        comp_dat.animate(vec_ani_opts, "x_coas")

@@ -38,15 +38,22 @@ args = parser.parse_args()
 
 T = 2.0
 NAME = args.name
-FINAL_T = args.final_t
-SNAP_PERIOD = args.snap_period
+print("NAME: {}".format(args.name))
+FINAL_T = float(args.final_t)
+print("FINAL_T: {}".format(float(FINAL_T)))
+SNAP_PERIOD = float(args.snap_period)
+print("SNAP_PERIOD: {}".format(SNAP_PERIOD))
 NUM_INT_STEPS = 10
-NUM_CELLS = args.num_cells
+NUM_CELLS = int(args.num_cells)
+print("NUM_CELLS: {}".format(NUM_CELLS))
 BOX_WIDTH = 2
 BOX_HEIGHT = 1
-COA = args.coa
-CIL = args.cil
+COA = float(args.coa)
+CIL = float(args.cil)
+print("COA: {}".format(COA))
+print("CIL: {}".format(CIL))
 OUT_DIR = os.path.normpath(args.out_dir)
+print("OUT_DIR: {}".format(OUT_DIR))
 if not os.path.exists(OUT_DIR):
     print("creating non-existent out dir: {}".format(OUT_DIR))
     os.mkdir(OUT_DIR)

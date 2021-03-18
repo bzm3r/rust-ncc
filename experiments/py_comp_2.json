@@ -5,7 +5,7 @@
       "num_cells": 2
     }
   },
-  "final_t": 7000,
+  "final_t": 5400,
   "cil_mag": 60,
   "coa_mag": 24,
   "snap_period": 10,
@@ -48,11 +48,11 @@
   },
   "ani_opts": [
     {
-      "label_verts":  true,
-      "label_cells": true,
+      "label_verts":  false,
+      "label_cells": false,
       "follow_group": true,
       "show_trails":  false,
-      "rgtp_scale":  300
+      "arrow_scale":  50
     }
   ]
 }
