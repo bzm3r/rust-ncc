@@ -1,13 +1,13 @@
 {
-  "description": "pair comparison",
+  "description": "pair comparison long",
   "ty": {
     "PyCompare": {
       "num_cells": 2
     }
   },
-  "final_t": 100,
+  "final_t": 8000,
   "cil_mag": 60,
-  "coa_mag": 12,
+  "coa_mag": 24,
   "snap_period": 10,
   "randomization": false,
   "seeds": [7],

@@ -5,9 +5,9 @@
       "num_cells": 2
     }
   },
-  "final_t": 5000,
+  "final_t": 5400,
   "cil_mag": 60,
-  "coa_mag": 24,
+  "coa_mag": 5,
   "snap_period": 10,
   "randomization": true,
   "seeds": [7],
@@ -43,10 +43,10 @@
   "ani_opts": [
     {
       "label_verts":  false,
-      "label_cells": false,
+      "label_cells": true,
       "follow_group": true,
       "show_trails":  false,
-      "arrow_scale":  50
+      "arrow_scale":  100
     }
   ]
 }
