@@ -94,7 +94,7 @@ impl Mul<Radians> for f64 {
 impl Radians {
     /// Calculates "circular" between.
     pub fn between(&self, t0: Radians, t1: Radians) -> bool {
-        if close_to_zero(t0.inner - t1.inner) {
+        if close_to_zero(t0.inner - t1.inner, 1e-4) {
             false
         } else if t0.inner < t1.inner {
             t0.inner < self.inner && self.inner < t1.inner

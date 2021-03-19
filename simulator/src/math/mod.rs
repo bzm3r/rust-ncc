@@ -97,12 +97,12 @@ pub enum InUnitInterval {
 }
 
 #[inline]
-pub fn in_unit_interval(x: f64) -> InUnitInterval {
+pub fn in_unit_interval(x: f64, eps: f64) -> InUnitInterval {
     if x > 0.0 && x < 1.0 {
         InUnitInterval::In
-    } else if close_to_zero(x) {
+    } else if close_to_zero(x, eps) {
         InUnitInterval::Zero
-    } else if close_to_zero(1.0 - x) {
+    } else if close_to_zero(1.0 - x, eps) {
         InUnitInterval::One
     } else {
         InUnitInterval::Out

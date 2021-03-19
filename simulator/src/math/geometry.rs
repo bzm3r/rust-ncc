@@ -18,7 +18,7 @@ use std::fmt;
 use std::fmt::Display;
 use std::ops::{Add, Mul};
 
-const INTERSECTION_CLOSE_EPS: f64 = 1e-3;
+const INTERSECTION_CLOSE_EPS: f64 = 1e-4;
 
 #[derive(Clone, Copy, Deserialize, Serialize)]
 pub struct Poly {

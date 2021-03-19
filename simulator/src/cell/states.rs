@@ -19,6 +19,7 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::fmt::Display;
 use std::ops::{Add, Div, Mul, Sub};
+use crate::math::geometry::{is_point_in_poly, check_intersection, LineSeg2D};
 
 /// `CoreState` contains all the variables that are simulated between geometric
 /// updates. They are simulated using ODEs which are then integrated using
@@ -846,25 +847,48 @@ impl Core {
         old_vs: &[V2d; NVERTS],
         contacts: &[ContactData],
     ) -> Result<(), String> {
-        #[cfg(feature = "validate")]
-        confirm_volume_exclusion(&old_vs, &contacts, "old_vs")?;
+        //confirm_volume_exclusion(&old_vs, &contacts, "old_vs")?;
 
-        #[allow(clippy::needless_range_loop)]
         for vi in 0..NVERTS {
+            let ui = circ_ix_minus(vi, NVERTS);
+            let wi = circ_ix_plus(vi, NVERTS);
+            let u = self.poly[ui];
+            let mut v = self.poly[vi];
+            let w = self.poly[wi];
             let old_v = old_vs[vi];
-            let new_v = self.poly[vi];
-            let new_u = self.poly[circ_ix_minus(vi, NVERTS)];
-            let new_w = self.poly[circ_ix_plus(vi, NVERTS)];
-            self.poly[vi] = move_point_out(
-                &new_u, new_v, &new_w, old_v, &contacts, 20,
-            );
+            for contact in contacts {
+                if is_point_in_poly(
+                    &v,
+                    Some(&contact.poly.bbox),
+                    &contact.poly.verts,
+                ) {
+                    v = fix_in_poly(
+                        old_v,
+                        v,
+                        &contact.poly.verts,
+                        20,
+                    );
+                }
+                for other in contact.poly.edges.iter() {
+                    if check_intersection(&u, &v, other) {
+                        v = fix_edge_intersection(
+                            old_v, v, &u, other, 20,
+                        );
+                    }
+
+                    if check_intersection(&w, &v, other) {
+                        v = fix_edge_intersection(
+                            old_v, v, &w, other, 20,
+                        );
+                    }
+                }
+            }
         }
 
-        #[cfg(feature = "validate")]
-        confirm_volume_exclusion(&self.poly, &contacts, "new_vs")?;
-
+        //confirm_volume_exclusion(&self.poly, &contacts, "new_vs")?;
         Ok(())
     }
+
 
     //TODO(BM): automate generation of `num_vars` using proc macro.
     /// Calculate the total number of variables that `CoreState`
@@ -895,46 +919,59 @@ impl Core {
 
 fn violates_volume_exclusion(
     test_v: &V2d,
-    test_u: &V2d,
-    test_w: &V2d,
     contacts: &[ContactData],
 ) -> bool {
-    let point_pairs = [(test_u, test_v), (test_v, test_w)];
-    for (p0, p1) in point_pairs.iter() {
-        for cd in contacts.iter() {
-            for edge in cd.poly.edges.iter() {
-                if check_strong_intersection(p0, p1, edge) {
-                    return true;
-                }
-            }
+    for contact in contacts {
+        if is_point_in_poly(
+            test_v,
+            Some(&contact.poly.bbox),
+            &contact.poly.verts,
+        ) {
+            return true;
         }
     }
     false
 }
 
-fn move_point_out(
-    new_u: &V2d,
+fn fix_in_poly(
+    mut old_v: V2d,
     mut new_v: V2d,
-    new_w: &V2d,
-    mut good_v: V2d,
-    contacts: &[ContactData],
+    other: &[V2d; NVERTS],
     num_iters: u32,
 ) -> V2d {
     let mut n = 0;
     while n < num_iters {
-        let test_v = 0.5 * (good_v + new_v);
-        if violates_volume_exclusion(&test_v, new_u, new_w, contacts)
-        {
-            new_v = test_v;
+        let test = 0.5 * (old_v + new_v);
+        if is_point_in_poly(&test, None, other) {
+            new_v = test;
         } else {
-            good_v = test_v;
+            old_v = test;
         }
         n += 1;
     }
-    good_v
+    old_v
 }
 
-#[cfg(feature = "validate")]
+fn fix_edge_intersection(
+    mut old_v: V2d,
+    mut new_v: V2d,
+    paired_to_v: &V2d,
+    other: &LineSeg2D,
+    num_iters: u32,
+) -> V2d {
+    let mut n = 0;
+    while n < num_iters {
+        let test = 0.5 * (old_v + new_v);
+        if check_intersection(&test, paired_to_v, other) {
+            new_v = test;
+        } else {
+            old_v = test;
+        }
+        n += 1;
+    }
+    old_v
+}
+
 pub fn confirm_volume_exclusion(
     vs: &[V2d; NVERTS],
     contacts: &[ContactData],
@@ -942,10 +979,8 @@ pub fn confirm_volume_exclusion(
 ) -> Result<(), String> {
     use crate::math::v2d::poly_to_string;
     for (vi, v) in vs.iter().enumerate() {
-        let u = &vs[circ_ix_minus(vi, NVERTS)];
-        let w = &vs[circ_ix_plus(vi, NVERTS)];
         for ContactData { poly, .. } in contacts {
-            if violates_volume_exclusion(v, u, w, contacts) {
+            if violates_volume_exclusion(v, contacts) {
                 return Err(format!(
                     "{} violates volume exclusion.\n\
                     vs[{}] = {}, \n\
