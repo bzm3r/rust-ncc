@@ -10,7 +10,6 @@ use crate::cell::mechanics::{
 use crate::interactions::{
     ContactData, Interactions, RelativeRgtpActivity,
 };
-use crate::math::geometry::check_strong_intersection;
 use crate::math::v2d::{SqP2d, V2d};
 use crate::math::{hill_function3, max_f64};
 use crate::parameters::{Parameters, WorldParameters};

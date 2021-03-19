@@ -1,9 +1,7 @@
 use crate::interactions::dat_sym2d::SymCcDat;
 use crate::interactions::dat_sym4d::SymCcVvDat;
 use crate::interactions::generate_contacts;
-use crate::math::geometry::{
-    BBox, CheckIntersectResult, LineSeg2D, Poly,
-};
+use crate::math::geometry::{BBox, LineSeg2D, Poly};
 use crate::parameters::CoaParams;
 use crate::utils::circ_ix_minus;
 use crate::NVERTS;
@@ -52,14 +50,8 @@ pub fn check_other_poly_intersect(
 ) -> bool {
     if lseg.intersects_bbox(&poly.bbox) {
         for edge in poly.edges.iter() {
-            match lseg.check_intersection(edge) {
-                CheckIntersectResult::No
-                | CheckIntersectResult::Unknown => {
-                    continue;
-                }
-                _ => {
-                    return true;
-                }
+            if lseg.check_intersection(edge) {
+                return true;
             }
         }
     }
@@ -80,61 +72,25 @@ pub fn check_root_poly_intersect(
     vi_a: usize,
     vi_b: usize,
 ) -> bool {
-    let (ignore_mi, ignore_i) = (circ_ix_minus(vi_a, NVERTS), vi_a);
+    let (ignore_ix_0, ignore_ix_1) =
+        (circ_ix_minus(vi_a, NVERTS), vi_a);
     for (ei, edge) in poly_a.edges.iter().enumerate() {
-        match lseg.check_intersection(edge) {
-            CheckIntersectResult::No
-            | CheckIntersectResult::Unknown => {
-                continue;
-            }
-            CheckIntersectResult::Strong
-            | CheckIntersectResult::Self1OnOther0
-            | CheckIntersectResult::Self1OnOther1 => {
-                return true;
-            }
-            CheckIntersectResult::Self0OnOther0 => {
-                if ei == ignore_i {
-                    continue;
-                } else {
-                    return true;
-                }
-            }
-            CheckIntersectResult::Self0OnOther1 => {
-                if ei == ignore_mi {
-                    continue;
-                } else {
-                    return true;
-                }
-            }
+        if ei != ignore_ix_0
+            && ei != ignore_ix_1
+            && edge.check_intersection(lseg)
+        {
+            return true;
         }
     }
 
-    let (ignore_mi, ignore_i) = (circ_ix_minus(vi_b, NVERTS), vi_b);
+    let (ignore_ix_0, ignore_ix_1) =
+        (circ_ix_minus(vi_b, NVERTS), vi_b);
     for (ei, edge) in poly_b.edges.iter().enumerate() {
-        match lseg.check_intersection(edge) {
-            CheckIntersectResult::No
-            | CheckIntersectResult::Unknown => {
-                continue;
-            }
-            CheckIntersectResult::Strong
-            | CheckIntersectResult::Self0OnOther0
-            | CheckIntersectResult::Self0OnOther1 => {
-                return true;
-            }
-            CheckIntersectResult::Self1OnOther0 => {
-                if ei == ignore_i {
-                    continue;
-                } else {
-                    return true;
-                }
-            }
-            CheckIntersectResult::Self1OnOther1 => {
-                if ei == ignore_mi {
-                    continue;
-                } else {
-                    return true;
-                }
-            }
+        if ei != ignore_ix_0
+            && ei != ignore_ix_1
+            && edge.check_intersection(lseg)
+        {
+            return true;
         }
     }
     false

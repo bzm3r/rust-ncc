@@ -110,7 +110,7 @@ impl InteractionGenerator {
     ) -> InteractionGenerator {
         let cell_polys = cell_verts
             .iter()
-            .map(|vs| Poly::from_points(vs))
+            .map(|vs| Poly::from_verts(vs))
             .collect::<Vec<Poly>>();
         let phys_contact_generator = PhysicalContactGenerator::new(
             &cell_polys,
@@ -134,7 +134,7 @@ impl InteractionGenerator {
     }
 
     pub fn update(&mut self, cell_ix: usize, vs: &[V2d; NVERTS]) {
-        self.cell_polys[cell_ix] = Poly::from_points(vs);
+        self.cell_polys[cell_ix] = Poly::from_verts(vs);
         if let Some(coa_gen) = self.coa_generator.as_mut() {
             coa_gen.update(cell_ix, &self.cell_polys)
         }
