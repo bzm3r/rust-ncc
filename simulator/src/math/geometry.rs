@@ -16,6 +16,9 @@ use crate::NVERTS;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::fmt::Display;
+use std::ops::{Add, Mul};
+
+const INTERSECTION_CLOSE_EPS: f64 = 1e-4;
 
 #[derive(Clone, Copy, Deserialize, Serialize)]
 pub struct Poly {
@@ -25,16 +28,40 @@ pub struct Poly {
 }
 
 impl Poly {
-    pub fn from_points(ps: &[V2d; NVERTS]) -> Poly {
-        let bbox = BBox::from_points(ps);
+    pub fn gen_edges(verts: &[V2d; NVERTS]) -> [LineSeg2D; NVERTS] {
         let mut edges =
             [LineSeg2D::new(&V2d::zeros(), &V2d::zeros()); NVERTS];
         (0..NVERTS).for_each(|vi| {
-            edges[vi].refresh(&ps[vi], &ps[circ_ix_plus(vi, NVERTS)])
+            edges[vi]
+                .refresh(&verts[vi], &verts[circ_ix_plus(vi, NVERTS)])
         });
+        edges
+    }
+
+    pub fn gen_verts(edges: &[LineSeg2D; NVERTS]) -> [V2d; NVERTS] {
+        let mut verts = [V2d::default(); NVERTS];
+        (0..NVERTS).for_each(|vi| {
+            verts[vi] = edges[vi].p0;
+        });
+        verts
+    }
+
+    pub fn from_verts(verts: &[V2d; NVERTS]) -> Poly {
+        let bbox = BBox::from_points(verts);
+        let edges = Poly::gen_edges(verts);
         Poly {
-            verts: *ps,
+            verts: *verts,
             edges,
+            bbox,
+        }
+    }
+
+    pub fn from_edges(edges: &[LineSeg2D; NVERTS]) -> Poly {
+        let verts = Poly::gen_verts(edges);
+        let bbox = BBox::from_points(&verts);
+        Poly {
+            verts,
+            edges: *edges,
             bbox,
         }
     }
@@ -141,13 +168,15 @@ pub fn is_point_in_poly(
 
         if (p0.y - p.y).abs() < f64::EPSILON || p0.y < p.y {
             if p1.y > p.y {
-                if let IsLeftResult::Left = is_left_points(p0, p1, p)
+                if let IsLeftResult::Left =
+                    is_left_pointwise(p0, p1, p)
                 {
                     wn += 1;
                 }
             }
         } else if (p1.y - p.y).abs() < f64::EPSILON || p1.y < p.y {
-            if let IsLeftResult::Right = is_left_points(p0, p1, p) {
+            if let IsLeftResult::Right = is_left_pointwise(p0, p1, p)
+            {
                 wn -= 1;
             }
         }
@@ -162,7 +191,7 @@ pub struct LineSeg2D {
     /// First point defining line segment.
     pub p0: V2d,
     /// Second point defining line segment.
-    p1: V2d,
+    pub p1: V2d,
     /// `(p1 - p0)`, the vector generator of the line segment.
     pub vector: V2d,
     /// Bounding box of the segment.
@@ -177,6 +206,36 @@ impl Display for LineSeg2D {
             "LineSeg2D {{ p0: {}, p1: {}, bbox: {} }}",
             self.p0, self.p1, self.bbox
         )
+    }
+}
+
+impl Add for LineSeg2D {
+    type Output = LineSeg2D;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        let p0 = self.p0 + rhs.p0;
+        let p1 = self.p1 + rhs.p1;
+        LineSeg2D::new(&p0, &p1)
+    }
+}
+
+impl Mul<f64> for LineSeg2D {
+    type Output = LineSeg2D;
+
+    fn mul(self, rhs: f64) -> Self::Output {
+        let p0 = self.p0.scale(rhs);
+        let p1 = self.p1.scale(rhs);
+        LineSeg2D::new(&p0, &p1)
+    }
+}
+
+impl Mul<LineSeg2D> for f64 {
+    type Output = LineSeg2D;
+
+    fn mul(self, rhs: LineSeg2D) -> Self::Output {
+        let p0 = rhs.p0.scale(self);
+        let p1 = rhs.p1.scale(self);
+        LineSeg2D::new(&p0, &p1)
     }
 }
 
@@ -246,12 +305,11 @@ pub enum IsLeftResult {
 /// if the cross product of the vector `p1 - p0` with `p - p0` is positive.
 /// If it is negative, consider it to be to the left. If it is `0`, then it is
 /// collinear with the line segment.
-#[inline(always)]
-pub fn is_left(lseg: &LineSeg2D, p: &V2d) -> IsLeftResult {
+pub fn is_left(lseg: &LineSeg2D, p: &V2d, eps: f64) -> IsLeftResult {
     let r = p - &lseg.p0;
-    let cross = lseg.vector.x * r.y - lseg.vector.y * r.x;
+    let cross = lseg.vector.cross(&r);
 
-    if close_to_zero(cross) {
+    if close_to_zero(cross, eps) {
         IsLeftResult::Collinear
     } else if cross > 0.0 {
         IsLeftResult::Left
@@ -262,13 +320,16 @@ pub fn is_left(lseg: &LineSeg2D, p: &V2d) -> IsLeftResult {
 
 /// Version of `is_left` which takes a point-wise definition of the focus
 /// line segment.
-#[inline(always)]
-pub fn is_left_points(p0: &V2d, p1: &V2d, p: &V2d) -> IsLeftResult {
+pub fn is_left_pointwise(
+    p0: &V2d,
+    p1: &V2d,
+    p: &V2d,
+) -> IsLeftResult {
     let r = p - &p0;
     let vector = p1 - p0;
-    let cross = vector.x * r.y - vector.y * r.x;
+    let cross = vector.cross(&r);
 
-    if close_to_zero(cross) {
+    if close_to_zero(cross, INTERSECTION_CLOSE_EPS) {
         IsLeftResult::Collinear
     } else if cross > 0.0 {
         IsLeftResult::Left
@@ -308,78 +369,9 @@ impl LineSeg2D {
         self.bbox = BBox::from_point_pair(p0, p1);
     }
 
-    /// Uses the cross-product to check if one line segment intersects another
-    /// at a point which is not an end point of either of the line segments,
-    /// or if the line segments at some combination of their end points. Note
-    /// that this check will not catch the case where a line segment's end
-    /// point lies on a point on the other line segment which is not an
-    /// end point.
-    pub fn check_intersection(
-        &self,
-        other: &LineSeg2D,
-    ) -> CheckIntersectResult {
-        let p0 = self.p0;
-        let p1 = self.p1;
-        let q0 = other.p0;
-        let q1 = other.p1;
-
-        let delta_px = self.vector.x;
-        let delta_py = self.vector.y;
-        let delta_0y = q0.y - p0.y;
-        let delta_0x = q0.x - p0.x;
-
-        let is_left_q0 = delta_px * delta_0y - delta_0x * delta_py;
-        if is_left_q0.abs() < 1e-4 {
-            if p0.close_to(&q0) {
-                return CheckIntersectResult::Self0OnOther0;
-            } else if p1.close_to(&q0) {
-                return CheckIntersectResult::Self1OnOther0;
-            }
-        }
-
-        let is_left_q1 =
-            delta_px * (q1.y - p0.y) - (q1.x - p0.x) * delta_py;
-        if is_left_q1.abs() < 1e-4 {
-            if p0.close_to(&q1) {
-                return CheckIntersectResult::Self0OnOther1;
-            } else if p1.close_to(&q1) {
-                return CheckIntersectResult::Self1OnOther1;
-            }
-        }
-        // Do both end points of other lie on the same side of self?
-        if is_left_q0 > 0.0 && is_left_q1 > 0.0
-            || is_left_q0 < 0.0 && is_left_q1 < 0.0
-        {
-            return CheckIntersectResult::No;
-        }
-        let delta_qx = other.vector.x;
-        let delta_qy = other.vector.y;
-        // Note that:
-        // is_left_p0 = delta_qx * (-1 * delta_0y) - delta_qy * (-1 * delta_0x)
-        // This is the same as:
-        //  is_left_p0 = delta_qy * delta_0x - delta_qx * delta_0y;
-        let is_left_p0 = delta_qy * delta_0x - delta_qx * delta_0y;
-        // Discount case of p0 lying on q01.
-        if is_left_p0.abs() < 1e-4 {
-            // Collinear, so there may be an intersection if `p0` lies on a
-            // point on `other` which is not also one of `other`'s end points.
-            return CheckIntersectResult::Unknown;
-        }
-        let is_left_p1 =
-            delta_qx * (p1.y - q0.y) - delta_qy * (p1.x - q0.x);
-        // Discount case of p1 lying on q01.
-        if is_left_q1.abs() < 1e-4 {
-            // Collinear, so there may be an intersection if `p0` lies on a
-            // point on `other` which is not also one of `other`'s end points.
-            return CheckIntersectResult::Unknown;
-        }
-        // Discount case where both p0/p1 lie on the same side of q01
-        if is_left_p0 > 0.0 && is_left_p1 > 0.0
-            || is_left_p0 < 0.0 && is_left_p1 < 0.0
-        {
-            return CheckIntersectResult::No;
-        }
-        return CheckIntersectResult::Strong;
+    /// Check if line segments intersect, without calculating point of intersection.
+    pub fn check_intersection(&self, other: &LineSeg2D) -> bool {
+        check_intersection(&self.p0, &self.p1, other)
     }
 
     /// Let this segment `self` be parametrized so that a point
@@ -414,10 +406,14 @@ impl LineSeg2D {
         let dy_o = other.vector.y;
 
         // Let us quickly rule out some simple cases.
-        let self_is_vertical = close_to_zero(dx_s);
-        let self_is_horizontal = close_to_zero(dy_s);
-        let other_is_vertical = close_to_zero(dx_o);
-        let other_is_horizontal = close_to_zero(dy_o);
+        let self_is_vertical =
+            close_to_zero(dx_s, INTERSECTION_CLOSE_EPS);
+        let self_is_horizontal =
+            close_to_zero(dy_s, INTERSECTION_CLOSE_EPS);
+        let other_is_vertical =
+            close_to_zero(dx_o, INTERSECTION_CLOSE_EPS);
+        let other_is_horizontal =
+            close_to_zero(dy_o, INTERSECTION_CLOSE_EPS);
         match (
             self_is_vertical,
             self_is_horizontal,
@@ -439,8 +435,8 @@ impl LineSeg2D {
                 // `other`.
                 let ux = (self.p0.x - other.p0.x) / dx_o;
                 let uy = (self.p0.y - other.p0.y) / dy_o;
-                if close_to_zero(ux - uy) {
-                    match in_unit_interval(ux) {
+                if close_to_zero(ux - uy, INTERSECTION_CLOSE_EPS) {
+                    match in_unit_interval(ux, INTERSECTION_CLOSE_EPS) {
                         InUnitInterval::In => {
                             IntersectCalcResult::Strict(0.0, ux)
                         }
@@ -460,8 +456,8 @@ impl LineSeg2D {
                 // `self`.
                 let tx = (other.p0.x - self.p0.x) / dx_o;
                 let ty = (other.p0.y - self.p0.y) / dy_o;
-                if close_to_zero(tx - ty) {
-                    match in_unit_interval(tx) {
+                if close_to_zero(tx - ty, INTERSECTION_CLOSE_EPS) {
+                    match in_unit_interval(tx, INTERSECTION_CLOSE_EPS) {
                         InUnitInterval::In => {
                             IntersectCalcResult::Strict(tx, 0.0)
                         }
@@ -503,13 +499,15 @@ impl LineSeg2D {
                 // vectors of both line segments are parallel. Therefore,
                 // let us check to see if that is the case.
                 let denominator = dx_s * dy_o - dy_s * dx_o;
-                if close_to_zero(denominator) {
+                if close_to_zero(denominator, INTERSECTION_CLOSE_EPS)
+                {
                     return IntersectCalcResult::ParallelLineSegs;
                 }
                 let dx0_so = self.p0.x - other.p0.x;
                 let dy0_so = self.p0.y - other.p0.y;
                 let t = (dy0_so * dx_o - dx0_so * dy_o) / denominator;
-                let t_in_unit_interval = in_unit_interval(t);
+                let t_in_unit_interval =
+                    in_unit_interval(t, INTERSECTION_CLOSE_EPS);
                 if let InUnitInterval::Out = t_in_unit_interval {
                     return IntersectCalcResult::IntersectionPointNotOnSelf(t);
                 }
@@ -527,7 +525,8 @@ impl LineSeg2D {
                         );
                     }
                 };
-                let u_in_unit_interval = in_unit_interval(u);
+                let u_in_unit_interval =
+                    in_unit_interval(u, INTERSECTION_CLOSE_EPS);
                 if let InUnitInterval::Out = u_in_unit_interval {
                     return IntersectCalcResult::IntersectionPointNotOnOther(u);
                 }
@@ -558,155 +557,30 @@ impl LineSeg2D {
     }
 }
 
-// pub fn refine_raw_poly(raw_poly: [[f64; 2]; 16]) -> [V2d; 16] {
-//     let mut r = [V2d::default(); 16];
-//     for (q, p) in r.iter_mut().zip(raw_poly.iter()) {
-//         q.x = p[0];
-//         q.y = p[1];
-//     }
-//     r
-// }
-//
-// pub fn are_polys_equal(poly0: &[V2d; 16], poly1: &[V2d; 16]) -> bool {
-//     for (p, q) in poly0.iter().zip(poly1.iter()) {
-//         if p.x != q.x || p.y != q.y {
-//             return false;
-//         }
-//     }
-//     true
-// }
-//
-// pub fn debug_point_in_poly() {
-//     let c0_347 = refine_raw_poly([
-//         [40.927586, 17.505148],
-//         [38.242447, 24.997238],
-//         [32.53913, 30.540205],
-//         [26.321924, 35.535126],
-//         [19.893433, 40.224964],
-//         [15.902101, 36.503548],
-//         [9.020461, 31.977158],
-//         [3.0782228, 26.634775],
-//         [-0.060920116, 19.310455],
-//         [0.8173119, 11.377405],
-//         [5.091162, 4.621307],
-//         [11.693666, 0.09866802],
-//         [19.504337, -1.6616803],
-//         [27.426825, -0.5139225],
-//         [34.400642, 3.4034972],
-//         [39.32033, 9.69614],
-//     ]);
-//     let c1_348: [V2d; 16] = refine_raw_poly([
-//         [40.00125, 61.21729],
-//         [39.038857, 69.13645],
-//         [34.721806, 75.863235],
-//         [28.110025, 80.3738],
-//         [20.295544, 82.1296],
-//         [12.370754, 80.97098],
-//         [5.389173, 77.058975],
-//         [0.44813222, 70.77858],
-//         [-1.1411942, 62.963577],
-//         [1.6184937, 55.497562],
-//         [7.390409, 50.025238],
-//         [13.649933, 45.080173],
-//         [17.333612, 37.841843],
-//         [24.296999, 43.844837],
-//         [31.142982, 48.41107],
-//         [36.987385, 53.847706],
-//     ]);
-//     let c1_348_in_c0_check: [V2d; 16] = refine_raw_poly([
-//         [40.00125, 61.21729],
-//         [39.038857, 69.13645],
-//         [34.721806, 75.863235],
-//         [28.110025, 80.3738],
-//         [20.295544, 82.1296],
-//         [12.370754, 80.97098],
-//         [5.389173, 77.058975],
-//         [0.44813222, 70.77858],
-//         [-1.1411942, 62.963577],
-//         [1.6184937, 55.497562],
-//         [7.390409, 50.025238],
-//         [13.649933, 45.080173],
-//         [17.333612, 37.841843],
-//         [24.296999, 43.844837],
-//         [31.142982, 48.41107],
-//         [36.987385, 53.847706],
-//     ]);
-//     let c1_348_is_ok = are_polys_equal(&c1_348, &c1_348_in_c0_check);
-//     let any_c1_348_in_c0_347 = c1_348
-//         .iter()
-//         .any(|p| is_point_in_poly_no_bb_check(p, &c0_347));
-//     let c0v4_in_c1 =
-//         is_point_in_poly_no_bb_check(&c0_347[4], &c1_348);
-//     let c0v4_in_c1ve =
-//         is_point_in_poly_no_bb_check(&c0_347[4], &c1_348_in_c0_check);
-//     println!("is c1_348 okay: {}", c1_348_is_ok);
-//     println!(
-//         "any vertex of c1_348 in c0_347: {}",
-//         any_c1_348_in_c0_347
-//     );
-//     println!("is c0_347_v4 in c1_348: {}", c0v4_in_c1);
-// }
-
-/// Uses the cross-product to check if one line segment intersects another
-/// at a point which is not an end point of either of the line segments.
-/// Unlike the `check_intersection` method for `LineSeg2D`, this entirely
-/// ignores intersections involving end points. Furthermore, it can take one
-/// line segment as input in point wise form.
-pub fn check_strong_intersection(
+/// Uses the cross-product to check if a pair of points defining a line segment intersects
+/// a line segment.
+pub fn check_intersection(
     p0: &V2d,
     p1: &V2d,
     other: &LineSeg2D,
 ) -> bool {
-    let q0 = other.p0;
-    let q1 = other.p1;
-    let delta_px = p1.x - p0.x;
-    let delta_py = p1.y - p0.y;
-    let delta_0x = q0.x - p0.x;
-    let delta_0y = q0.y - p0.y;
-
-    let is_left_q0 = delta_px * delta_0y - delta_0x * delta_py;
-    // Discounting cases where the line segments might involve end points.
-    // (Zero cross-product means that some end point on one line segment is
-    // collinear with an end point on the other line segment.)
-    if is_left_q0.abs() < 1e-4 {
-        return false;
+    match (
+        is_left_pointwise(p0, p1, &other.p0),
+        is_left_pointwise(p0, p1, &other.p1),
+        is_left_pointwise(&other.p0, &other.p1, p0),
+        is_left_pointwise(&other.p0, &other.p1, p1),
+    ) {
+        (IsLeftResult::Left, IsLeftResult::Left, _, _)
+        | (IsLeftResult::Right, IsLeftResult::Right, _, _)
+        | (_, _, IsLeftResult::Left, IsLeftResult::Left)
+        | (_, _, IsLeftResult::Right, IsLeftResult::Right) => false,
+        (
+            IsLeftResult::Collinear,
+            IsLeftResult::Collinear,
+            IsLeftResult::Collinear,
+            IsLeftResult::Collinear,
+        ) => BBox::from_point_pair(p0, p1)
+            .intersects(&BBox::from_point_pair(&other.p0, &other.p1)),
+        (_, _, _, _) => true,
     }
-
-    let is_left_q1 =
-        delta_px * (q1.y - p0.y) - (q1.x - p0.x) * delta_py;
-    if is_left_q1.abs() < 1e-4 {
-        return false;
-    }
-    // Do both end points of other lie on the same side of self?
-    if is_left_q0 > 0.0 && is_left_q1 > 0.0
-        || is_left_q0 < 0.0 && is_left_q1 < 0.0
-    {
-        return false;
-    }
-    let delta_qx = other.vector.x;
-    let delta_qy = other.vector.y;
-    // Note that:
-    // is_left_p0 = delta_qx * (-1 * delta_0y) - delta_qy * (-1 * delta_0x)
-    // This is the same as:
-    //  is_left_p0 = delta_qy * delta_0x - delta_qx * delta_0y;
-    let is_left_p0 = delta_qy * delta_0x - delta_qx * delta_0y;
-    if is_left_p0.abs() < 1e-4 {
-        return false;
-    }
-    let is_left_p1 =
-        delta_qx * (p1.y - q0.y) - delta_qy * (p1.x - q0.x);
-    // Discount case of p1 lying on q01.
-    if is_left_q1.abs() < 1e-4 {
-        // Collinear, so there may be an intersection if `p0` lies on a
-        // point on `other` which is not also one of `other`'s end points.
-        return false;
-    }
-    // Discount case where both p0/p1 lie on the same side of q01
-    if is_left_p0 > 0.0 && is_left_p1 > 0.0
-        || is_left_p0 < 0.0 && is_left_p1 < 0.0
-    {
-        return false;
-    }
-
-    true
 }

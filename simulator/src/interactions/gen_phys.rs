@@ -65,7 +65,7 @@ impl ClosePoint {
             let t = seg_vec.dot(&s_to_tp) / seg_vec.mag_squared();
             // Is `t` in the interval `[0, 1)`? If yes, then the close
             // point lies on the edge.
-            match in_unit_interval(t) {
+            match in_unit_interval(t, 1e-4) {
                 InUnitInterval::Zero | InUnitInterval::In => {
                     let c = t * (seg_vec) + seg_start;
                     let tp_to_c = c - test_point;
@@ -391,7 +391,7 @@ impl PhysicalContactGenerator {
                             -1.0 * adh_mag * x * vector_to;
                         //* ((1.0 / self.params.range) * delta);
                         // We are close to the vertex.
-                        if close_to_zero(edge_point_param) {
+                        if close_to_zero(edge_point_param, 1e-4) {
                             adh_per_cell[oci][ovi] =
                                 adh_per_cell[oci][ovi] - adh_force;
                             adh_per_cell[ci][vi] =

@@ -78,8 +78,8 @@ pub fn capped_linear_fn(x: f64, zero_at: f64, one_at: f64) -> f64 {
 }
 
 /// Return if the float `x` close to `0.0`.
-pub fn close_to_zero(x: f64) -> bool {
-    x.abs() < 1e-4
+pub fn close_to_zero(x: f64, eps: f64) -> bool {
+    x.abs() < eps
 }
 
 /// Round to `n` digits.
@@ -97,12 +97,12 @@ pub enum InUnitInterval {
 }
 
 #[inline]
-pub fn in_unit_interval(x: f64) -> InUnitInterval {
+pub fn in_unit_interval(x: f64, eps: f64) -> InUnitInterval {
     if x > 0.0 && x < 1.0 {
         InUnitInterval::In
-    } else if close_to_zero(x) {
+    } else if close_to_zero(x, eps) {
         InUnitInterval::Zero
-    } else if close_to_zero(1.0 - x) {
+    } else if close_to_zero(1.0 - x, eps) {
         InUnitInterval::One
     } else {
         InUnitInterval::Out
