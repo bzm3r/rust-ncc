@@ -5,7 +5,7 @@
       "num_cells": 2
     }
   },
-  "final_t": 500,
+  "final_t": 1000,
   "cil_mag": 60,
   "coa_mag": 24,
   "snap_period": 10,
@@ -52,7 +52,7 @@
       "label_cells": true,
       "follow_group": true,
       "show_trails":  false,
-      "arrow_scale":  50
+      "arrow_scale":  1.0
     }
   ]
 }

@@ -7,7 +7,7 @@ import os
 import subprocess
 import orjson
 
-run_experiments = False
+run_experiments = True
 exec_mode = "release"
 root_dir = os.getcwd()
 exp_jsons = ["py_comp_pair_coa_24"]
@@ -35,20 +35,20 @@ for exp_json in exp_jsons:
         py_dat.load_py_dat(out_dir, file_name)
         vec_ani_opts = get_vec_ani_opts(exp_dict)
 
-        # rust_dat.animate(vec_ani_opts, "rgtps")
-        # rust_dat.animate(vec_ani_opts, "x_cils")
+        rust_dat.animate(vec_ani_opts, "rgtps")
+        rust_dat.animate(vec_ani_opts, "x_cils")
         rust_dat.animate(vec_ani_opts, "x_cals")
-        # rust_dat.animate(vec_ani_opts, "kgtps_rho")
-        # rust_dat.animate(vec_ani_opts, "kgtps_rac")
-        # rust_dat.animate(vec_ani_opts, "rgtp_forces")
-        # rust_dat.animate(vec_ani_opts, "x_coas")
+        rust_dat.animate(vec_ani_opts, "kgtps_rho")
+        rust_dat.animate(vec_ani_opts, "kgtps_rac")
+        rust_dat.animate(vec_ani_opts, "rgtp_forces")
+        rust_dat.animate(vec_ani_opts, "x_coas")
 
-        # py_dat.animate(vec_ani_opts, "rgtps")
-        # py_dat.animate(vec_ani_opts, "x_cils")
-        # py_dat.animate(vec_ani_opts, "kgtps_rho")
-        # py_dat.animate(vec_ani_opts, "kgtps_rac")
-        # py_dat.animate(vec_ani_opts, "rgtp_forces")
-        # py_dat.animate(vec_ani_opts, "x_coas")
+        py_dat.animate(vec_ani_opts, "rgtps")
+        py_dat.animate(vec_ani_opts, "x_cils")
+        py_dat.animate(vec_ani_opts, "kgtps_rho")
+        py_dat.animate(vec_ani_opts, "kgtps_rac")
+        py_dat.animate(vec_ani_opts, "rgtp_forces")
+        py_dat.animate(vec_ani_opts, "x_coas")
 
         # comp_dat = PythonRustComparisonData(out_dir, py_dat, rust_dat,
         #                                     [":", "-"], file_name +
