@@ -5,12 +5,12 @@
       "num_cells": 2
     }
   },
-  "final_t": 10800,
+  "final_t": 13000,
   "cil_mag": 60,
-  "coa_mag": 12,
+  "coa_mag": 24,
   "snap_period": 10,
-  "randomization": false,
-  "seeds": [7],
+  "randomization": true,
+  "seeds": [77],
   "rgtp_distrib_defs": {
     "rac": {
       "acts": {
@@ -43,10 +43,10 @@
   "ani_opts": [
     {
       "label_verts":  false,
-      "label_cells": true,
+      "label_cells": false,
       "follow_group": true,
       "show_trails":  false,
-      "arrow_scale":  150
+      "arrow_scale":  50
     }
   ]
 }

@@ -147,7 +147,7 @@ pub fn generate(
         int_opts,
         ..
     } = args;
-
+    println!("{:?}", coa_mag);
     let (sep_in_cell_diams, rgtp_distrib_defs_per_cell) =
         if let ExperimentType::Pair {
             sep_in_cell_diams,
@@ -165,9 +165,8 @@ pub fn generate(
             let mut rng = Pcg32::seed_from_u64(seed);
 
             let char_quants = *defaults::CHAR_QUANTS;
-            let raw_world_params = *defaults::RAW_WORLD_PARAMS;
-            raw_world_params.modify_interactions(
-                RawInteractionParams {
+            let raw_world_params = defaults::RAW_WORLD_PARAMS
+                .modify_interactions(RawInteractionParams {
                     coa: coa_mag.map(|mag| {
                         RAW_COA_PARAMS_WITH_ZERO_MAG.modify_mag(mag)
                     }),
@@ -184,8 +183,7 @@ pub fn generate(
                         cal_mag,
                         cil_mag,
                     },
-                },
-            );
+                });
             let world_params = raw_world_params.refine(&char_quants);
             let cgs = make_cell_groups(
                 &mut rng,
