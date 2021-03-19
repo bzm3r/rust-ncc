@@ -4,7 +4,6 @@ members = [
     "executor",
     "interface",
     "modify-derive",
-    "py-wrapper",
 ]
 default-members = ["executor"]
 exclude = [

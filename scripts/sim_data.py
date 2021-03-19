@@ -20,6 +20,7 @@ class SimulationData:
 
     world_info = None
     header = None
+    tag = None
 
     poly_per_c_per_s = None
     centroids_per_c_per_s = None
@@ -41,6 +42,8 @@ class SimulationData:
     kgtps_rho_per_c_per_s = None
     kgtps_rho_arrows_per_c_per_s = None
     kgtps_rho_arrow_group = None
+    kgtps_rac_arrows_per_c_per_s = None
+    kgtps_rac_arrow_group = None
     kdgtps_rho_per_c_per_s = None
     rac_act_net_fluxes_per_c_per_s = None
     rac_inact_net_fluxes_per_c_per_s = None
@@ -49,8 +52,11 @@ class SimulationData:
     x_tens_per_c_per_s = None
 
     x_cils_per_c_per_s = None
+    x_cals_per_c_per_s = None
     x_cils_arrows_per_c_per_s = None
+    x_cals_arrows_per_c_per_s = None
     x_cils_arrow_group = None
+    x_cals_arrow_group = None
     x_coas_per_c_per_s = None
     x_coas_arrows_per_c_per_s = None
     x_coas_arrow_group = None
@@ -114,16 +120,29 @@ class SimulationData:
             self.uovs_per_c_per_s
         self.x_cils_arrow_group = [(0.1, "r", self.x_cils_arrows_per_c_per_s)]
 
+        if self.tag == "rust":
+            self.x_cals_arrows_per_c_per_s = \
+                self.x_cals_per_c_per_s[:, :, :, np.newaxis] * \
+                self.uovs_per_c_per_s
+            self.x_cals_arrow_group = [(0.1, "r", self.x_cals_arrows_per_c_per_s)]
+
+
         self.x_coas_arrows_per_c_per_s = \
             self.x_coas_per_c_per_s[:, :, :, np.newaxis] * \
             self.uovs_per_c_per_s
-        self.x_coas_arrow_group = [(0.05, "b", self.x_coas_arrows_per_c_per_s)]
+        self.x_coas_arrow_group = [(3.0, "b", self.x_coas_arrows_per_c_per_s)]
 
         self.kgtps_rho_arrows_per_c_per_s = \
             self.kgtps_rho_per_c_per_s[:, :, :, np.newaxis] * \
             self.uovs_per_c_per_s
         self.kgtps_rho_arrow_group = [(100.0, "r",
                                        self.kgtps_rho_arrows_per_c_per_s)]
+
+        self.kgtps_rac_arrows_per_c_per_s = \
+            self.kgtps_rac_per_c_per_s[:, :, :, np.newaxis] * \
+            self.uovs_per_c_per_s
+        self.kgtps_rac_arrow_group = [(100.0, "b",
+                                       self.kgtps_rac_arrows_per_c_per_s)]
 
         is_rac_force = np.zeros_like(self.rgtp_forces_per_c_per_s)
         is_rho_force = np.zeros_like(self.rgtp_forces_per_c_per_s)
@@ -152,6 +171,7 @@ class SimulationData:
         self.file_name = file_name
         self.cbor_file_path = self.file_name + ".cbor"
         self.mp4_file_name_header = self.file_name + "_M=r"
+        self.tag = "rust"
 
         cbor_files = \
             [f for f in os.listdir(self.out_dir)
@@ -210,6 +230,8 @@ class SimulationData:
 
         self.x_cils_per_c_per_s = \
             cb.extract_scalars_from_data(['interactions', 'x_cils'], data)
+        self.x_cals_per_c_per_s = \
+            cb.extract_scalars_from_data(['interactions', 'x_cals'], data)
         self.x_coas_per_c_per_s = \
             cb.extract_scalars_from_data(['interactions', 'x_coas'], data)
         self.x_adhs_per_c_per_s = \
@@ -260,6 +282,7 @@ class SimulationData:
         self.file_name = file_name
         self.dat_file_path = self.file_name + ".dat"
         self.mp4_file_name_header = self.file_name + "_M=p"
+        self.tag = "py"
 
         raw_out = cd.read_save_file(self.out_dir, self.dat_file_path)
         data_per_c_per_s = cd.get_data_per_c_per_s(raw_out)
@@ -358,8 +381,8 @@ class SimulationData:
         self.load_animation_arrows()
 
     def animate(self, vec_ani_opts, ty):
-        self.default_xlim = [-20, 100]
-        self.default_ylim = [-20, 100]
+        self.default_xlim = [-40, 200]
+        self.default_ylim = [-40, 200]
         self.default_bbox_lim = \
             [self.default_xlim[1] - self.default_xlim[0],
              self.default_ylim[1] - self.default_ylim[0]]
@@ -434,13 +457,12 @@ class SimulationData:
                 if self.ani_opts.label_verts:
                     ax.annotate(str(vix), (poly[vix, 0], poly[vix, 1]))
 
+            if self.ani_opts.label_cells and snap_ix > 0:
+                ax.annotate(str(ci), (self.centroids_per_c_per_s[-1, ci, 0],
+                                      self.centroids_per_c_per_s[-1, ci, 1]))
             c_centers = self.centroids_per_c_per_s[:snap_ix, ci]
             if self.ani_opts.show_trails:
                 ax.plot(c_centers[:, 0], c_centers[:, 1])
-
-            if self.ani_opts.label_cells and snap_ix > 0:
-                ax.annotate(str(ci), (c_centers[-1, 0],
-                                      c_centers[-1, 1]))
 
         arrow_group = eval("self.{}_arrow_group".format(ty))
 

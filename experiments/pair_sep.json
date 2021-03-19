@@ -1,10 +1,10 @@
 {
-  "description": "one cell experiment",
+  "description": "separated pair",
   "ty": {
     "Pair": {
       "sep_in_cell_diams": 2,
       "rgtp_distrib_defs_per_cell": {
-        "0": {
+        "cell0": {
           "rac": {
             "acts": {
               "SpecificUniform": {
@@ -34,7 +34,7 @@
             }
           }
         },
-        "1": {
+        "cell1": {
           "rac": {
             "acts": {
               "SpecificUniform": {
@@ -67,12 +67,12 @@
       }
     }
   },
-  "final_t": 5400,
+  "final_t": 11000,
   "cil_mag": 60,
   "coa_mag": 24,
   "snap_period": 10,
   "randomization": true,
-  "seeds": [7, 77, 777],
+  "seeds": [7],
   "int_opts": {
     "RkDp5": {}
   },
