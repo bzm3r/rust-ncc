@@ -1,6 +1,6 @@
 use crate::interactions::dat_4d::CvCvDat;
 use crate::interactions::dat_sym2d::SymCcDat;
-use crate::interactions::{generate_contacts, RelativeRgtpActivity};
+use crate::interactions::{gen_contact_matrix, RelativeRgtpActivity};
 use crate::math::geometry::{BBox, Poly};
 use crate::math::v2d::V2d;
 use crate::math::{
@@ -123,8 +123,9 @@ impl fmt::Display for ClosePoint {
 )]
 pub struct PhysicalContactGenerator {
     dat: CvCvDat<ClosePoint>,
+    close_to_any_matrix: Vec<[bool; NVERTS]>,
     pub contact_bbs: Vec<BBox>,
-    pub contacts: SymCcDat<bool>,
+    pub contact_matrix: SymCcDat<bool>,
     pub params: PhysicalContactParams,
 }
 
@@ -146,10 +147,10 @@ impl PhysicalContactGenerator {
             .iter()
             .map(|cp| cp.bbox.expand_by(params.range.zero_at))
             .collect::<Vec<BBox>>();
-        let contacts = generate_contacts(&contact_bbs);
+        let contact_matrix = gen_contact_matrix(&contact_bbs);
         for (ai, poly) in cell_polys.iter().enumerate() {
             for (bi, other) in cell_polys.iter().enumerate() {
-                if ai != bi && contacts.get(ai, bi) {
+                if ai != bi && contact_matrix.get(ai, bi) {
                     for (avi, p) in poly.verts.iter().enumerate() {
                         for (bvi, a) in other.verts.iter().enumerate()
                         {
@@ -172,12 +173,52 @@ impl PhysicalContactGenerator {
                 }
             }
         }
+        let mut close_to_any_matrix =
+            vec![[false; NVERTS]; num_cells];
+        for ci in 0..num_cells {
+            close_to_any_matrix[ci] =
+                PhysicalContactGenerator::eval_close_to_any(
+                    ci,
+                    &contact_matrix,
+                    &dat,
+                );
+        }
         PhysicalContactGenerator {
             dat,
+            close_to_any_matrix,
             contact_bbs,
-            contacts,
+            contact_matrix,
             params,
         }
+    }
+
+    pub fn eval_close_to_any(
+        ci: usize,
+        contact_matrix: &SymCcDat<bool>,
+        dat: &CvCvDat<ClosePoint>,
+    ) -> [bool; NVERTS] {
+        let mut r = [false; NVERTS];
+        'vert_loop: for vi in 0..NVERTS {
+            for oci in 0..contact_matrix.num_cells {
+                if oci != ci && contact_matrix.get(ci, oci) {
+                    for ovi in 0..NVERTS {
+                        match dat.get(ci, vi, oci, ovi) {
+                            ClosePoint::OnEdge { .. }
+                            | ClosePoint::Vertex { .. } => {
+                                r[vi] = true;
+                                continue 'vert_loop;
+                            }
+                            _ => {}
+                        }
+                    }
+                }
+            }
+        }
+        r
+    }
+
+    pub fn close_to_any(&self, ci: usize, vi: usize) -> bool {
+        self.close_to_any_matrix[ci][vi]
     }
 
     /// Get edges containing points on cell `oci` which are close to vertex `vi` on cell `ci`.
@@ -285,11 +326,11 @@ impl PhysicalContactGenerator {
         self.contact_bbs[ci] = bb;
         for (oci, obb) in self.contact_bbs.iter().enumerate() {
             if oci != ci {
-                self.contacts.set(ci, oci, obb.intersects(&bb));
+                self.contact_matrix.set(ci, oci, obb.intersects(&bb));
             }
         }
         for (oci, other) in cell_polys.iter().enumerate() {
-            if ci != oci && self.contacts.get(ci, oci) {
+            if ci != oci && self.contact_matrix.get(ci, oci) {
                 for (pi, p) in poly.verts.iter().enumerate() {
                     for (ai, a) in other.verts.iter().enumerate() {
                         // if ci == 0 && oci == 1 && pi == 3 && ai == 13
@@ -348,13 +389,19 @@ impl PhysicalContactGenerator {
                 }
             }
         }
+        self.close_to_any_matrix[ci] =
+            PhysicalContactGenerator::eval_close_to_any(
+                ci,
+                &self.contact_matrix,
+                &self.dat,
+            );
     }
 
     pub fn generate(
         &self,
         rel_rgtps_per_cell: &[[RelativeRgtpActivity; NVERTS]],
     ) -> PhysContactFactors {
-        let num_cells = self.contacts.num_cells;
+        let num_cells = self.contact_matrix.num_cells;
         let mut adh_per_cell =
             vec![[V2d::default(); NVERTS]; num_cells];
         let mut cal_per_cell = vec![[0.0f64; NVERTS]; num_cells];

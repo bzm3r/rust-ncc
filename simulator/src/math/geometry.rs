@@ -567,6 +567,13 @@ pub fn check_intersection(
     p1: &V2d,
     other: &LineSeg2D,
 ) -> bool {
+    // if p0.close_to(&other.p0)
+    //     || p0.close_to(&other.p1)
+    //     || p1.close_to(&other.p0)
+    //     || p1.close_to(&other.p1)
+    // {
+    //     return true;
+    // }
     let is_left_results = (
         is_left_pointwise(p0, p1, &other.p0),
         is_left_pointwise(p0, p1, &other.p1),

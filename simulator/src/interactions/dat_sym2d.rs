@@ -2,7 +2,9 @@ use crate::interactions::dat_utils::{sort_ixs, sym_sum};
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 
-#[derive(Clone, Deserialize, Serialize, PartialEq, Default, Debug)]
+#[derive(
+    Clone, Deserialize, Serialize, PartialEq, Default, Debug,
+)]
 pub struct SymCcDat<T: Copy + Default + PartialEq + Debug> {
     pub num_cells: usize,
     unique_elements: usize,
