@@ -7,7 +7,7 @@ import os
 import subprocess
 import orjson
 
-run_experiments = True
+run_experiments = False
 exec_mode = "release"
 root_dir = os.getcwd()
 exp_jsons = ["no_coa_if_cil_vol_ex_py_comp"]
@@ -35,13 +35,15 @@ for exp_json in exp_jsons:
         py_dat.load_py_dat(out_dir, file_name)
         vec_ani_opts = get_vec_ani_opts(exp_dict)
 
-        rust_dat.animate(vec_ani_opts, "rgtps")
-        rust_dat.animate(vec_ani_opts, "x_cils")
-        rust_dat.animate(vec_ani_opts, "x_cals")
-        rust_dat.animate(vec_ani_opts, "kgtps_rho")
-        rust_dat.animate(vec_ani_opts, "kgtps_rac")
-        rust_dat.animate(vec_ani_opts, "rgtp_forces")
-        rust_dat.animate(vec_ani_opts, "x_coas")
+        # rust_dat.animate(vec_ani_opts, "rgtps")
+        # rust_dat.animate(vec_ani_opts, "x_cils")
+        # rust_dat.animate(vec_ani_opts, "x_cals")
+        # rust_dat.animate(vec_ani_opts, "kgtps_rho")
+        # rust_dat.animate(vec_ani_opts, "kgtps_rac")
+        # rust_dat.animate(vec_ani_opts, "rgtp_forces")
+        # rust_dat.animate(vec_ani_opts, "x_coas")
+        rust_dat.animate(vec_ani_opts, "kdgtps_rac")
+        rust_dat.animate(vec_ani_opts, "kdgtps_rho")
 
         # py_dat.animate(vec_ani_opts, "rgtps")
         # py_dat.animate(vec_ani_opts, "x_cils")
@@ -49,11 +51,13 @@ for exp_json in exp_jsons:
         # py_dat.animate(vec_ani_opts, "kgtps_rac")
         # py_dat.animate(vec_ani_opts, "rgtp_forces")
         # py_dat.animate(vec_ani_opts, "x_coas")
+        py_dat.animate(vec_ani_opts, "kdgtps_rac")
+        py_dat.animate(vec_ani_opts, "kdgtps_rho")
 
-        # comp_dat = PythonRustComparisonData(out_dir, py_dat, rust_dat,
-        #                                     [":", "-"], file_name +
-        #                                     "_rust_and_py")
-        # comp_dat.plot()
+        comp_dat = PythonRustComparisonData(out_dir, py_dat, rust_dat,
+                                            [":", "-"], file_name +
+                                            "_rust_and_py")
+        comp_dat.plot(["kdgtps_rac", "kdgtps_rho"])
         # comp_dat.animate(vec_ani_opts, "rgtps")
         # comp_dat.animate(vec_ani_opts, "x_cils")
         # comp_dat.animate(vec_ani_opts, "kgtps_rho")

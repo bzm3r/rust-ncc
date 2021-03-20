@@ -647,7 +647,14 @@ impl Core {
                 chem_state.kdgtps_rac[i] * self.rac_acts[i];
             let activated_rac =
                 chem_state.kgtps_rac[i] * self.rac_inacts[i];
+            let inactivated_rho =
+                chem_state.kdgtps_rho[i] * self.rho_acts[i];
+            let activated_rho =
+                chem_state.kgtps_rho[i] * self.rho_inacts[i];
+
             let delta_rac_activated = activated_rac - inactivated_rac;
+            let delta_rho_activated = activated_rho - inactivated_rho;
+
             let rac_cyto_exchange = {
                 let rac_mem_on =
                     parameters.k_mem_on_vertex * chem_state.rac_cyto;
@@ -655,21 +662,6 @@ impl Core {
                     parameters.k_mem_off * self.rac_inacts[i];
                 rac_mem_on - rac_mem_off
             };
-            let vertex_rac_act_flux =
-                chem_state.rac_act_net_fluxes[i];
-            let vertex_rac_inact_flux =
-                chem_state.rac_inact_net_fluxes[i];
-            delta.rac_acts[i] =
-                delta_rac_activated + vertex_rac_act_flux;
-            delta.rac_inacts[i] = rac_cyto_exchange
-                + vertex_rac_inact_flux
-                - delta_rac_activated;
-
-            let inactivated_rho =
-                chem_state.kdgtps_rho[i] * self.rho_acts[i];
-            let activated_rho =
-                chem_state.kgtps_rho[i] * self.rho_inacts[i];
-            let delta_rho_activated = activated_rho - inactivated_rho;
             let rho_cyto_exchange = {
                 let rho_mem_on =
                     parameters.k_mem_on_vertex * chem_state.rho_cyto;
@@ -677,10 +669,21 @@ impl Core {
                     parameters.k_mem_off * self.rho_inacts[i];
                 rho_mem_on - rho_mem_off
             };
+
+            let vertex_rac_act_flux =
+                chem_state.rac_act_net_fluxes[i];
+            let vertex_rac_inact_flux =
+                chem_state.rac_inact_net_fluxes[i];
             let vertex_rho_act_flux =
                 chem_state.rho_act_net_fluxes[i];
             let vertex_rho_inact_flux =
                 chem_state.rho_inact_net_fluxes[i];
+
+            delta.rac_acts[i] =
+                delta_rac_activated + vertex_rac_act_flux;
+            delta.rac_inacts[i] = rac_cyto_exchange
+                + vertex_rac_inact_flux
+                - delta_rac_activated;
             delta.rho_acts[i] =
                 delta_rho_activated + vertex_rho_act_flux;
             delta.rho_inacts[i] = rho_cyto_exchange

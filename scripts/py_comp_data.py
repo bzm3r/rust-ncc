@@ -134,19 +134,22 @@ class PythonRustComparisonData:
             cell_ani.save(ani_save_path, writer=writer)
             plt.close()
 
-    def plot(self):
-        rs = [self.rust_dat.x_coas_per_c_per_s,
-              self.rust_dat.kgtps_rac_per_c_per_s]
-        ps = [self.py_dat.x_coas_per_c_per_s, self.py_dat.kgtps_rac_per_c_per_s]
-        data_labels = ["x_coas", "kgtps_rac"]
+    def plot(self, data_labels):
+        rs = [eval("self.rust_dat.{}_per_c_per_s".format(dl), {"self": self})
+              for
+              dl in
+              data_labels]
+        ps = [eval("self.py_dat.{}_per_c_per_s".format(dl), {"self": self}) for dl in
+              data_labels]
 
         for r, p, l in zip(rs, ps, data_labels):
             fig, ax = plt.subplots()
             cell_ix = 0
-            ax.plot(r[:10, cell_ix, :1], label="rust")
-            ax.plot(p[:10, cell_ix, :1], label="python")
+            ax.plot(r[:, cell_ix, :1], label="rust")
+            ax.plot(p[:, cell_ix, :1], label="python")
             ax.set_title("{} for cell {}".format(l, cell_ix))
             ax.legend(loc="best")
-            plot_path = os.path.join(self.out_dir, "{}.png".format(l))
+            plot_path = os.path.join(self.out_dir, "{}_{}.png".format(
+                self.mp4_file_name, l))
             fig.savefig(plot_path)
             plt.close()
