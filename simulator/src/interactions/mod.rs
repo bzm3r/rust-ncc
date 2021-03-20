@@ -117,7 +117,11 @@ impl InteractionGenerator {
             params.phys_contact,
         );
         let coa_generator = params.coa.map(|coa_params| {
-            CoaGenerator::new(&cell_polys, coa_params)
+            CoaGenerator::new(
+                &cell_polys,
+                coa_params,
+                &phys_contact_generator,
+            )
         });
         let chem_attr_generator =
             params.chem_attr.map(ChemAttrGenerator::new);
@@ -134,9 +138,15 @@ impl InteractionGenerator {
     }
 
     pub fn update(&mut self, cell_ix: usize, vs: &[V2d; NVERTS]) {
+        self.phys_contact_generator
+            .update(cell_ix, &self.cell_polys);
         self.cell_polys[cell_ix] = Poly::from_verts(vs);
         if let Some(coa_gen) = self.coa_generator.as_mut() {
-            coa_gen.update(cell_ix, &self.cell_polys)
+            coa_gen.update(
+                cell_ix,
+                &self.cell_polys,
+                &self.phys_contact_generator,
+            )
         }
         if let Some(_chema_gen) = self.chem_attr_generator.as_mut() {
             unimplemented!()
@@ -144,8 +154,6 @@ impl InteractionGenerator {
         if let Some(_bdry_gen) = self.bdry_generator.as_mut() {
             unimplemented!()
         }
-        self.phys_contact_generator
-            .update(cell_ix, &self.cell_polys);
     }
 
     pub fn generate(
@@ -189,7 +197,9 @@ impl InteractionGenerator {
         let num_cells = self.cell_polys.len();
         (0..num_cells)
             .filter(|&oci| {
-                self.phys_contact_generator.contacts.get(ci, oci)
+                self.phys_contact_generator
+                    .contact_matrix
+                    .get(ci, oci)
             })
             .collect()
     }
@@ -208,7 +218,7 @@ impl InteractionGenerator {
 /// Generate a `SymCcDat<bool>` which records whether two cells
 /// are roughly in contact, based on intersection of their contact
 /// bounding boxes.
-pub fn generate_contacts(contact_bbs: &[BBox]) -> SymCcDat<bool> {
+pub fn gen_contact_matrix(contact_bbs: &[BBox]) -> SymCcDat<bool> {
     let mut contacts = SymCcDat::new(contact_bbs.len(), false);
     for (ci, bb) in contact_bbs.iter().enumerate() {
         for (oxi, obb) in contact_bbs[(ci + 1)..].iter().enumerate() {

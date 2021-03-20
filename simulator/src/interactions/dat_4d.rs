@@ -103,7 +103,9 @@ use std::fmt::Debug;
 /// a particular vertex on it. All data stored must have
 /// the same type. However, the structure is generic over different
 /// data types as long as they implement `Copy` and `Default`.
-#[derive(Clone, Serialize, Deserialize, PartialEq, Default, Debug)]
+#[derive(
+    Clone, Serialize, Deserialize, PartialEq, Default, Debug,
+)]
 pub struct CvCvDat<T: Copy + Default + Debug + PartialEq> {
     pub num_cells: usize,
     c_stride: usize,

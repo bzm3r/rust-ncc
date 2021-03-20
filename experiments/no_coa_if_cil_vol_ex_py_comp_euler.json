@@ -3,7 +3,7 @@
   "ty": {
     "PyCompare": {
       "num_cells": 2,
-      "run_python": false
+      "run_python": true
     }
   },
   "final_t": 1000,
@@ -43,8 +43,7 @@
     }
   },
   "int_opts": {
-    "EulerDebug": {
-      "num_int_steps": 10
+    "Euler": {
     }
   },
   "ani_opts": [
