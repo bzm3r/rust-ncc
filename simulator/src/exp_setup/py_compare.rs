@@ -26,9 +26,12 @@ fn group_bbox(
     raw_params: &RawParameters,
 ) -> Result<GroupBBox, String> {
     // specify initial location of group centroid
+    let inter_group_sep = char_quants
+        .normalize(&raw_params.cell_diam.scale(0.5 * 0.02));
     let bottom_left = V2d {
         x: char_quants
-            .normalize(&raw_params.cell_diam.scale(group_ix as f64)),
+            .normalize(&raw_params.cell_diam.scale(group_ix as f64))
+            + inter_group_sep * (group_ix as f64),
         y: char_quants.normalize(&Length(0.0)),
     };
     let r = GroupBBox {

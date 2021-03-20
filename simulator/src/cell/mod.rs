@@ -11,7 +11,7 @@ pub mod rkdp5;
 pub mod states;
 
 use crate::cell::chemistry::RacRandState;
-use crate::cell::states::Core;
+use crate::cell::states::{confirm_volume_exclusion, Core};
 use crate::interactions::{ContactData, Interactions};
 use crate::parameters::{Parameters, WorldParameters};
 use crate::utils::pcg32::Pcg32;
@@ -84,6 +84,7 @@ impl Cell {
             state = state + delta.time_step(dt);
             // Enforcing volume exclusion! Tricky!
             state.enforce_volume_exclusion(
+                self.ix,
                 &self.core.poly,
                 &contact_data,
             )?;
@@ -115,10 +116,23 @@ impl Cell {
         parameters: &Parameters,
         int_opts: EulerOpts,
     ) -> Result<Vec<Cell>, String> {
+        let cell_ix = self.ix;
+        // println!("cell_ix: {}", cell_ix);
         let mut r: Vec<Cell> =
             Vec::with_capacity(int_opts.num_int_steps as usize);
         let mut state = self.core;
         let dt = 1.0 / (int_opts.num_int_steps as f64);
+        confirm_volume_exclusion(
+            cell_ix,
+            &self.core.poly,
+            &contact_data,
+            "old_vs",
+        )?;
+        // let (focus_vi, other_focus_v) = if cell_ix == 0 {
+        //     (0, contact_data[0].poly.verts[8])
+        // } else {
+        //     (8, contact_data[0].poly.verts[0])
+        // };
         for _ in 0..int_opts.num_int_steps {
             let delta = Core::derivative(
                 &state,
@@ -127,12 +141,22 @@ impl Cell {
                 world_parameters,
                 parameters,
             );
+            let old_vs = state.poly;
             state = state + delta.time_step(dt);
+            // println!(
+            //     "before vol_ex: state.poly[{}] = {} | other: {}",
+            //     focus_vi, state.poly[focus_vi], other_focus_v
+            // );
             // Enforcing volume exclusion! Tricky!
             state.enforce_volume_exclusion(
-                &self.core.poly,
+                self.ix,
+                &old_vs,
                 &contact_data,
             )?;
+            // println!(
+            //     "after vol_ex | state.poly[{}] = {} | other: {}",
+            //     focus_vi, state.poly[focus_vi], other_focus_v
+            // );
             r.push(Cell {
                 ix: self.ix,
                 group_ix: self.group_ix,
@@ -140,10 +164,22 @@ impl Cell {
                 rac_rand: self.rac_rand,
             })
         }
-
         #[cfg(feature = "validate")]
         state.validate("euler")?;
-
+        // println!(
+        //     "final | state.poly[{}] = {} | other: {}",
+        //     focus_vi,
+        //     r.last().unwrap().core.poly[focus_vi],
+        //     other_focus_v
+        // );
+        // println!(
+        //     "final poly: {}",
+        //     poly_to_string(&r.last().unwrap().core.poly)
+        // );
+        // println!(
+        //     "other poly: {}",
+        //     poly_to_string(&contact_data[0].poly.verts)
+        // );
         Ok(r)
     }
 
@@ -172,6 +208,7 @@ impl Cell {
         match &mut result.state {
             Ok(cs) => {
                 cs.enforce_volume_exclusion(
+                    self.ix,
                     &self.core.poly,
                     &contact_data,
                 )

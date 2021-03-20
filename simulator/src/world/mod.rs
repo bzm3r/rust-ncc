@@ -648,10 +648,10 @@ pub fn gen_cell_centroids(
         };
         let row_delta = V2d {
             x: 0.0,
-            y: 2.0 * cell_r,
+            y: 2.0 * cell_r + 0.02 * cell_r,
         };
         let col_delta = V2d {
-            x: 2.0 * cell_r,
+            x: 2.0 * cell_r + 0.02 * cell_r,
             y: 0.0,
         };
         for ix in 0..*num_cells {

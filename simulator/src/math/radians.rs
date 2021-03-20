@@ -31,7 +31,7 @@ pub static RAD_0: Lazy<Radians> = Lazy::new(|| Radians::from(0.0));
 pub static RAD_PI: Lazy<Radians> = Lazy::new(|| Radians::from(PI));
 pub static RAD_2PI: Lazy<Radians> =
     Lazy::new(|| Radians::from(2.0 * PI));
-pub static RAD_EPS: Lazy<Radians> = Lazy::new(|| Radians::from(1e-4));
+pub static RAD_EPS: Lazy<Radians> = Lazy::new(|| Radians::from(1e-3));
 
 impl PartialEq for Radians {
     fn eq(&self, other: &Self) -> bool {
@@ -94,7 +94,7 @@ impl Mul<Radians> for f64 {
 impl Radians {
     /// Calculates "circular" between.
     pub fn between(&self, t0: Radians, t1: Radians) -> bool {
-        if close_to_zero(t0.inner - t1.inner, 1e-4) {
+        if close_to_zero(t0.inner - t1.inner, 1e-3) {
             false
         } else if t0.inner < t1.inner {
             t0.inner < self.inner && self.inner < t1.inner

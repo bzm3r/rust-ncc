@@ -18,7 +18,7 @@ use std::fmt;
 use std::fmt::Display;
 use std::ops::{Add, Mul};
 
-const INTERSECTION_CLOSE_EPS: f64 = 1e-4;
+const INTERSECTION_CLOSE_EPS: f64 = 1e-16;
 
 #[derive(Clone, Copy, Deserialize, Serialize)]
 pub struct Poly {
@@ -132,11 +132,11 @@ impl BBox {
     }
 
     #[inline]
-    pub fn contains(&self, point: &V2d) -> bool {
-        point.x > self.xmin
-            && point.x < self.xmax
-            && point.y > self.ymin
-            && point.y < self.ymax
+    pub fn contains(&self, point: &V2d, eps: f64) -> bool {
+        point.x > self.xmin - eps
+            && point.x < self.xmax + eps
+            && point.y > self.ymin - eps
+            && point.y < self.ymax + eps
     }
 }
 
@@ -156,7 +156,7 @@ pub fn is_point_in_poly(
     poly: &[V2d],
 ) -> bool {
     if let Some(bb) = poly_bbox {
-        if !bb.contains(p) {
+        if !bb.contains(p, INTERSECTION_CLOSE_EPS) {
             return false;
         }
     }
@@ -166,21 +166,24 @@ pub fn is_point_in_poly(
         let p0 = &poly[vi];
         let p1 = &poly[circ_ix_plus(vi, nverts)];
 
-        if (p0.y - p.y).abs() < f64::EPSILON || p0.y < p.y {
+        if p0.y < p.y || close_to_zero(p0.y - p.y, 1e-16) {
             if p1.y > p.y {
                 if let IsLeftResult::Left =
                     is_left_pointwise(p0, p1, p)
                 {
+                    //println!("vi: {}, + 1", vi);
                     wn += 1;
                 }
             }
-        } else if (p1.y - p.y).abs() < f64::EPSILON || p1.y < p.y {
+        } else if p1.y < p.y || close_to_zero(p1.y - p.y, 1e-16) {
             if let IsLeftResult::Right = is_left_pointwise(p0, p1, p)
             {
+                //println!("vi: {}, - 1", vi);
                 wn -= 1;
             }
         }
     }
+    //println!("wn: {}", wn);
     wn != 0
 }
 
@@ -564,12 +567,13 @@ pub fn check_intersection(
     p1: &V2d,
     other: &LineSeg2D,
 ) -> bool {
-    match (
+    let is_left_results = (
         is_left_pointwise(p0, p1, &other.p0),
         is_left_pointwise(p0, p1, &other.p1),
         is_left_pointwise(&other.p0, &other.p1, p0),
         is_left_pointwise(&other.p0, &other.p1, p1),
-    ) {
+    );
+    match is_left_results {
         (IsLeftResult::Left, IsLeftResult::Left, _, _)
         | (IsLeftResult::Right, IsLeftResult::Right, _, _)
         | (_, _, IsLeftResult::Left, IsLeftResult::Left)

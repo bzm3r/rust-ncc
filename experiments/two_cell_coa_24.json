@@ -46,7 +46,7 @@
       "label_cells": true,
       "follow_group": true,
       "show_trails":  false,
-      "arrow_scale":  100
+      "arrow_scale":  1.0
     }
   ]
 }
