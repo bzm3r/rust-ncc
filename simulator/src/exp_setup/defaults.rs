@@ -117,6 +117,7 @@ pub static RAW_COA_PARAMS_WITH_ZERO_MAG: Lazy<RawCoaParams> =
         los_penalty: COA_LOS_PENALTY,
         halfmax_dist: *COA_HALFMAX_DIST,
         mag: 0.0,
+        too_close_dist: PHYS_CLOSE_DIST.scale(2.0),
     });
 
 pub static RAW_WORLD_PARAMS: Lazy<RawWorldParameters> =

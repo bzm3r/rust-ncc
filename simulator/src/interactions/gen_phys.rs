@@ -125,7 +125,7 @@ pub struct PhysicalContactGenerator {
     dat: CvCvDat<ClosePoint>,
     pub contact_bbs: Vec<BBox>,
     pub contacts: SymCcDat<bool>,
-    params: PhysicalContactParams,
+    pub params: PhysicalContactParams,
 }
 
 pub struct PhysContactFactors {

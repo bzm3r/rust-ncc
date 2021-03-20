@@ -160,15 +160,20 @@ impl CoaGenerator {
                 for (vi, v) in poly.verts.iter().enumerate() {
                     for (ovi, ov) in opoly.verts.iter().enumerate() {
                         let lseg = LineSeg2D::new(v, ov);
-                        dat.set(
-                            ci,
-                            vi,
-                            oci,
-                            ovi,
-                            calc_pair_info(
-                                ci, vi, oci, ovi, lseg, cell_polys,
-                            ),
-                        )
+                        if lseg.vector.mag_squared()
+                            > params.too_close_dist_sq
+                        {
+                            dat.set(
+                                ci,
+                                vi,
+                                oci,
+                                ovi,
+                                calc_pair_info(
+                                    ci, vi, oci, ovi, lseg,
+                                    cell_polys,
+                                ),
+                            );
+                        }
                     }
                 }
             }
@@ -192,21 +197,34 @@ impl CoaGenerator {
             }
         }
         for (oci, other_poly) in cell_polys.iter().enumerate() {
-            if oci == ci || !self.contacts.get(ci, oci) {
+            if oci == ci {
                 continue;
             }
             for (vi, v) in this_poly.verts.iter().enumerate() {
                 for (ovi, ov) in other_poly.verts.iter().enumerate() {
                     let lseg = LineSeg2D::new(v, ov);
-                    self.dat.set(
-                        ci,
-                        vi,
-                        oci,
-                        ovi,
-                        calc_pair_info(
-                            ci, vi, oci, ovi, lseg, cell_polys,
-                        ),
-                    );
+                    if self.contacts.get(ci, oci)
+                        && lseg.vector.mag_squared()
+                            > self.params.too_close_dist_sq
+                    {
+                        self.dat.set(
+                            ci,
+                            vi,
+                            oci,
+                            ovi,
+                            calc_pair_info(
+                                ci, vi, oci, ovi, lseg, cell_polys,
+                            ),
+                        );
+                    } else {
+                        self.dat.set(
+                            ci,
+                            vi,
+                            oci,
+                            ovi,
+                            VertexPairInfo::infinity(),
+                        );
+                    }
                 }
             }
         }

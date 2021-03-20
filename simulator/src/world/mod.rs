@@ -305,6 +305,7 @@ impl World {
             out_dir,
             py_main,
             name,
+            run_python,
             ..
         } = experiment;
         let normed_final_t = char_quants.normalize(&final_t);
@@ -339,6 +340,7 @@ impl World {
             execute_py_model(
                 &out_dir,
                 &pm,
+                run_python,
                 &name,
                 final_t.number(),
                 snap_period.number(),

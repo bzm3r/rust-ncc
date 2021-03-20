@@ -15,6 +15,7 @@ use crate::parameters::quantity::{
 };
 use crate::NVERTS;
 use modify_derive::Modify;
+use rand_distr::num_traits::Pow;
 use serde::{Deserialize, Serialize};
 use std::f64::consts::PI;
 
@@ -125,6 +126,8 @@ pub struct RawCoaParams {
     /// Magnitude of COA. It will be divided by `NVERTS` so that it scales based
     /// on the number of vertices.
     pub mag: f64,
+    /// If two vertices are within this distance, then COA cannot occur between them.
+    pub too_close_dist: Length,
 }
 
 impl RawCoaParams {
@@ -137,6 +140,9 @@ impl RawCoaParams {
             // self.mag * exp(distrib_exp * x), where x is distance
             // between points.
             distrib_exp: 0.5f64.ln() / halfmax_dist,
+            too_close_dist_sq: bq
+                .normalize(&self.too_close_dist)
+                .pow(2),
         }
     }
 }
@@ -291,6 +297,9 @@ pub struct CoaParams {
     /// the distance at which two points would sense COA at half-max
     /// magnitude.
     pub distrib_exp: f64,
+    /// If two vertices are within the square root of this distance , then COA cannot occur between
+    /// them.
+    pub too_close_dist_sq: f64,
 }
 
 #[derive(Clone, Copy, Deserialize, Serialize, PartialEq, Debug)]

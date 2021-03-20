@@ -207,6 +207,7 @@ pub fn generate(
                 int_opts,
                 out_dir: (&dirs.out).clone(),
                 py_main: None,
+                run_python: false,
             }
         })
         .collect()

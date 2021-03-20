@@ -122,12 +122,17 @@ pub fn generate(
         ..
     } = args;
 
-    let (num_cells, py_main) =
-        if let ExperimentType::PyCompare { num_cells, py_main } = &ty
+    let (num_cells, py_main, run_python) =
+        if let ExperimentType::PyCompare {
+            num_cells,
+            py_main,
+            run_python,
+        } = &ty
         {
             (
                 *num_cells,
                 py_main.as_ref().unwrap_or(&dirs.py_main).clone(),
+                run_python.unwrap_or(true),
             )
         } else {
             panic!(format!(
@@ -180,6 +185,7 @@ pub fn generate(
                 int_opts,
                 out_dir: (&dirs.out).clone(),
                 py_main: Some(py_main.clone()),
+                run_python,
             }
         })
         .collect()

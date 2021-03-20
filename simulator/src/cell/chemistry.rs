@@ -155,6 +155,7 @@ pub fn calc_kgtps_rac(
     conc_rac_acts: &[f64; NVERTS],
     x_rands: &[f64; NVERTS],
     x_coas: &[f64; NVERTS],
+    x_cils: &[f64; NVERTS],
     x_chemos: &[f64; NVERTS],
     x_cals: &[f64; NVERTS],
     kgtp_rac_base: f64,
@@ -167,7 +168,9 @@ pub fn calc_kgtps_rac(
     for i in 0..nvs {
         // Base activation rate of Rac1 is increased (not multiplied!)
         // by: CAL, randomization, and co-attraction.
-        let base = (x_cals[i] + x_rands[i] + x_coas[i] + 1.0)
+        let this_x_coa =
+            if x_cils[i] > 0.0 { 0.0 } else { x_coas[i] };
+        let base = (x_cals[i] + x_rands[i] + this_x_coa + 1.0)
             * kgtp_rac_base;
         // Auto activation rate of Rac1 is increased by
         // chemoattraction only. This is because we assume that Sdf1

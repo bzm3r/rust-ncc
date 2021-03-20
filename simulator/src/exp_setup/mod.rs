@@ -41,6 +41,7 @@ pub enum ExperimentType {
     },
     PyCompare {
         num_cells: usize,
+        run_python: Option<bool>,
         py_main: Option<PathBuf>,
     },
 }
@@ -159,4 +160,5 @@ pub struct Experiment {
     pub int_opts: IntegratorOpts,
     pub out_dir: PathBuf,
     pub py_main: Option<PathBuf>,
+    pub run_python: bool,
 }
