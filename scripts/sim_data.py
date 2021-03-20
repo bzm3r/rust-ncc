@@ -35,6 +35,7 @@ class SimulationData:
     rho_inacts_per_c_per_s = None
     rho_act_arrows_per_c_per_s = None
 
+    rho_act_arrow_group = None
     rgtps_arrow_group = None
 
     kgtps_rac_per_c_per_s = None
@@ -58,6 +59,8 @@ class SimulationData:
     rho_act_net_fluxes_per_c_per_s = None
     rho_inact_net_fluxes_per_c_per_s = None
     x_tens_per_c_per_s = None
+    x_tens_arrows_per_c_per_s = None
+    x_tens_arrow_group = None
 
     x_cils_per_c_per_s = None
     x_cals_per_c_per_s = None
@@ -123,6 +126,7 @@ class SimulationData:
         self.rgtps_arrow_group = [(100.0, "b",
                                    self.rac_act_arrows_per_c_per_s),
                                   (100.0, "r", self.rho_act_arrows_per_c_per_s)]
+        self.rho_act_arrow_group = [(500.0, "r", self.rho_act_arrows_per_c_per_s)]
 
         self.x_cils_arrows_per_c_per_s = \
             self.x_cils_per_c_per_s[:, :, :, np.newaxis] * \
@@ -140,6 +144,11 @@ class SimulationData:
             self.x_coas_per_c_per_s[:, :, :, np.newaxis] * \
             self.uovs_per_c_per_s
         self.x_coas_arrow_group = [(3.0, "b", self.x_coas_arrows_per_c_per_s)]
+
+        self.x_tens_arrows_per_c_per_s = \
+            self.x_tens_perx_tens_per_c_per_s[:, :, :, np.newaxis] * \
+            self.uivs_per_c_per_s
+        self.x_tens_arrow_group = [(30.0, "b", self.x_coas_arrows_per_c_per_s)]
 
         self.kgtps_rho_arrows_per_c_per_s = \
             self.kgtps_rho_per_c_per_s[:, :, :, np.newaxis] * \
