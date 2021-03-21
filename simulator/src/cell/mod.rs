@@ -83,7 +83,7 @@ impl Cell {
             );
             state = state + delta.time_step(dt);
             // Enforcing volume exclusion! Tricky!
-            state.enforce_volume_exclusion(
+            state.strict_enforce_volume_exclusion(
                 self.ix,
                 &self.core.poly,
                 &contact_data,
@@ -148,7 +148,7 @@ impl Cell {
             //     focus_vi, state.poly[focus_vi], other_focus_v
             // );
             // Enforcing volume exclusion! Tricky!
-            state.enforce_volume_exclusion(
+            state.strict_enforce_volume_exclusion(
                 self.ix,
                 &old_vs,
                 &contact_data,
@@ -207,7 +207,7 @@ impl Cell {
 
         match &mut result.state {
             Ok(cs) => {
-                cs.enforce_volume_exclusion(
+                cs.strict_enforce_volume_exclusion(
                     self.ix,
                     &self.core.poly,
                     &contact_data,
