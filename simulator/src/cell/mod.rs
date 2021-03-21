@@ -202,18 +202,12 @@ impl Cell {
             interactions,
             world_parameters,
             parameters,
+            &contact_data,
             int_opts,
         );
 
         match &mut result.state {
             Ok(cs) => {
-                cs.strict_enforce_volume_exclusion(
-                    self.ix,
-                    &self.core.poly,
-                    &contact_data,
-                )
-                .map_err(|e| format!("ci={}\n{}", self.ix, e))?;
-
                 #[cfg(feature = "validate")]
                 cs.validate("rkdp5")?;
 
