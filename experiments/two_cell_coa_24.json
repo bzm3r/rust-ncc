@@ -2,12 +2,12 @@
   "description": "two cell experiment",
   "ty": {
     "NCells": {
-      "num_cells": 4
+      "num_cells": 2
     }
   },
-  "final_t": 10800,
+  "final_t": 22000,
   "cil_mag": 60,
-  "coa_mag": 0.0,
+  "coa_mag": 24,
   "one_at": 0.5,
   "zero_at": 1.0,
   "too_close_dist": 1.0,
@@ -47,8 +47,8 @@
     {
       "label_verts":  false,
       "label_cells": false,
-      "follow_group": false,
-      "show_trails":  true,
+      "follow_group": true,
+      "show_trails":  false,
       "arrow_scale":  1.0
     }
   ]

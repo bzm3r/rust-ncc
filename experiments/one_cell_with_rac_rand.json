@@ -2,15 +2,11 @@
   "description": "two cell experiment",
   "ty": {
     "NCells": {
-      "num_cells": 4
+      "num_cells": 1
     }
   },
-  "final_t": 10800,
+  "final_t": 22000,
   "cil_mag": 60,
-  "coa_mag": 0.0,
-  "one_at": 0.5,
-  "zero_at": 1.0,
-  "too_close_dist": 1.0,
   "snap_period": 10,
   "randomization": true,
   "seeds": [7],

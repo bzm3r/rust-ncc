@@ -463,7 +463,7 @@ class SimulationData:
         ax.cla()
         ax.set_aspect("equal")
         print("painting snapshot: {}".format(snap_ix))
-        if self.ani_opts.follow_group:
+        if not self.ani_opts.follow_group:
             g_center = np.average(self.centroids_per_c_per_s[snap_ix],
                                   axis=0)
             (xmin, xmax) = [g_center[0] - self.default_bbox_lim[0] * 0.5,

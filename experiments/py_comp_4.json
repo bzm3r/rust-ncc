@@ -2,16 +2,13 @@
   "description": "one cell experiment",
   "ty": {
     "PyCompare": {
-      "num_cells": 2
+      "num_cells": 4
     }
   },
   "final_t": 5400,
   "cil_mag": 60,
   "coa_mag": 24,
   "snap_period": 10,
-  "one_at": 0.5,
-  "zero_at": 1.0,
-  "too_close_dist": 1.0,
   "randomization": false,
   "seeds": [7],
   "rgtp_distrib_defs": {
