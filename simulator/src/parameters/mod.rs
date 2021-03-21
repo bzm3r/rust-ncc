@@ -249,14 +249,16 @@ pub struct RawWorldParameters {
     Clone, Copy, Deserialize, Serialize, PartialEq, Default, Debug,
 )]
 pub struct CloseBounds {
+    pub zero_at_sq: f64,
     pub zero_at: f64,
     pub one_at: f64,
 }
 
 impl CloseBounds {
-    pub fn new(zero_until: f64, one_at: f64) -> CloseBounds {
+    pub fn new(zero_at: f64, one_at: f64) -> CloseBounds {
         CloseBounds {
-            zero_at: zero_until,
+            zero_at_sq: zero_at.pow(2),
+            zero_at,
             one_at,
         }
     }

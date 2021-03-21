@@ -144,7 +144,7 @@ class SimulationData:
         self.x_cils_arrows_per_c_per_s = \
             self.x_cils_per_c_per_s[:, :, :, np.newaxis] * \
             self.uovs_per_c_per_s
-        self.x_cils_arrow_group = [(0.1, "r", self.x_cils_arrows_per_c_per_s)]
+        self.x_cils_arrow_group = [(0.5, "r", self.x_cils_arrows_per_c_per_s)]
 
         if self.tag == "rust":
             self.x_cals_arrows_per_c_per_s = \

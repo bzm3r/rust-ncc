@@ -22,18 +22,24 @@ pub enum ClosePoint {
     Vertex {
         vector_to: V2d,
         smooth_factor: f64,
+        dist_sq: f64,
     },
     OnEdge {
         edge_point_param: f64,
         vector_to: V2d,
         smooth_factor: f64,
+        dist_sq: f64,
     },
-    None,
+    None {
+        dist_sq: f64,
+    },
 }
 
 impl Default for ClosePoint {
     fn default() -> Self {
-        ClosePoint::None
+        ClosePoint::None {
+            dist_sq: f64::INFINITY,
+        }
     }
 }
 
@@ -48,42 +54,55 @@ impl ClosePoint {
     ) -> ClosePoint {
         // Is `p` close to `a`? Then it interacts directly with `a`.
         let s_to_tp = test_point - seg_start;
-        if s_to_tp.mag() < range.zero_at {
+        let s_to_tp_dsq = s_to_tp.mag_squared();
+        if s_to_tp_dsq < range.zero_at_sq {
             let smooth_factor = capped_linear_fn(
-                s_to_tp.mag(),
+                s_to_tp_dsq.sqrt(),
                 range.zero_at,
                 range.one_at,
             );
             ClosePoint::Vertex {
                 vector_to: -1.0 * s_to_tp,
                 smooth_factor,
+                dist_sq: s_to_tp_dsq,
             }
-        } else if (seg_end - test_point).mag() < range.zero_at {
-            ClosePoint::None
         } else {
-            let seg_vec = seg_end - seg_start;
-            let t = seg_vec.dot(&s_to_tp) / seg_vec.mag_squared();
-            // Is `t` in the interval `[0, 1)`? If yes, then the close
-            // point lies on the edge.
-            match in_unit_interval(t, 1e-3) {
-                InUnitInterval::Zero | InUnitInterval::In => {
-                    let c = t * (seg_vec) + seg_start;
-                    let tp_to_c = c - test_point;
-                    if tp_to_c.mag() < range.zero_at {
-                        ClosePoint::OnEdge {
-                            edge_point_param: t,
-                            vector_to: tp_to_c,
-                            smooth_factor: capped_linear_fn(
-                                tp_to_c.mag(),
-                                range.zero_at,
-                                range.one_at,
-                            ),
-                        }
-                    } else {
-                        ClosePoint::None
-                    }
+            let e_to_tp_dsq = (seg_end - test_point).mag_squared();
+            if e_to_tp_dsq < range.zero_at_sq {
+                ClosePoint::None {
+                    dist_sq: e_to_tp_dsq,
                 }
-                _ => ClosePoint::None,
+            } else {
+                let seg_vec = seg_end - seg_start;
+                let t = seg_vec.dot(&s_to_tp) / seg_vec.mag_squared();
+                // Is `t` in the interval `[0, 1)`? If yes, then the close
+                // point lies on the edge.
+                match in_unit_interval(t, 1e-3) {
+                    InUnitInterval::Zero | InUnitInterval::In => {
+                        let c = t * (seg_vec) + seg_start;
+                        let tp_to_c = c - test_point;
+                        let tp_to_c_mag_sq = tp_to_c.mag_squared();
+                        if tp_to_c_mag_sq < range.zero_at_sq {
+                            ClosePoint::OnEdge {
+                                edge_point_param: t,
+                                vector_to: tp_to_c,
+                                smooth_factor: capped_linear_fn(
+                                    tp_to_c.mag(),
+                                    range.zero_at_sq,
+                                    range.one_at,
+                                ),
+                                dist_sq: tp_to_c_mag_sq,
+                            }
+                        } else {
+                            ClosePoint::None {
+                                dist_sq: tp_to_c_mag_sq,
+                            }
+                        }
+                    }
+                    _ => ClosePoint::None {
+                        dist_sq: f64::INFINITY,
+                    },
+                }
             }
         }
     }
@@ -95,6 +114,7 @@ impl fmt::Display for ClosePoint {
             ClosePoint::Vertex {
                 vector_to,
                 smooth_factor,
+                ..
             } => {
                 write!(
                     f,
@@ -107,10 +127,11 @@ impl fmt::Display for ClosePoint {
                 edge_point_param,
                 vector_to,
                 smooth_factor,
+                ..
             } => {
                 write!(f, "OnEdge(edge_point_param: {}, vector_to: {}, smooth_factor: {})", edge_point_param, vector_to.mag(), smooth_factor)
             }
-            ClosePoint::None => write!(f, "None"),
+            ClosePoint::None { .. } => write!(f, "None"),
         }
     }
 }
@@ -123,7 +144,7 @@ impl fmt::Display for ClosePoint {
 )]
 pub struct PhysicalContactGenerator {
     dat: CvCvDat<ClosePoint>,
-    close_to_any_matrix: Vec<[bool; NVERTS]>,
+    min_dist_matrix: Vec<[f64; NVERTS]>,
     pub contact_bbs: Vec<BBox>,
     pub contact_matrix: SymCcDat<bool>,
     pub params: PhysicalContactParams,
@@ -142,10 +163,11 @@ impl PhysicalContactGenerator {
         params: PhysicalContactParams,
     ) -> PhysicalContactGenerator {
         let num_cells = cell_polys.len();
-        let mut dat = CvCvDat::empty(num_cells, ClosePoint::None);
+        let mut dat =
+            CvCvDat::empty(num_cells, ClosePoint::default());
         let contact_bbs = cell_polys
             .iter()
-            .map(|cp| cp.bbox.expand_by(params.range.zero_at))
+            .map(|cp| cp.bbox.expand_by(params.range.zero_at_sq))
             .collect::<Vec<BBox>>();
         let contact_matrix = gen_contact_matrix(&contact_bbs);
         for (ai, poly) in cell_polys.iter().enumerate() {
@@ -173,11 +195,11 @@ impl PhysicalContactGenerator {
                 }
             }
         }
-        let mut close_to_any_matrix =
-            vec![[false; NVERTS]; num_cells];
+        let mut min_dist_matrix =
+            vec![[f64::INFINITY; NVERTS]; num_cells];
         for ci in 0..num_cells {
-            close_to_any_matrix[ci] =
-                PhysicalContactGenerator::eval_close_to_any(
+            min_dist_matrix[ci] =
+                PhysicalContactGenerator::eval_min_dist(
                     ci,
                     &contact_matrix,
                     &dat,
@@ -185,30 +207,33 @@ impl PhysicalContactGenerator {
         }
         PhysicalContactGenerator {
             dat,
-            close_to_any_matrix,
+            min_dist_matrix,
             contact_bbs,
             contact_matrix,
             params,
         }
     }
 
-    pub fn eval_close_to_any(
+    pub fn eval_min_dist(
         ci: usize,
         contact_matrix: &SymCcDat<bool>,
         dat: &CvCvDat<ClosePoint>,
-    ) -> [bool; NVERTS] {
-        let mut r = [false; NVERTS];
-        'vert_loop: for vi in 0..NVERTS {
+    ) -> [f64; NVERTS] {
+        let mut r = [f64::INFINITY; NVERTS];
+        for vi in 0..NVERTS {
             for oci in 0..contact_matrix.num_cells {
                 if oci != ci && contact_matrix.get(ci, oci) {
                     for ovi in 0..NVERTS {
                         match dat.get(ci, vi, oci, ovi) {
-                            ClosePoint::OnEdge { .. }
-                            | ClosePoint::Vertex { .. } => {
-                                r[vi] = true;
-                                continue 'vert_loop;
+                            ClosePoint::OnEdge {
+                                dist_sq, ..
                             }
-                            _ => {}
+                            | ClosePoint::Vertex {
+                                dist_sq, ..
+                            }
+                            | ClosePoint::None { dist_sq } => {
+                                r[vi] = r[vi].min(dist_sq);
+                            }
                         }
                     }
                 }
@@ -217,8 +242,8 @@ impl PhysicalContactGenerator {
         r
     }
 
-    pub fn close_to_any(&self, ci: usize, vi: usize) -> bool {
-        self.close_to_any_matrix[ci][vi]
+    pub fn min_dist_to(&self, ci: usize, vi: usize) -> f64 {
+        self.min_dist_matrix[ci][vi]
     }
 
     /// Get edges containing points on cell `oci` which are close to vertex `vi` on cell `ci`.
@@ -232,11 +257,12 @@ impl PhysicalContactGenerator {
         let v_rgtp = rel_rgtps_per_cell[ci][vi];
         (0..NVERTS)
             .filter_map(|ovi| match self.dat.get(ci, vi, oci, ovi) {
-                ClosePoint::None => None,
+                ClosePoint::None { .. } => None,
                 ClosePoint::OnEdge {
                     vector_to,
                     smooth_factor,
                     edge_point_param,
+                    ..
                 } => {
                     //TODO: confirm that we don't want:
                     // let edge_rgtp = (1.0 - edge_point_param) * cell_rgtps[oci][ovi]
@@ -261,6 +287,7 @@ impl PhysicalContactGenerator {
                 ClosePoint::Vertex {
                     vector_to,
                     smooth_factor,
+                    ..
                 } => Some(CloseEdge {
                     cell_ix: oci,
                     vert_ix: ovi,
@@ -321,8 +348,9 @@ impl PhysicalContactGenerator {
 
     pub fn update(&mut self, ci: usize, cell_polys: &[Poly]) {
         let poly = cell_polys[ci];
-        let bb =
-            cell_polys[ci].bbox.expand_by(self.params.range.zero_at);
+        let bb = cell_polys[ci]
+            .bbox
+            .expand_by(self.params.range.zero_at_sq);
         self.contact_bbs[ci] = bb;
         for (oci, obb) in self.contact_bbs.iter().enumerate() {
             if oci != ci {
@@ -389,8 +417,8 @@ impl PhysicalContactGenerator {
                 }
             }
         }
-        self.close_to_any_matrix[ci] =
-            PhysicalContactGenerator::eval_close_to_any(
+        self.min_dist_matrix[ci] =
+            PhysicalContactGenerator::eval_min_dist(
                 ci,
                 &self.contact_matrix,
                 &self.dat,

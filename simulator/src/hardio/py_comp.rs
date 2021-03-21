@@ -333,7 +333,7 @@ impl Writer {
                 .interactions
                 .phys_contact
                 .range
-                .zero_at,
+                .zero_at_sq,
             close_one_at: world_params
                 .interactions
                 .phys_contact

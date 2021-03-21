@@ -154,15 +154,15 @@ impl CoaGenerator {
                 {
                     let oci = (ci + 1) + ocj;
                     for (ovi, ov) in opoly.verts.iter().enumerate() {
-                        let lseg = LineSeg2D::new(v, ov);
-                        if !phys_contact_generator
-                            .close_to_any(ci, vi)
-                            && !phys_contact_generator
-                                .close_to_any(oci, ovi)
+                        if !(phys_contact_generator
+                            .min_dist_to(ci, vi)
+                            < params.too_close_dist_sq
+                            || phys_contact_generator
+                                .min_dist_to(oci, ovi)
+                                < params.too_close_dist_sq)
                             && contact_matrix.get(ci, oci)
-                            && lseg.vector.mag_squared()
-                                > params.too_close_dist_sq
                         {
+                            let lseg = LineSeg2D::new(v, ov);
                             dat.set(
                                 ci,
                                 vi,
@@ -215,14 +215,14 @@ impl CoaGenerator {
             {
                 let oci = (ci + 1) + ocj;
                 for (ovi, ov) in opoly.verts.iter().enumerate() {
-                    let lseg = LineSeg2D::new(v, ov);
-                    if !phys_contact_generator.close_to_any(ci, vi)
-                        && !phys_contact_generator
-                            .close_to_any(oci, ovi)
+                    if !(phys_contact_generator.min_dist_to(ci, vi)
+                        < self.params.too_close_dist_sq
+                        || phys_contact_generator
+                            .min_dist_to(oci, ovi)
+                            < self.params.too_close_dist_sq)
                         && self.contact_matrix.get(ci, oci)
-                        && lseg.vector.mag_squared()
-                            > self.params.too_close_dist_sq
                     {
+                        let lseg = LineSeg2D::new(v, ov);
                         self.dat.set(
                             ci,
                             vi,
