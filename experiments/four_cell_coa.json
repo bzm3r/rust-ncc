@@ -6,8 +6,10 @@
     }
   },
   "final_t": 10800,
-  "cil_mag": 60,
-  "coa_mag": 0.0,
+  "cil_mag": 120.0,
+  "coa_mag": 24.0,
+  "cal_mag": 120.0,
+  "adh_mag": 10.0,
   "snap_period": 10,
   "randomization": true,
   "seeds": [7],

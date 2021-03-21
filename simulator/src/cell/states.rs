@@ -848,12 +848,29 @@ impl Core {
         // println!("{}: successfully validated", loc_str)
     }
 
-    pub fn enforce_volume_exclusion(
+    pub fn strict_enforce_volume_exclusion(
         &mut self,
         cell_ix: usize,
         old_vs: &[V2d; NVERTS],
         contacts: &[ContactData],
     ) -> Result<(), String> {
+        confirm_volume_exclusion(
+            cell_ix, &old_vs, &contacts, "old_vs",
+        )?;
+
+        self.enforce_volume_exclusion(old_vs, contacts);
+
+        confirm_volume_exclusion(
+            cell_ix, &self.poly, &contacts, "new_vs",
+        )?;
+        Ok(())
+    }
+
+    pub fn enforce_volume_exclusion(
+        &mut self,
+        old_vs: &[V2d; NVERTS],
+        contacts: &[ContactData],
+    ) {
         for vi in 0..NVERTS {
             let ui = circ_ix_minus(vi, NVERTS);
             let wi = circ_ix_plus(vi, NVERTS);
@@ -882,11 +899,6 @@ impl Core {
                 }
             }
         }
-
-        confirm_volume_exclusion(
-            cell_ix, &self.poly, &contacts, "new_vs",
-        )?;
-        Ok(())
     }
 
     //TODO(BM): automate generation of `num_vars` using proc macro.

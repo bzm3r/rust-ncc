@@ -1,6 +1,6 @@
 use crate::cell::states::DCoreDt;
 use crate::cell::{chemistry::RacRandState, states::Core};
-use crate::interactions::Interactions;
+use crate::interactions::{ContactData, Interactions};
 use crate::math::min_f64;
 use crate::parameters::{Parameters, WorldParameters};
 use crate::world::RkOpts;
@@ -200,6 +200,7 @@ pub fn integrator(
     interactions: &Interactions,
     world_parameters: &WorldParameters,
     parameters: &Parameters,
+    contact_data: &Vec<ContactData>,
     int_opts: RkOpts,
 ) -> Solution {
     let RkOpts {
@@ -236,7 +237,7 @@ pub fn integrator(
             parameters,
         );
 
-        let next_state = init_state
+        let mut next_state = init_state
             + B[0] * k0.time_step(h)
             + B[1] * k1.time_step(h)
             + B[2] * k2.time_step(h)
@@ -247,6 +248,10 @@ pub fn integrator(
 
         if last_iter {
             assert!((h - dt).abs() < f64::EPSILON);
+            next_state.enforce_volume_exclusion(
+                &init_state.poly,
+                &contact_data,
+            );
             return Solution {
                 state: Ok(next_state),
                 num_rejections,
@@ -275,6 +280,10 @@ pub fn integrator(
         // see explanation for equation 4.13 in HNW vol1
         if error <= 1.0 {
             fac_max = FAC_MAX;
+            next_state.enforce_volume_exclusion(
+                &init_state.poly,
+                &contact_data,
+            );
             init_state = next_state;
             if h + h_new > dt {
                 h_new = dt - h;

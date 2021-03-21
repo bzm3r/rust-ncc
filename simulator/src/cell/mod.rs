@@ -83,7 +83,7 @@ impl Cell {
             );
             state = state + delta.time_step(dt);
             // Enforcing volume exclusion! Tricky!
-            state.enforce_volume_exclusion(
+            state.strict_enforce_volume_exclusion(
                 self.ix,
                 &self.core.poly,
                 &contact_data,
@@ -148,7 +148,7 @@ impl Cell {
             //     focus_vi, state.poly[focus_vi], other_focus_v
             // );
             // Enforcing volume exclusion! Tricky!
-            state.enforce_volume_exclusion(
+            state.strict_enforce_volume_exclusion(
                 self.ix,
                 &old_vs,
                 &contact_data,
@@ -202,18 +202,12 @@ impl Cell {
             interactions,
             world_parameters,
             parameters,
+            &contact_data,
             int_opts,
         );
 
         match &mut result.state {
             Ok(cs) => {
-                cs.enforce_volume_exclusion(
-                    self.ix,
-                    &self.core.poly,
-                    &contact_data,
-                )
-                .map_err(|e| format!("ci={}\n{}", self.ix, e))?;
-
                 #[cfg(feature = "validate")]
                 cs.validate("rkdp5")?;
 
