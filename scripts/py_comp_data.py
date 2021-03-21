@@ -145,8 +145,8 @@ class PythonRustComparisonData:
         for r, p, l in zip(rs, ps, data_labels):
             fig, ax = plt.subplots()
             cell_ix = 0
-            ax.plot(r[:, cell_ix, :1], label="rust")
-            ax.plot(p[:, cell_ix, :1], label="python")
+            ax.plot(p[:, cell_ix, :1], label="python", linewidth=3, alpha=0.3)
+            ax.plot(r[:, cell_ix, :1], label="rust", linewidth=1, alpha=1.0)
             ax.set_title("{} for cell {}".format(l, cell_ix))
             ax.legend(loc="best")
             plot_path = os.path.join(self.out_dir, "{}_{}.png".format(

@@ -10,7 +10,7 @@ import orjson
 run_experiments = True
 exec_mode = "release"
 root_dir = os.getcwd()
-exp_jsons = ["four_cell_coa_24_short"]
+exp_jsons = ["one_cell_no_rac_rand", "one_cell_with_rac_rand"]
 for exp_json in exp_jsons:
     exec_path = os.path.join(root_dir, "target", exec_mode, "executor")
     if run_experiments:
@@ -18,7 +18,7 @@ for exp_json in exp_jsons:
             exec_mode) + ["-p", "executor"])
         run_out = subprocess.run([exec_path] +
                                  ["-c", "./cfg.json"] +
-                                 ["-e"] + exp_jsons)
+                                 ["-e"] + [exp_json])
         print(run_out)
 
     exp_path = os.path.join(root_dir, "experiments", "{}.json".format(exp_json))
@@ -35,12 +35,12 @@ for exp_json in exp_jsons:
         vec_ani_opts = get_vec_ani_opts(exp_dict)
 
         rust_dat.animate(vec_ani_opts, "rgtps")
-        rust_dat.animate(vec_ani_opts, "x_cils")
-        # rust_dat.animate(vec_ani_opts, "x_cals")
-        rust_dat.animate(vec_ani_opts, "kgtps_rho")
-        rust_dat.animate(vec_ani_opts, "kgtps_rac")
-        rust_dat.animate(vec_ani_opts, "rgtp_forces")
-        rust_dat.animate(vec_ani_opts, "x_coas")
-        rust_dat.animate(vec_ani_opts, "kdgtps_rac")
-        rust_dat.animate(vec_ani_opts, "kdgtps_rho")
-        rust_dat.animate(vec_ani_opts, "x_tens")
+        # rust_dat.animate(vec_ani_opts, "x_cils")
+        # # rust_dat.animate(vec_ani_opts, "x_cals")
+        # rust_dat.animate(vec_ani_opts, "kgtps_rho")
+        # rust_dat.animate(vec_ani_opts, "kgtps_rac")
+        # rust_dat.animate(vec_ani_opts, "rgtp_forces")
+        # rust_dat.animate(vec_ani_opts, "x_coas")
+        # rust_dat.animate(vec_ani_opts, "kdgtps_rac")
+        # rust_dat.animate(vec_ani_opts, "kdgtps_rho")
+        # rust_dat.animate(vec_ani_opts, "x_tens")

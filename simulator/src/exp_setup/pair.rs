@@ -147,7 +147,6 @@ pub fn generate(
         int_opts,
         ..
     } = args;
-    println!("{:?}", coa_mag);
     let (sep_in_cell_diams, rgtp_distrib_defs_per_cell) =
         if let ExperimentType::Pair {
             sep_in_cell_diams,

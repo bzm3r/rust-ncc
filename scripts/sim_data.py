@@ -29,13 +29,15 @@ class SimulationData:
 
     rac_acts_per_c_per_s = None
     rac_inacts_per_c_per_s = None
-    rac_act_arrows_per_c_per_s = None
+    rac_acts_arrows_per_c_per_s = None
 
     rho_acts_per_c_per_s = None
     rho_inacts_per_c_per_s = None
-    rho_act_arrows_per_c_per_s = None
+    rho_acts_arrows_per_c_per_s = None
+    rho_inacts_arrows_per_c_per_s = None
 
-    rho_act_arrow_group = None
+    rho_inacts_arrow_group = None
+    rho_acts_arrow_group = None
     rgtps_arrow_group = None
 
     kgtps_rac_per_c_per_s = None
@@ -57,6 +59,8 @@ class SimulationData:
     rac_act_net_fluxes_per_c_per_s = None
     rac_inact_net_fluxes_per_c_per_s = None
     rho_act_net_fluxes_per_c_per_s = None
+    rho_act_net_fluxes_arrows_per_c_per_s = None
+    rho_act_net_fluxes_arrow_group = None
     rho_inact_net_fluxes_per_c_per_s = None
     x_tens_per_c_per_s = None
     x_tens_arrows_per_c_per_s = None
@@ -106,8 +110,9 @@ class SimulationData:
         all_params.update(range_params)
         all_params["cil_mag"] = phys_params["cil_mag"]
         coa_params = inter_params["coa"]
-        for key in coa_params.keys():
-            all_params["coa_" + key] = coa_params[key]
+        if coa_params != None:
+            for key in coa_params.keys():
+                all_params["coa_" + key] = coa_params[key]
         all_params.update(self.world_info["cell_params"][0])
 
         all_params["init_rac"] = all_params["init_rac"]["active"]
@@ -117,16 +122,24 @@ class SimulationData:
     def load_animation_arrows(self):
         self.uovs_per_c_per_s = -1 * self.uivs_per_c_per_s
 
-        self.rac_act_arrows_per_c_per_s = \
+        self.rac_acts_arrows_per_c_per_s = \
             self.rac_acts_per_c_per_s[:, :, :, np.newaxis] * \
             self.uovs_per_c_per_s
-        self.rho_act_arrows_per_c_per_s = \
+        self.rho_acts_arrows_per_c_per_s = \
             self.rho_acts_per_c_per_s[:, :, :, np.newaxis] * \
             self.uivs_per_c_per_s
+        self.rho_inacts_arrows_per_c_per_s = \
+            self.rho_inacts_per_c_per_s[:, :, :, np.newaxis] * \
+            self.uivs_per_c_per_s
         self.rgtps_arrow_group = [(100.0, "b",
-                                   self.rac_act_arrows_per_c_per_s),
-                                  (100.0, "r", self.rho_act_arrows_per_c_per_s)]
-        self.rho_act_arrow_group = [(500.0, "r", self.rho_act_arrows_per_c_per_s)]
+                                   self.rac_acts_arrows_per_c_per_s),
+                                  (
+                                      100.0, "r",
+                                      self.rho_acts_arrows_per_c_per_s)]
+        self.rho_acts_arrow_group = [(500.0, "r",
+                                      self.rho_acts_arrows_per_c_per_s)]
+        self.rho_inacts_arrow_group = [(100.0, "r",
+                                        self.rho_inacts_arrows_per_c_per_s)]
 
         self.x_cils_arrows_per_c_per_s = \
             self.x_cils_per_c_per_s[:, :, :, np.newaxis] * \
@@ -145,11 +158,6 @@ class SimulationData:
             self.uovs_per_c_per_s
         self.x_coas_arrow_group = [(3.0, "b", self.x_coas_arrows_per_c_per_s)]
 
-        self.x_tens_arrows_per_c_per_s = \
-            self.x_tens_perx_tens_per_c_per_s[:, :, :, np.newaxis] * \
-            self.uivs_per_c_per_s
-        self.x_tens_arrow_group = [(30.0, "b", self.x_coas_arrows_per_c_per_s)]
-
         self.kgtps_rho_arrows_per_c_per_s = \
             self.kgtps_rho_per_c_per_s[:, :, :, np.newaxis] * \
             self.uovs_per_c_per_s
@@ -160,7 +168,7 @@ class SimulationData:
             self.kdgtps_rho_per_c_per_s[:, :, :, np.newaxis] * \
             self.uovs_per_c_per_s
         self.kdgtps_rho_arrow_group = [(100.0, "r",
-                                       self.kdgtps_rho_arrows_per_c_per_s)]
+                                        self.kdgtps_rho_arrows_per_c_per_s)]
 
         self.kgtps_rac_arrows_per_c_per_s = \
             self.kgtps_rac_per_c_per_s[:, :, :, np.newaxis] * \
@@ -172,7 +180,13 @@ class SimulationData:
             self.kdgtps_rac_per_c_per_s[:, :, :, np.newaxis] * \
             self.uovs_per_c_per_s
         self.kdgtps_rac_arrow_group = [(100.0, "b",
-                                       self.kdgtps_rac_arrows_per_c_per_s)]
+                                        self.kdgtps_rac_arrows_per_c_per_s)]
+
+        self.rho_act_net_fluxes_arrows_per_c_per_s = \
+            self.rho_act_net_fluxes_per_c_per_s[:, :, :, np.newaxis] * \
+            self.uivs_per_c_per_s
+        self.rho_act_net_fluxes_arrow_group = [(100.0, "b",
+                                                self.rho_act_net_fluxes_arrows_per_c_per_s)]
 
         is_rac_force = np.zeros_like(self.rgtp_forces_per_c_per_s)
         is_rho_force = np.zeros_like(self.rgtp_forces_per_c_per_s)
@@ -255,7 +269,7 @@ class SimulationData:
             cb.extract_scalars_from_data(['core', 'rac_inacts'], data)
         self.rho_acts_per_c_per_s = \
             cb.extract_scalars_from_data(['core', 'rho_acts'], data)
-        self.rho_acts_per_c_per_s = \
+        self.rho_inacts_per_c_per_s = \
             cb.extract_scalars_from_data(['core', 'rho_inacts'], data)
 
         self.x_cils_per_c_per_s = \
@@ -347,7 +361,7 @@ class SimulationData:
                                               for snaps_per_c in
                                               data_per_c_per_s])
         self.rho_inacts_per_c_per_s = \
-            np.array([[snap["rho_acts"] for snap in snaps_per_c]
+            np.array([[snap["rho_inacts"] for snap in snaps_per_c]
                       for snaps_per_c in data_per_c_per_s])
 
         self.x_cils_per_c_per_s = \

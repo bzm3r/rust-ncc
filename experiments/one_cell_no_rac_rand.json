@@ -2,14 +2,13 @@
   "description": "two cell experiment",
   "ty": {
     "NCells": {
-      "num_cells": 2
+      "num_cells": 1
     }
   },
-  "final_t": 5400,
+  "final_t": 22000,
   "cil_mag": 60,
-  "coa_mag": 5,
   "snap_period": 10,
-  "randomization": true,
+  "randomization": false,
   "seeds": [7],
   "rgtp_distrib_defs": {
     "rac": {
@@ -43,10 +42,10 @@
   "ani_opts": [
     {
       "label_verts":  false,
-      "label_cells": true,
-      "follow_group": true,
-      "show_trails":  false,
-      "arrow_scale":  100
+      "label_cells": false,
+      "follow_group": false,
+      "show_trails":  true,
+      "arrow_scale":  1.0
     }
   ]
 }

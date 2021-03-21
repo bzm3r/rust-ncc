@@ -123,7 +123,7 @@ impl AsyncWriter {
             Sender<Vec<WorldState>>,
             Receiver<Vec<WorldState>>,
         ) = channel();
-        println!("path: {:?}", path);
+        println!("output path: {:?}", path);
         let mut file = OpenOptions::new()
             .create(true)
             .write(true)

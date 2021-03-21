@@ -108,10 +108,6 @@ pub fn generate(
     } else {
         panic!("Expected an n_cell experiment, but got: {:?}", ty)
     };
-    println!("cil_mag: {:?}", cil_mag);
-    println!("coa_mag: {:?}", coa_mag);
-    println!("cal_mag: {:?}", cal_mag);
-    println!("adh_scale: {:?}", adh_scale);
 
     seeds
         .iter()
@@ -138,22 +134,6 @@ pub fn generate(
                         cil_mag,
                     },
                 });
-            println!(
-                "raw_world_params.interactions.cil: {:?}",
-                raw_world_params.interactions.phys_contact.cil_mag
-            );
-            println!(
-                "raw_world_params.interactions.coa: {:?}",
-                raw_world_params.interactions.coa
-            );
-            println!(
-                "raw_world_params.interactions.cal: {:?}",
-                raw_world_params.interactions.phys_contact.cal_mag
-            );
-            println!(
-                "raw_world_params.interactions.adh: {:?}",
-                raw_world_params.interactions.phys_contact.adh_mag
-            );
             let world_params = raw_world_params.refine(&char_quants);
             let cgs = make_cell_groups(
                 &mut rng,

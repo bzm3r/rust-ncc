@@ -2,12 +2,11 @@
   "description": "two cell experiment",
   "ty": {
     "NCells": {
-      "num_cells": 2
+      "num_cells": 1
     }
   },
-  "final_t": 11000,
+  "final_t": 22000,
   "cil_mag": 60,
-  "coa_mag": 12,
   "snap_period": 10,
   "randomization": true,
   "seeds": [7],
@@ -44,9 +43,9 @@
     {
       "label_verts":  false,
       "label_cells": false,
-      "follow_group": true,
-      "show_trails":  false,
-      "arrow_scale":  50
+      "follow_group": false,
+      "show_trails":  true,
+      "arrow_scale":  1.0
     }
   ]
 }
