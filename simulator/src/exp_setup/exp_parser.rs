@@ -1,5 +1,9 @@
+use crate::exp_setup::defaults::{
+    PHYS_CLOSE_DIST_ONE_AT, PHYS_CLOSE_DIST_ZERO_AT,
+    RAW_COA_PARAMS_WITH_ZERO_MAG,
+};
 use crate::exp_setup::{ExperimentType, RgtpDistribDefs};
-use crate::parameters::quantity::Time;
+use crate::parameters::quantity::{Length, Quantity, Time};
 use crate::world::{EulerOpts, IntegratorOpts, RkOpts};
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
@@ -81,6 +85,9 @@ struct ParsedExpArgs {
     coa_mag: Option<f64>,
     adh_mag: Option<f64>,
     cal_mag: Option<f64>,
+    one_at: Option<f64>,
+    zero_at: Option<f64>,
+    too_close_dist: Option<f64>,
     snap_period: f64,
     max_on_ram: Option<usize>,
     randomization: bool,
@@ -99,6 +106,9 @@ pub struct ExperimentArgs {
     pub coa_mag: Option<f64>,
     pub cal_mag: Option<f64>,
     pub adh_mag: Option<f64>,
+    pub one_at: Length,
+    pub zero_at: Length,
+    pub too_close_dist: Length,
     pub snap_period: Time,
     pub max_on_ram: usize,
     pub randomization: bool,
@@ -123,6 +133,9 @@ impl TryFrom<&PathBuf> for ExperimentArgs {
             coa_mag,
             adh_mag,
             cal_mag,
+            one_at,
+            zero_at,
+            too_close_dist,
             snap_period,
             max_on_ram,
             randomization,
@@ -155,6 +168,18 @@ impl TryFrom<&PathBuf> for ExperimentArgs {
             coa_mag,
             cal_mag,
             adh_mag,
+            one_at: one_at.map_or_else(
+                || *PHYS_CLOSE_DIST_ONE_AT,
+                |v| Length(v).micro(),
+            ),
+            zero_at: zero_at.map_or_else(
+                || *PHYS_CLOSE_DIST_ZERO_AT,
+                |v| Length(v).micro(),
+            ),
+            too_close_dist: too_close_dist.map_or_else(
+                || RAW_COA_PARAMS_WITH_ZERO_MAG.too_close_dist,
+                |v| Length(v).micro(),
+            ),
             snap_period: Time(snap_period),
             max_on_ram: max_on_ram.unwrap_or(1000),
             randomization,

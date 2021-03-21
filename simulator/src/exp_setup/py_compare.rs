@@ -11,8 +11,8 @@ use crate::parameters::{
 use crate::Directories;
 
 use crate::exp_setup::defaults::{
-    ADH_MAG, CHAR_QUANTS, PHYS_CLOSE_DIST,
-    RAW_COA_PARAMS_WITH_ZERO_MAG, RAW_PARAMS, RAW_WORLD_PARAMS,
+    ADH_MAG, CHAR_QUANTS, RAW_COA_PARAMS_WITH_ZERO_MAG, RAW_PARAMS,
+    RAW_WORLD_PARAMS,
 };
 use crate::exp_setup::exp_parser::ExperimentArgs;
 use crate::exp_setup::markers::mark_verts;
@@ -113,6 +113,9 @@ pub fn generate(
         coa_mag,
         adh_mag: adh_scale,
         cal_mag,
+        one_at,
+        zero_at,
+        too_close_dist,
         randomization,
         seeds,
         file_name: toml_name,
@@ -150,15 +153,14 @@ pub fn generate(
             let raw_world_params = RAW_WORLD_PARAMS
                 .modify_interactions(RawInteractionParams {
                     coa: coa_mag.map(|mag| {
-                        RAW_COA_PARAMS_WITH_ZERO_MAG.modify_mag(mag)
+                        RAW_COA_PARAMS_WITH_ZERO_MAG
+                            .modify_mag(mag)
+                            .modify_too_close_dist(too_close_dist)
                     }),
                     chem_attr: None,
                     bdry: None,
                     phys_contact: RawPhysicalContactParams {
-                        range: RawCloseBounds {
-                            zero_at: PHYS_CLOSE_DIST.scale(3.0),
-                            one_at: *PHYS_CLOSE_DIST,
-                        },
+                        range: RawCloseBounds { zero_at, one_at },
                         adh_mag: adh_scale.map(|x| ADH_MAG.scale(x)),
                         cal_mag,
                         cil_mag,

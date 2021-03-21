@@ -94,6 +94,9 @@ pub fn generate(
         coa_mag,
         cal_mag,
         adh_mag: adh_scale,
+        one_at,
+        zero_at,
+        too_close_dist,
         snap_period,
         max_on_ram,
         rgtp_distrib_defs: rgtp_distribs,
@@ -118,16 +121,14 @@ pub fn generate(
             let raw_world_params = defaults::RAW_WORLD_PARAMS
                 .modify_interactions(RawInteractionParams {
                     coa: coa_mag.map(|mag| {
-                        RAW_COA_PARAMS_WITH_ZERO_MAG.modify_mag(mag)
+                        RAW_COA_PARAMS_WITH_ZERO_MAG
+                            .modify_mag(mag)
+                            .modify_too_close_dist(too_close_dist)
                     }),
                     chem_attr: None,
                     bdry: None,
                     phys_contact: RawPhysicalContactParams {
-                        range: RawCloseBounds {
-                            zero_at: defaults::PHYS_CLOSE_DIST
-                                .scale(2.0),
-                            one_at: *defaults::PHYS_CLOSE_DIST,
-                        },
+                        range: RawCloseBounds { zero_at, one_at },
                         adh_mag: adh_scale
                             .map(|x| defaults::ADH_MAG.scale(x)),
                         cal_mag,

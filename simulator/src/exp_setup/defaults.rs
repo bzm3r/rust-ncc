@@ -105,6 +105,10 @@ pub fn vertex_viscosity(char_quants: &CharQuantities) -> Viscosity {
 
 pub static PHYS_CLOSE_DIST: Lazy<Length> =
     Lazy::new(|| Length(0.5).micro());
+pub static PHYS_CLOSE_DIST_ONE_AT: Lazy<Length> =
+    Lazy::new(|| *PHYS_CLOSE_DIST);
+pub static PHYS_CLOSE_DIST_ZERO_AT: Lazy<Length> =
+    Lazy::new(|| PHYS_CLOSE_DIST.scale(3.0));
 
 pub const CIL_MAG: f64 = 60.0;
 
