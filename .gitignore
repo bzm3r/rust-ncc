@@ -28,6 +28,9 @@
 **/*.mp4
 **/*.png
 
+# user experiment files
+/experiments
+
 # binary locks
 /interface/Cargo.lock
 /playground/async_bincode/Cargo.lock
