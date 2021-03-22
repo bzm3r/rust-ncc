@@ -109,6 +109,7 @@ pub fn generate(
     let ExperimentArgs {
         ty,
         final_t,
+        char_t,
         cil_mag,
         coa_mag,
         adh_mag: adh_scale,
@@ -149,7 +150,7 @@ pub fn generate(
         .map(|&seed| {
             let rng = Pcg32::seed_from_u64(seed);
 
-            let char_quants = *CHAR_QUANTS;
+            let char_quants = CHAR_QUANTS.modify_t(char_t);
             let raw_world_params = RAW_WORLD_PARAMS
                 .modify_interactions(RawInteractionParams {
                     coa: coa_mag.map(|mag| {

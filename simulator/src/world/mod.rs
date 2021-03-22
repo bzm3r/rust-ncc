@@ -65,7 +65,7 @@ pub struct RkOpts {
 impl Default for RkOpts {
     fn default() -> Self {
         RkOpts {
-            max_iters: 20,
+            max_iters: 10000,
             atol: 1e-3,
             rtol: 1e-3,
             init_h_scale: 0.1,
@@ -96,7 +96,6 @@ impl WorldCells {
         interaction_generator: &mut InteractionGenerator,
         int_opts: RkOpts,
     ) -> Result<WorldCells, String> {
-        // println!("tpoint: {} ", tpoint * 2.0);
         let mut new_cells = self.cells.clone();
         let mut rel_rgtps = new_cells
             .iter()
