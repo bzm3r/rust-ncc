@@ -374,7 +374,7 @@ impl LineSeg2D {
 
     /// Check if line segments intersect, without calculating point of intersection.
     pub fn check_intersection(&self, other: &LineSeg2D) -> bool {
-        check_intersection(&self.p0, &self.p1, other)
+        lsegs_intersect(&self.p0, &self.p1, other)
     }
 
     /// Let this segment `self` be parametrized so that a point
@@ -562,7 +562,7 @@ impl LineSeg2D {
 
 /// Uses the cross-product to check if a pair of points defining a line segment intersects
 /// a line segment.
-pub fn check_intersection(
+pub fn lsegs_intersect(
     p0: &V2d,
     p1: &V2d,
     other: &LineSeg2D,

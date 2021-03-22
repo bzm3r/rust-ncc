@@ -248,12 +248,18 @@ pub fn integrator(
 
         if last_iter {
             assert!((h - dt).abs() < f64::EPSILON);
-            next_state
+            if let Err(e) = next_state
                 .strict_enforce_volume_exclusion(
                     &init_state.poly,
                     &contact_data,
                 )
-                .map_or_else(|e| panic!(e), |_| {});
+            {
+                return Solution {
+                    state: Err(e),
+                    num_rejections,
+                    num_iters,
+                };
+            }
             return Solution {
                 state: Ok(next_state),
                 num_rejections,

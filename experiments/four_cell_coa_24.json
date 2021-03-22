@@ -7,10 +7,15 @@
   },
   "final_t": 10800,
   "cil_mag": 60,
+  "cal_mag": 60,
   "coa_mag": 24,
+  "adh_mag": 10,
+  "one_at": 0.5,
+  "zero_at": 0.6,
+  "too_close_dist": 1.0,
   "snap_period": 10,
   "randomization": true,
-  "seeds": [7,77,777],
+  "seeds": [7],
   "rgtp_distrib_defs": {
     "rac": {
       "acts": {
