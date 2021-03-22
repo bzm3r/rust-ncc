@@ -200,7 +200,7 @@ pub fn integrator(
     interactions: &Interactions,
     world_parameters: &WorldParameters,
     parameters: &Parameters,
-    contact_data: &Vec<ContactData>,
+    contact_data: &[ContactData],
     int_opts: RkOpts,
 ) -> Solution {
     let RkOpts {
@@ -248,10 +248,12 @@ pub fn integrator(
 
         if last_iter {
             assert!((h - dt).abs() < f64::EPSILON);
-            next_state.enforce_volume_exclusion(
-                &init_state.poly,
-                &contact_data,
-            );
+            next_state
+                .strict_enforce_volume_exclusion(
+                    &init_state.poly,
+                    &contact_data,
+                )
+                .map_or_else(|e| panic!(e), |_| {});
             return Solution {
                 state: Ok(next_state),
                 num_rejections,
@@ -280,10 +282,12 @@ pub fn integrator(
         // see explanation for equation 4.13 in HNW vol1
         if error <= 1.0 {
             fac_max = FAC_MAX;
-            next_state.enforce_volume_exclusion(
-                &init_state.poly,
-                &contact_data,
-            );
+            next_state
+                .strict_enforce_volume_exclusion(
+                    &init_state.poly,
+                    &contact_data,
+                )
+                .map_or_else(|e| panic!(e), |_| {});
             init_state = next_state;
             if h + h_new > dt {
                 h_new = dt - h;

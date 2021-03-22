@@ -87,8 +87,8 @@ impl ClosePoint {
                                 edge_point_param: t,
                                 vector_to: tp_to_c,
                                 smooth_factor: capped_linear_fn(
-                                    tp_to_c.mag(),
-                                    range.zero_at_sq,
+                                    tp_to_c_mag_sq.sqrt(),
+                                    range.zero_at,
                                     range.one_at,
                                 ),
                                 dist_sq: tp_to_c_mag_sq,
@@ -170,26 +170,37 @@ impl PhysicalContactGenerator {
             .map(|cp| cp.bbox.expand_by(params.range.zero_at_sq))
             .collect::<Vec<BBox>>();
         let contact_matrix = gen_contact_matrix(&contact_bbs);
-        for (ai, poly) in cell_polys.iter().enumerate() {
-            for (bi, other) in cell_polys.iter().enumerate() {
-                if ai != bi && contact_matrix.get(ai, bi) {
-                    for (avi, p) in poly.verts.iter().enumerate() {
-                        for (bvi, a) in other.verts.iter().enumerate()
+        for (ci, poly) in cell_polys.iter().enumerate() {
+            for (oci, other) in cell_polys.iter().enumerate() {
+                if ci != oci {
+                    for (vi, v) in poly.verts.iter().enumerate() {
+                        for (ovi, ov) in
+                            other.verts.iter().enumerate()
                         {
-                            let b = &other.verts
-                                [circ_ix_plus(bvi, NVERTS)];
-                            dat.set(
-                                ai,
-                                avi,
-                                bi,
-                                bvi,
-                                ClosePoint::calc(
-                                    params.range,
-                                    *p,
-                                    *a,
-                                    *b,
-                                ),
-                            )
+                            let ow = &other.verts
+                                [circ_ix_plus(ovi, NVERTS)];
+                            if contact_matrix.get(ci, oci) {
+                                dat.set(
+                                    ci,
+                                    vi,
+                                    oci,
+                                    ovi,
+                                    ClosePoint::calc(
+                                        params.range,
+                                        *v,
+                                        *ov,
+                                        *ow,
+                                    ),
+                                );
+                            } else {
+                                dat.set(
+                                    ci,
+                                    vi,
+                                    oci,
+                                    ovi,
+                                    ClosePoint::default(),
+                                )
+                            }
                         }
                     }
                 }
@@ -197,6 +208,7 @@ impl PhysicalContactGenerator {
         }
         let mut min_dist_matrix =
             vec![[f64::INFINITY; NVERTS]; num_cells];
+        #[allow(clippy::needless_range_loop)]
         for ci in 0..num_cells {
             min_dist_matrix[ci] =
                 PhysicalContactGenerator::eval_min_dist(
@@ -214,12 +226,84 @@ impl PhysicalContactGenerator {
         }
     }
 
+    pub fn update(&mut self, ci: usize, cell_polys: &[Poly]) {
+        let poly = cell_polys[ci];
+        let bb = cell_polys[ci]
+            .bbox
+            .expand_by(self.params.range.zero_at_sq);
+        self.contact_bbs[ci] = bb;
+        for (oci, obb) in self.contact_bbs.iter().enumerate() {
+            if oci != ci {
+                self.contact_matrix.set(ci, oci, obb.intersects(&bb));
+            }
+        }
+        for (oci, other) in cell_polys.iter().enumerate() {
+            if ci != oci {
+                for (vi, v) in poly.verts.iter().enumerate() {
+                    let w = &poly.verts[circ_ix_plus(vi, NVERTS)];
+                    for (ovi, ov) in other.verts.iter().enumerate() {
+                        let ow =
+                            &other.verts[circ_ix_plus(ovi, NVERTS)];
+                        if self.contact_matrix.get(ci, oci) {
+                            self.dat.set(
+                                ci,
+                                vi,
+                                oci,
+                                ovi,
+                                ClosePoint::calc(
+                                    self.params.range,
+                                    *v,
+                                    *ov,
+                                    *ow,
+                                ),
+                            );
+                            self.dat.set(
+                                oci,
+                                ovi,
+                                ci,
+                                vi,
+                                ClosePoint::calc(
+                                    self.params.range,
+                                    *ov,
+                                    *v,
+                                    *w,
+                                ),
+                            );
+                        } else {
+                            self.dat.set(
+                                ci,
+                                vi,
+                                oci,
+                                ovi,
+                                ClosePoint::default(),
+                            );
+                            self.dat.set(
+                                oci,
+                                ovi,
+                                ci,
+                                vi,
+                                ClosePoint::default(),
+                            );
+                        }
+                    }
+                }
+            }
+        }
+        self.min_dist_matrix[ci] =
+            PhysicalContactGenerator::eval_min_dist(
+                ci,
+                &self.contact_matrix,
+                &self.dat,
+            );
+    }
+
     pub fn eval_min_dist(
         ci: usize,
         contact_matrix: &SymCcDat<bool>,
         dat: &CvCvDat<ClosePoint>,
     ) -> [f64; NVERTS] {
         let mut r = [f64::INFINITY; NVERTS];
+        #[allow(clippy::needless_range_loop)]
         for vi in 0..NVERTS {
             for oci in 0..contact_matrix.num_cells {
                 if oci != ci && contact_matrix.get(ci, oci) {
@@ -264,10 +348,6 @@ impl PhysicalContactGenerator {
                     edge_point_param,
                     ..
                 } => {
-                    //TODO: confirm that we don't want:
-                    // let edge_rgtp = (1.0 - edge_point_param) * cell_rgtps[oci][ovi]
-                    //     + edge_point_param * cell_rgtps[oci]
-                    //         [circ_ix_plus(ovi, NVERTS)];
                     let edge_rgtp = RelativeRgtpActivity::mix_rel_rgtp_act_across_edge(
                         rel_rgtps_per_cell[oci][ovi],
                         rel_rgtps_per_cell[oci]
@@ -320,111 +400,6 @@ impl PhysicalContactGenerator {
         r
     }
 
-    // /// Get vertices on cell `oci` that are close to cell `ci`.
-    // pub fn get_close_verts(
-    //     &self,
-    //     aci: u32,
-    //     bci: u32,
-    // ) -> Vec<u32> {
-    //     let mut r = vec![];
-    //     for avi in 0..NVERTS {
-    //         for (bvi, close_point) in self
-    //             .dat
-    //             .get_per_other_vertex(aci, avi, bci)
-    //             .iter()
-    //             .enumerate()
-    //         {
-    //             match close_point {
-    //                 ClosePoint::Vertex(_)
-    //                 | ClosePoint::OnEdge(_, _) => r.push(bvi),
-    //                 ClosePoint::None => {}
-    //             }
-    //         }
-    //     }
-    //     r.sort_unstable();
-    //     r.dedup();
-    //     r
-    // }
-
-    pub fn update(&mut self, ci: usize, cell_polys: &[Poly]) {
-        let poly = cell_polys[ci];
-        let bb = cell_polys[ci]
-            .bbox
-            .expand_by(self.params.range.zero_at_sq);
-        self.contact_bbs[ci] = bb;
-        for (oci, obb) in self.contact_bbs.iter().enumerate() {
-            if oci != ci {
-                self.contact_matrix.set(ci, oci, obb.intersects(&bb));
-            }
-        }
-        for (oci, other) in cell_polys.iter().enumerate() {
-            if ci != oci && self.contact_matrix.get(ci, oci) {
-                for (pi, p) in poly.verts.iter().enumerate() {
-                    for (ai, a) in other.verts.iter().enumerate() {
-                        // if ci == 0 && oci == 1 && pi == 3 && ai == 13
-                        // {
-                        //     println!(
-                        //         "c0_3, c1_13: {}",
-                        //         (p - a).mag()
-                        //     );
-                        // }
-                        // if ci == 0 && oci == 1 && pi == 5 && ai == 11
-                        // {
-                        //     println!(
-                        //         "c0_5, c1_11: {}",
-                        //         (p - a).mag()
-                        //     );
-                        // }
-                        // if ci == 0 && oci == 1 && pi == 4 && ai == 12
-                        // {
-                        //     println!(
-                        //         "c0_4, c1_12: {}",
-                        //         (p - a).mag()
-                        //     );
-                        // }
-                        // if ci == 1 && oci == 0 && pi == 12 && ai == 4
-                        // {
-                        //     println!(
-                        //         "c1_12, c0_4: {}",
-                        //         (p - a).mag()
-                        //     );
-                        // }
-                        // if ((ci == 0 && oci == 1 && pi == 4)
-                        //     || (ci == 1 && oci == 0 && pi == 12))
-                        //     && tstep > 2807
-                        // {
-                        //     // println!(
-                        //     //     "ci: {}, oci: {}, pi: {}, ai: {}",
-                        //     //     ci, oci, pi, ai
-                        //     // );
-                        // }
-
-                        let bi = circ_ix_plus(ai, NVERTS);
-                        let b = &other.verts[bi];
-                        self.dat.set(
-                            ci,
-                            pi,
-                            oci,
-                            ai,
-                            ClosePoint::calc(
-                                self.params.range,
-                                *p,
-                                *a,
-                                *b,
-                            ),
-                        );
-                    }
-                }
-            }
-        }
-        self.min_dist_matrix[ci] =
-            PhysicalContactGenerator::eval_min_dist(
-                ci,
-                &self.contact_matrix,
-                &self.dat,
-            );
-    }
-
     pub fn generate(
         &self,
         rel_rgtps_per_cell: &[[RelativeRgtpActivity; NVERTS]],
@@ -451,13 +426,19 @@ impl PhysicalContactGenerator {
                 {
                     match (self.params.cal_mag, crl) {
                         (Some(cal_mag), CrlEffect::Cal) => {
-                            x_cals[vi] = smooth_factor * cal_mag;
+                            x_cals[vi] = x_cals[vi]
+                                .max(smooth_factor * cal_mag);
                         }
                         (Some(_), CrlEffect::Cil) | (None, _) => {
-                            x_cils[vi] =
-                                smooth_factor * self.params.cil_mag;
+                            x_cils[vi] = x_cils[vi].max(
+                                smooth_factor * self.params.cil_mag,
+                            );
                         }
                     }
+                    // if ci == 0 && vi == 1 {
+                    //     println!("close edge | oci: {}, ovi: {} | x_cils[ci][vi] = {}", oci, ovi,
+                    //              x_cils[vi]);
+                    // }
 
                     if let Some(adh_mag) = self.params.adh_mag {
                         let x = -1.0

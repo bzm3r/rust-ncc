@@ -850,19 +850,14 @@ impl Core {
 
     pub fn strict_enforce_volume_exclusion(
         &mut self,
-        cell_ix: usize,
         old_vs: &[V2d; NVERTS],
         contacts: &[ContactData],
     ) -> Result<(), String> {
-        confirm_volume_exclusion(
-            cell_ix, &old_vs, &contacts, "old_vs",
-        )?;
+        confirm_volume_exclusion(&old_vs, &contacts, "old_vs")?;
 
         self.enforce_volume_exclusion(old_vs, contacts);
 
-        confirm_volume_exclusion(
-            cell_ix, &self.poly, &contacts, "new_vs",
-        )?;
+        confirm_volume_exclusion(&self.poly, &contacts, "new_vs")?;
         Ok(())
     }
 
@@ -985,7 +980,6 @@ fn fix_edge_intersection(
 }
 
 pub fn confirm_volume_exclusion(
-    cell_ix: usize,
     vs: &[V2d; NVERTS],
     contacts: &[ContactData],
     msg: &str,
@@ -997,17 +991,15 @@ pub fn confirm_volume_exclusion(
         for ContactData { poly, oci } in contacts {
             if violates_volume_exclusion(v, &w, contacts) {
                 return Err(format!(
-                    "{} violates volume exclusion (cell {}).\n\
+                    "{} violates volume exclusion.\n\
                     vs[{}] = {}, \n\
                     other poly ({}) = {}  \n\
-                    this_vs ({}) = {}",
+                    this_vs = {}",
                     msg,
-                    cell_ix,
                     vi,
                     v,
                     oci,
                     &poly_to_string(&poly.verts),
-                    cell_ix,
                     &poly_to_string(vs)
                 ));
             }

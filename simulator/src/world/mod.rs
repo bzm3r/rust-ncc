@@ -96,7 +96,17 @@ impl WorldCells {
         interaction_generator: &mut InteractionGenerator,
         int_opts: RkOpts,
     ) -> Result<WorldCells, String> {
+        // println!("tpoint: {} ", tpoint * 2.0);
         let mut new_cells = self.cells.clone();
+        let mut rel_rgtps = new_cells
+            .iter()
+            .map(|c| {
+                c.core.calc_relative_rgtp_activity(
+                    &group_parameters[c.group_ix],
+                )
+            })
+            .collect::<Vec<[RelativeRgtpActivity; NVERTS]>>();
+        let mut interactions = self.interactions.clone();
         let shuffled_cells = {
             let mut crs = self.cells.iter().collect::<Vec<&Cell>>();
             crs.shuffle(rng);
@@ -105,13 +115,14 @@ impl WorldCells {
         let dt = 1.0;
         for cells in shuffled_cells {
             let ci = cells.ix;
+
             let contact_data =
                 interaction_generator.get_contact_data(ci);
 
             let new_cell = cells.simulate_rkdp5(
                 tpoint,
                 dt,
-                &self.interactions[ci],
+                &interactions[ci],
                 contact_data,
                 world_parameters,
                 &group_parameters[cells.group_ix],
@@ -119,22 +130,20 @@ impl WorldCells {
                 int_opts,
             )?;
 
+            rel_rgtps[ci] =
+                new_cell.core.calc_relative_rgtp_activity(
+                    &group_parameters[new_cell.group_ix],
+                );
             interaction_generator.update(ci, &new_cell.core.poly);
+            interactions = interaction_generator.generate(&rel_rgtps);
 
             new_cells[ci] = new_cell;
         }
-        let rel_rgtps = new_cells
-            .iter()
-            .map(|c| {
-                c.core.calc_relative_rgtp_activity(
-                    &group_parameters[c.group_ix],
-                )
-            })
-            .collect::<Vec<[RelativeRgtpActivity; NVERTS]>>();
+        // println!("-----------------------");
         Ok(WorldCells {
             tpoint: tpoint + dt,
             cells: new_cells,
-            interactions: interaction_generator.generate(&rel_rgtps),
+            interactions,
         })
     }
 

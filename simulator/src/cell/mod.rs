@@ -84,7 +84,6 @@ impl Cell {
             state = state + delta.time_step(dt);
             // Enforcing volume exclusion! Tricky!
             state.strict_enforce_volume_exclusion(
-                self.ix,
                 &self.core.poly,
                 &contact_data,
             )?;
@@ -116,14 +115,12 @@ impl Cell {
         parameters: &Parameters,
         int_opts: EulerOpts,
     ) -> Result<Vec<Cell>, String> {
-        let cell_ix = self.ix;
         // println!("cell_ix: {}", cell_ix);
         let mut r: Vec<Cell> =
             Vec::with_capacity(int_opts.num_int_steps as usize);
         let mut state = self.core;
         let dt = 1.0 / (int_opts.num_int_steps as f64);
         confirm_volume_exclusion(
-            cell_ix,
             &self.core.poly,
             &contact_data,
             "old_vs",
@@ -149,7 +146,6 @@ impl Cell {
             // );
             // Enforcing volume exclusion! Tricky!
             state.strict_enforce_volume_exclusion(
-                self.ix,
                 &old_vs,
                 &contact_data,
             )?;
