@@ -501,12 +501,12 @@ class SimulationData:
                 if self.ani_opts.label_verts:
                     ax.annotate(str(vix), (poly[vix, 0], poly[vix, 1]))
 
-            if self.ani_opts.label_cells and snap_ix > 0:
-                ax.annotate(str(ci), (self.centroids_per_c_per_s[-1, ci, 0],
-                                      self.centroids_per_c_per_s[-1, ci, 1]))
             c_centers = self.centroids_per_c_per_s[:snap_ix, ci]
             if self.ani_opts.show_trails:
                 ax.plot(c_centers[:, 0], c_centers[:, 1])
+            if self.ani_opts.label_cells and snap_ix > 0:
+                ax.annotate(str(ci), (c_centers[:, 0][-1, 0],
+                                      c_centers[:, 0][-1, 1]))
 
         arrow_group = eval("self.{}_arrow_group".format(ty))
 
