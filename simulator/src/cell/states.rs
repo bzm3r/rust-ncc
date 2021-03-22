@@ -10,9 +10,7 @@ use crate::cell::mechanics::{
 use crate::interactions::{
     ContactData, Interactions, RelativeRgtpActivity,
 };
-use crate::math::geometry::{
-    is_point_in_poly, lsegs_intersect, LineSeg2D,
-};
+use crate::math::geometry::{lsegs_intersect, LineSeg2D};
 use crate::math::v2d::{SqP2d, V2d};
 use crate::math::{hill_function3, max_f64};
 use crate::parameters::{Parameters, WorldParameters};
@@ -852,12 +850,14 @@ impl Core {
         &mut self,
         old_vs: &[V2d; NVERTS],
         contacts: &[ContactData],
-    ) -> Result<(), String> {
-        confirm_volume_exclusion(&old_vs, &contacts, "old_vs")?;
+    ) -> Result<(), VolExErr> {
+        confirm_volume_exclusion(&old_vs, &contacts, "old_vs")
+            .map_err(|e| VolExErr::OldVs(e))?;
 
         self.enforce_volume_exclusion(old_vs, contacts);
 
-        confirm_volume_exclusion(&self.poly, &contacts, "new_vs")?;
+        confirm_volume_exclusion(&self.poly, &contacts, "new_vs")
+            .map_err(|e| VolExErr::NewVs(e))?;
         Ok(())
     }
 
@@ -929,10 +929,6 @@ fn violates_volume_exclusion(
     contacts: &[ContactData],
 ) -> bool {
     for contact in contacts {
-        if is_point_in_poly(test_v, None, &contact.poly.verts) {
-            return true;
-        }
-
         for other in contact.poly.edges.iter() {
             if lsegs_intersect(test_v, test_w, other) {
                 return true;
@@ -983,6 +979,11 @@ fn fix_edge_intersection(
         n += 1;
     }
     (good_u, good_v, good_w)
+}
+
+pub enum VolExErr {
+    OldVs(String),
+    NewVs(String),
 }
 
 pub fn confirm_volume_exclusion(
