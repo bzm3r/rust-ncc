@@ -55,7 +55,7 @@ impl ClosePoint {
         // Is `p` close to `a`? Then it interacts directly with `a`.
         let s_to_tp = test_point - seg_start;
         let s_to_tp_dsq = s_to_tp.mag_squared();
-        if s_to_tp_dsq < range.zero_at_sq {
+        if s_to_tp_dsq < 1e-6 {
             let smooth_factor = capped_linear_fn(
                 s_to_tp_dsq.sqrt(),
                 range.zero_at,
@@ -68,7 +68,7 @@ impl ClosePoint {
             }
         } else {
             let e_to_tp_dsq = (seg_end - test_point).mag_squared();
-            if e_to_tp_dsq < range.zero_at_sq {
+            if e_to_tp_dsq < 1e-6 {
                 ClosePoint::None {
                     dist_sq: e_to_tp_dsq,
                 }
@@ -114,24 +114,28 @@ impl fmt::Display for ClosePoint {
             ClosePoint::Vertex {
                 vector_to,
                 smooth_factor,
-                ..
+                dist_sq,
             } => {
                 write!(
                     f,
-                    "Vertex(vector_to: {}, smooth_factor: {})",
+                    "Vertex(vector_to: {}, smooth_factor: {}, dist: {})",
                     vector_to.mag(),
-                    smooth_factor
+                    smooth_factor,
+                    dist_sq.sqrt(),
                 )
             }
             ClosePoint::OnEdge {
                 edge_point_param,
                 vector_to,
                 smooth_factor,
-                ..
+                dist_sq,
             } => {
-                write!(f, "OnEdge(edge_point_param: {}, vector_to: {}, smooth_factor: {})", edge_point_param, vector_to.mag(), smooth_factor)
+                write!(f, "OnEdge(edge_point_param: {}, vector_to: {}, smooth_factor: {}, \
+                dist: {})", edge_point_param, vector_to.mag(), smooth_factor, dist_sq.sqrt())
             }
-            ClosePoint::None { .. } => write!(f, "None"),
+            ClosePoint::None { dist_sq } => {
+                write!(f, "None(dist: {})", dist_sq.sqrt())
+            }
         }
     }
 }
@@ -435,10 +439,6 @@ impl PhysicalContactGenerator {
                             );
                         }
                     }
-                    // if ci == 0 && vi == 1 {
-                    //     println!("close edge | oci: {}, ovi: {} | x_cils[ci][vi] = {}", oci, ovi,
-                    //              x_cils[vi]);
-                    // }
 
                     if let Some(adh_mag) = self.params.adh_mag {
                         let x = -1.0
