@@ -223,7 +223,7 @@ pub fn integrator(
     let mut try_as_last_iter = false;
     let mut num_rejections: usize = 0;
 
-    while num_iters < max_iters {
+    while num_iters < usize::MAX && h > 1e-14 {
         let Ks {
             k0,
             k1,

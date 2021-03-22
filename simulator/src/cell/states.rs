@@ -852,12 +852,12 @@ impl Core {
         contacts: &[ContactData],
     ) -> Result<(), VolExErr> {
         confirm_volume_exclusion(&old_vs, &contacts, "old_vs")
-            .map_err(|e| VolExErr::OldVs(e))?;
+            .map_err(VolExErr::OldVs)?;
 
         self.enforce_volume_exclusion(old_vs, contacts);
 
         confirm_volume_exclusion(&self.poly, &contacts, "new_vs")
-            .map_err(|e| VolExErr::NewVs(e))?;
+            .map_err(VolExErr::NewVs)?;
         Ok(())
     }
 

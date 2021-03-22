@@ -21,7 +21,14 @@ use std::f64::consts::PI;
 
 /// Characteristic quantities used for normalization.
 #[derive(
-    Clone, Copy, Deserialize, Serialize, Default, Debug, PartialEq,
+    Clone,
+    Copy,
+    Deserialize,
+    Serialize,
+    Default,
+    Debug,
+    PartialEq,
+    Modify,
 )]
 pub struct CharQuantities {
     pub eta: Viscosity,

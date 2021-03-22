@@ -1,5 +1,7 @@
 use crate::cell::chemistry::RgtpDistribution;
-use crate::exp_setup::defaults::RAW_COA_PARAMS_WITH_ZERO_MAG;
+use crate::exp_setup::defaults::{
+    CHAR_QUANTS, RAW_COA_PARAMS_WITH_ZERO_MAG,
+};
 use crate::exp_setup::exp_parser::ExperimentArgs;
 use crate::exp_setup::{
     defaults, CellGroup, Experiment, ExperimentType, GroupBBox,
@@ -90,6 +92,7 @@ pub fn generate(
         file_name: toml_name,
         ty,
         final_t,
+        char_t,
         cil_mag,
         coa_mag,
         cal_mag,
@@ -117,7 +120,7 @@ pub fn generate(
         .map(|&seed| {
             let mut rng = Pcg32::seed_from_u64(seed);
 
-            let char_quants = *defaults::CHAR_QUANTS;
+            let char_quants = CHAR_QUANTS.modify_t(char_t);
             let raw_world_params = defaults::RAW_WORLD_PARAMS
                 .modify_interactions(RawInteractionParams {
                     coa: coa_mag.map(|mag| {

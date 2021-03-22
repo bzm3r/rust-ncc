@@ -1,5 +1,5 @@
 use crate::exp_setup::defaults::{
-    PHYS_CLOSE_DIST_ONE_AT, PHYS_CLOSE_DIST_ZERO_AT,
+    CHAR_QUANTS, PHYS_CLOSE_DIST_ONE_AT, PHYS_CLOSE_DIST_ZERO_AT,
     RAW_COA_PARAMS_WITH_ZERO_MAG,
 };
 use crate::exp_setup::{ExperimentType, RgtpDistribDefs};
@@ -81,6 +81,7 @@ pub struct AnimationOptions {
 struct ParsedExpArgs {
     ty: ExperimentType,
     final_t: f64,
+    char_t: Option<f64>,
     cil_mag: f64,
     coa_mag: Option<f64>,
     adh_mag: Option<f64>,
@@ -115,6 +116,7 @@ pub struct ExperimentArgs {
     pub seeds: Vec<u64>,
     pub int_opts: IntegratorOpts,
     pub rgtp_distrib_defs: RgtpDistribDefs,
+    pub char_t: Time,
 }
 
 impl TryFrom<&PathBuf> for ExperimentArgs {
@@ -129,6 +131,7 @@ impl TryFrom<&PathBuf> for ExperimentArgs {
         let ParsedExpArgs {
             ty,
             final_t,
+            char_t,
             cil_mag,
             coa_mag,
             adh_mag,
@@ -162,8 +165,9 @@ impl TryFrom<&PathBuf> for ExperimentArgs {
             .into();
         let exp_args = ExperimentArgs {
             file_name,
-            ty: ty.clone(),
+            ty,
             final_t: Time(final_t),
+            char_t: char_t.map_or_else(|| CHAR_QUANTS.t, Time),
             cil_mag,
             coa_mag,
             cal_mag,
@@ -185,8 +189,7 @@ impl TryFrom<&PathBuf> for ExperimentArgs {
             randomization,
             seeds,
             int_opts: int_opts.into(),
-            rgtp_distrib_defs: rgtp_distrib_defs
-                .unwrap_or(RgtpDistribDefs::default()),
+            rgtp_distrib_defs: rgtp_distrib_defs.unwrap_or_default(),
         };
         Ok(exp_args)
     }
