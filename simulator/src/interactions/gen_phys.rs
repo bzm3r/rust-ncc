@@ -342,7 +342,6 @@ impl PhysicalContactGenerator {
         oci: usize,
         rel_rgtps_per_cell: &[[RelativeRgtpActivity; NVERTS]],
     ) -> Vec<CloseEdge> {
-        let v_rgtp = rel_rgtps_per_cell[ci][vi];
         (0..NVERTS)
             .filter_map(|ovi| match self.dat.get(ci, vi, oci, ovi) {
                 ClosePoint::None { .. } => None,
@@ -360,9 +359,7 @@ impl PhysicalContactGenerator {
                     Some(CloseEdge {
                         cell_ix: oci,
                         vert_ix: ovi,
-                        crl: CrlEffect::calc_crl_on_focus(
-                            v_rgtp, edge_rgtp,
-                        ),
+                        relative_rgtp_act: edge_rgtp,
                         vector_to,
                         edge_point_param,
                         smooth_factor,
@@ -375,10 +372,7 @@ impl PhysicalContactGenerator {
                 } => Some(CloseEdge {
                     cell_ix: oci,
                     vert_ix: ovi,
-                    crl: CrlEffect::calc_crl_on_focus(
-                        v_rgtp,
-                        rel_rgtps_per_cell[oci][ovi],
-                    ),
+                    relative_rgtp_act: rel_rgtps_per_cell[oci][ovi],
                     vector_to,
                     edge_point_param: 0.0,
                     smooth_factor,
@@ -414,59 +408,178 @@ impl PhysicalContactGenerator {
         let mut cal_per_cell = vec![[0.0f64; NVERTS]; num_cells];
         let mut cil_per_cell = vec![[0.0f64; NVERTS]; num_cells];
         for ci in 0..num_cells {
-            let x_cals = &mut cal_per_cell[ci];
-            let x_cils = &mut cil_per_cell[ci];
             for vi in 0..NVERTS {
+                let this_rgtp_act = rel_rgtps_per_cell[ci][vi];
                 for CloseEdge {
                     cell_ix: oci,
                     vert_ix: ovi,
-                    crl,
                     vector_to,
                     edge_point_param,
                     smooth_factor,
+                    relative_rgtp_act: other_rgtp_act,
                 } in self
                     .get_close_edges_to(ci, vi, rel_rgtps_per_cell)
                     .into_iter()
                 {
-                    match (self.params.cal_mag, crl) {
-                        (Some(cal_mag), CrlEffect::Cal) => {
-                            x_cals[vi] = x_cals[vi]
-                                .max(smooth_factor * cal_mag);
-                        }
-                        (Some(_), CrlEffect::Cil) | (None, _) => {
-                            x_cils[vi] = x_cils[vi].max(
-                                smooth_factor * self.params.cil_mag,
-                            );
-                        }
-                    }
+                    if let Some(cal_mag) = self.params.cal_mag {
+                        if let Some(adh_mag) = self.params.adh_mag {
+                            let adh_strain = (vector_to.mag()
+                                - self.params.range.one_at)
+                                / self.params.range.one_at;
 
-                    if let Some(adh_mag) = self.params.adh_mag {
-                        let adh_strain = (vector_to.mag()
-                            - self.params.range.one_at)
-                            / self.params.range.one_at;
-                        let adh_force = adh_mag
-                            * adh_strain
-                            * vector_to.unitize();
-                        //* ((1.0 / self.params.range) * delta);
-                        // We are close to the vertex.
-                        if close_to_zero(edge_point_param, 1e-3) {
-                            adh_per_cell[oci][ovi] =
-                                adh_per_cell[oci][ovi] - adh_force;
-                            adh_per_cell[ci][vi] =
-                                adh_per_cell[ci][vi] + adh_force;
+                            use RelativeRgtpActivity::{
+                                RacDominant, RhoDominant,
+                            };
+                            match (
+                                adh_strain < 0.0,
+                                other_rgtp_act,
+                                this_rgtp_act,
+                            ) {
+                                (
+                                    false,
+                                    RhoDominant(_),
+                                    RacDominant(_),
+                                ) => {
+                                    // if ci == 0 && vi == 0 {
+                                    //     println!("(tensile, other: Rho, this: Rac)");
+                                    // }
+                                    cal_per_cell[ci][vi] = cal_mag;
+                                }
+                                (
+                                    false,
+                                    RacDominant(_),
+                                    RacDominant(_),
+                                ) => {
+                                    cal_per_cell[ci][vi] =
+                                        cal_per_cell[ci][vi].max(
+                                            adh_strain * cal_mag,
+                                        );
+                                    // cil_per_cell[ci][vi] =
+                                    //     self.params.cil_mag;
+                                    // if ci == 0 && vi == 0 {
+                                    //     println!("(tensile, other: Rac, this: Rac)");
+                                    // }
+                                }
+                                (
+                                    false,
+                                    RhoDominant(_),
+                                    RhoDominant(_),
+                                ) => {
+                                    // if ci == 0 && vi == 0 {
+                                    //     println!("(tensile, other: Rho, this: Rho)");
+                                    // }
+                                    cal_per_cell[ci][vi] =
+                                        cal_per_cell[ci][vi].max(
+                                            adh_strain * cal_mag,
+                                        );
+                                }
+                                (
+                                    false,
+                                    RacDominant(_),
+                                    RhoDominant(_),
+                                ) => {
+                                    // if ci == 0 && vi == 0 {
+                                    //     println!("(tensile, other: Rac, this: Rho)");
+                                    // }
+                                    cil_per_cell[ci][vi] =
+                                        self.params.cil_mag;
+                                }
+                                (
+                                    true,
+                                    RhoDominant(_),
+                                    RacDominant(_),
+                                ) => {
+                                    // if ci == 0 && vi == 0 {
+                                    //     println!("(compressive, other: Rho, this: Rac)");
+                                    // }
+                                    cil_per_cell[ci][vi] =
+                                        cil_per_cell[ci][vi].max(
+                                            -1.0 * adh_strain
+                                                * self.params.cil_mag,
+                                        );
+                                }
+                                (
+                                    true,
+                                    RacDominant(_),
+                                    RacDominant(_),
+                                ) => {
+                                    // if ci == 0 && vi == 0 {
+                                    //     println!("(compressive, other: Rac, this: Rac)");
+                                    // }
+                                    cil_per_cell[ci][vi] =
+                                        self.params.cil_mag;
+                                }
+                                (
+                                    true,
+                                    RhoDominant(_),
+                                    RhoDominant(_),
+                                ) => {
+                                    // if ci == 0 && vi == 0 {
+                                    //     println!("(compressive, other: Rho, this: Rho)");
+                                    // }
+                                    cil_per_cell[ci][vi] =
+                                        self.params.cil_mag
+                                }
+                                (
+                                    true,
+                                    RacDominant(_),
+                                    RhoDominant(_),
+                                ) => {
+                                    // if ci == 0 && vi == 0 {
+                                    //     println!("(compressive, other: Rac, this: Rho)");
+                                    // }
+                                    cil_per_cell[ci][vi] =
+                                        self.params.cil_mag;
+                                }
+                            }
+
+                            let adh_force = adh_mag
+                                * adh_strain
+                                * vector_to.unitize();
+                            //* ((1.0 / self.params.range) * delta);
+                            // We are close to the vertex.
+                            if close_to_zero(edge_point_param, 1e-3) {
+                                adh_per_cell[oci][ovi] = adh_per_cell
+                                    [oci][ovi]
+                                    - adh_force;
+                                adh_per_cell[ci][vi] =
+                                    adh_per_cell[ci][vi] + adh_force;
+                            } else {
+                                adh_per_cell[oci][ovi] = adh_per_cell
+                                    [oci][ovi]
+                                    - (1.0 - edge_point_param)
+                                        * adh_force;
+                                let owi = circ_ix_plus(ovi, NVERTS);
+                                adh_per_cell[oci][owi] = adh_per_cell
+                                    [oci][owi]
+                                    - edge_point_param * adh_force;
+                                adh_per_cell[ci][vi] =
+                                    adh_per_cell[ci][vi] + adh_force;
+                            }
                         } else {
-                            adh_per_cell[oci][ovi] = adh_per_cell
-                                [oci][ovi]
-                                - (1.0 - edge_point_param)
-                                    * adh_force;
-                            let owi = circ_ix_plus(ovi, NVERTS);
-                            adh_per_cell[oci][owi] = adh_per_cell
-                                [oci][owi]
-                                - edge_point_param * adh_force;
-                            adh_per_cell[ci][vi] =
-                                adh_per_cell[ci][vi] + adh_force;
+                            match CrlEffect::calc_crl_on_focus(
+                                this_rgtp_act,
+                                other_rgtp_act,
+                            ) {
+                                CrlEffect::Cil => {
+                                    cil_per_cell[ci][vi] =
+                                        cil_per_cell[ci][vi].max(
+                                            self.params.cil_mag
+                                                * smooth_factor,
+                                        )
+                                }
+                                CrlEffect::Cal => {
+                                    cal_per_cell[ci][vi] =
+                                        cal_per_cell[ci][vi].max(
+                                            cal_mag * smooth_factor,
+                                        )
+                                }
+                            }
                         }
-                    };
+                    } else {
+                        cil_per_cell[ci][vi] = cil_per_cell[ci][vi]
+                            .max(self.params.cil_mag * smooth_factor);
+                    }
                 }
             }
         }
@@ -507,7 +620,7 @@ pub struct CloseEdge {
     /// Close edge runs from `vert_ix` to `vert_ix + 1`.
     pub vert_ix: usize,
     /// Contact regulation of motion.
-    pub crl: CrlEffect,
+    pub relative_rgtp_act: RelativeRgtpActivity,
     /// Let the position of the focus vertex be denoted `p`, and
     /// the point on the close edge closest to the focus vertex
     /// be denoted `c`. `delta` is such that `delta + p = c`.
