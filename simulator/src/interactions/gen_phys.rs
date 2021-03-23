@@ -407,6 +407,7 @@ impl PhysicalContactGenerator {
             vec![[V2d::default(); NVERTS]; num_cells];
         let mut cal_per_cell = vec![[0.0f64; NVERTS]; num_cells];
         let mut cil_per_cell = vec![[0.0f64; NVERTS]; num_cells];
+        let cil_mag = self.params.cil_mag;
         for ci in 0..num_cells {
             for vi in 0..NVERTS {
                 let this_rgtp_act = rel_rgtps_per_cell[ci][vi];
@@ -427,95 +428,47 @@ impl PhysicalContactGenerator {
                                 - self.params.range.one_at)
                                 / self.params.range.one_at;
 
-                            use RelativeRgtpActivity::{
-                                RacDominant, RhoDominant,
-                            };
-                            match (
-                                adh_strain < 0.0,
-                                other_rgtp_act,
+                            match CrlState::new(
+                                adh_strain,
                                 this_rgtp_act,
+                                other_rgtp_act,
                             ) {
-                                (
-                                    false,
-                                    RacDominant(_),
-                                    RhoDominant(_),
-                                )
-                                | (
-                                    false,
-                                    RacDominant(_),
-                                    RacDominant(_),
-                                ) => {
-                                    // if ci == 0 && vi == 0 {
-                                    //     println!("(tensile, other: Rac, this: Rho)");
-                                    // }
-                                    cil_per_cell[ci][vi] =
-                                        cil_per_cell[ci][vi].max(
-                                            (1.0 - adh_strain.abs())
-                                                * self.params.cil_mag,
-                                        );
+                                CrlState::TensionThisRacOtherRho => {
+                                    // Engage in CAL
+                                    cal_per_cell[ci][vi] = cal_mag;
                                 }
-                                (false, _, _) => {
-                                    cal_per_cell[ci][vi] =
-                                        cal_per_cell[ci][vi].max(
-                                            adh_strain.abs()
-                                                * cal_mag,
-                                        );
+                                CrlState::TensionThisRacOtherRac => {
+                                    // Engage in CIL and CAL
+                                    cal_per_cell[ci][vi] = cal_mag;
+                                    cil_per_cell[ci][vi] = cil_mag;
                                 }
-                                (
-                                    true,
-                                    RhoDominant(_),
-                                    RacDominant(_),
-                                ) => {
-                                    // if ci == 0 && vi == 0 {
-                                    //     println!("(compressive, other: Rho, this: Rac)");
-                                    // }
-                                    cil_per_cell[ci][vi] =
-                                        cil_per_cell[ci][vi].max(
-                                            adh_strain.abs()
-                                                * self.params.cil_mag,
-                                        );
+                                CrlState::TensionThisRhoOtherRac => {
+                                    // Engage in CIL
+                                    cil_per_cell[ci][vi] = cil_mag;
                                 }
-                                (
-                                    true,
-                                    RacDominant(_),
-                                    RacDominant(_),
-                                ) => {
-                                    // if ci == 0 && vi == 0 {
-                                    //     println!("(compressive, other: Rac, this: Rac)");
-                                    // }
-                                    cil_per_cell[ci][vi] =
-                                        self.params.cil_mag
+                                CrlState::TensionThisRhoOtherRho => {
+                                    // Engage in CAL
+                                    cal_per_cell[ci][vi] = cal_mag;
                                 }
-                                (
-                                    true,
-                                    RhoDominant(_),
-                                    RhoDominant(_),
-                                ) => {
-                                    // if ci == 0 && vi == 0 {
-                                    //     println!("(compressive, other: Rho, this: Rho)");
-                                    // }
-                                    cil_per_cell[ci][vi] =
-                                        cil_per_cell[ci][vi].max(
-                                            adh_strain.abs()
-                                                * self.params.cil_mag,
-                                        );
+                                CrlState::CompressionThisRacOtherRho => {
+                                    // Engage in CIL and CAL
+                                    cal_per_cell[ci][vi] = cal_mag;
+                                    cil_per_cell[ci][vi] = cil_mag;
                                 }
-                                (
-                                    true,
-                                    RacDominant(_),
-                                    RhoDominant(_),
-                                ) => {
-                                    // if ci == 0 && vi == 0 {
-                                    //     println!("(compressive, other: Rac, this: Rho)");
-                                    // }
-                                    cil_per_cell[ci][vi] =
-                                        cil_per_cell[ci][vi].max(
-                                            adh_strain.abs()
-                                                * self.params.cil_mag,
-                                        );
+                                CrlState::CompressionThisRacOtherRac => {
+                                    // Engage in CIL
+                                    cil_per_cell[ci][vi] = cil_mag;
+                                }
+                                CrlState::CompressionThisRhoOtherRac => {
+                                    // Engage in CIL
+                                    cil_per_cell[ci][vi] = cil_mag;
+                                }
+                                CrlState::CompressionThisRhoOtherRho => {
+                                    // Engage in CIL and CAL
+                                    cal_per_cell[ci][vi] = cal_mag;
+                                    cil_per_cell[ci][vi] = cil_mag;
                                 }
                             }
-
                             let adh_force = adh_mag
                                 * adh_strain
                                 * vector_to.unitize();
@@ -570,6 +523,61 @@ impl PhysicalContactGenerator {
             adh: adh_per_cell,
             cil: cil_per_cell,
             cal: cal_per_cell,
+        }
+    }
+}
+
+pub enum CrlState {
+    TensionThisRacOtherRho,
+    TensionThisRacOtherRac,
+    TensionThisRhoOtherRac,
+    TensionThisRhoOtherRho,
+    CompressionThisRacOtherRho,
+    CompressionThisRacOtherRac,
+    CompressionThisRhoOtherRac,
+    CompressionThisRhoOtherRho,
+}
+
+impl CrlState {
+    pub fn new(
+        strain: f64,
+        this: RelativeRgtpActivity,
+        other: RelativeRgtpActivity,
+    ) -> CrlState {
+        use CrlState::{
+            CompressionThisRacOtherRac, CompressionThisRacOtherRho,
+            CompressionThisRhoOtherRac, CompressionThisRhoOtherRho,
+        };
+        use CrlState::{
+            TensionThisRacOtherRac, TensionThisRacOtherRho,
+            TensionThisRhoOtherRac, TensionThisRhoOtherRho,
+        };
+        use RelativeRgtpActivity::{RacDominant, RhoDominant};
+        match (strain < 0.0, this, other) {
+            (false, RacDominant(_), RacDominant(_)) => {
+                TensionThisRacOtherRac
+            }
+            (false, RacDominant(_), RhoDominant(_)) => {
+                TensionThisRacOtherRho
+            }
+            (false, RhoDominant(_), RacDominant(_)) => {
+                TensionThisRhoOtherRac
+            }
+            (false, RhoDominant(_), RhoDominant(_)) => {
+                TensionThisRhoOtherRho
+            }
+            (true, RacDominant(_), RacDominant(_)) => {
+                CompressionThisRacOtherRac
+            }
+            (true, RacDominant(_), RhoDominant(_)) => {
+                CompressionThisRacOtherRho
+            }
+            (true, RhoDominant(_), RacDominant(_)) => {
+                CompressionThisRhoOtherRac
+            }
+            (true, RhoDominant(_), RhoDominant(_)) => {
+                CompressionThisRhoOtherRho
+            }
         }
     }
 }
