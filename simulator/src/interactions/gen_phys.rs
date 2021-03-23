@@ -441,12 +441,12 @@ impl PhysicalContactGenerator {
                     }
 
                     if let Some(adh_mag) = self.params.adh_mag {
-                        let x = -1.0
-                            * (vector_to.mag()
-                                / self.params.range.one_at)
-                            * smooth_factor;
-                        let adh_force =
-                            -1.0 * adh_mag * x * vector_to;
+                        let adh_strain = (vector_to.mag()
+                            - self.params.range.one_at)
+                            / self.params.range.one_at;
+                        let adh_force = adh_mag
+                            * adh_strain
+                            * vector_to.unitize();
                         //* ((1.0 / self.params.range) * delta);
                         // We are close to the vertex.
                         if close_to_zero(edge_point_param, 1e-3) {
