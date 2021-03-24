@@ -52,7 +52,7 @@ impl RelativeRgtpActivity {
         if value > 0.0 {
             RacDominant(value)
         } else {
-            RhoDominant(-1.0 * value)
+            RhoDominant(value)
         }
     }
 

@@ -435,38 +435,40 @@ impl PhysicalContactGenerator {
                             ) {
                                 CrlState::TensionThisRacOtherRho => {
                                     // Engage in CAL
-                                    cal_per_cell[ci][vi] = cal_mag;
+                                    cal_per_cell[ci][vi] = cal_per_cell[ci][vi].max
+                                    (adh_strain.abs() * cal_mag);
                                 }
                                 CrlState::TensionThisRacOtherRac => {
                                     // Engage in CIL and CAL
-                                    cal_per_cell[ci][vi] = cal_mag;
-                                    cil_per_cell[ci][vi] = cil_mag;
+                                    cil_per_cell[ci][vi] = cil_per_cell[ci][vi].max
+                                    ((1.0 - adh_strain.abs()) * cil_mag);
                                 }
                                 CrlState::TensionThisRhoOtherRac => {
                                     // Engage in CIL
-                                    cil_per_cell[ci][vi] = cil_mag;
+                                    cil_per_cell[ci][vi] = cil_per_cell[ci][vi].max
+                                    ((1.0 - adh_strain.abs()) * cil_mag);
                                 }
                                 CrlState::TensionThisRhoOtherRho => {
                                     // Engage in CAL
-                                    cal_per_cell[ci][vi] = cal_mag;
+                                    cal_per_cell[ci][vi] = cal_per_cell[ci][vi].max
+                                    (adh_strain.abs() * cal_mag);
                                 }
                                 CrlState::CompressionThisRacOtherRho => {
-                                    // Engage in CIL and CAL
-                                    cal_per_cell[ci][vi] = cal_mag;
-                                    cil_per_cell[ci][vi] = cil_mag;
+                                    // Engage in CIL tentatively
+                                    cil_per_cell[ci][vi] = cil_per_cell[ci][vi].max
+                                    (adh_strain.abs() * cil_mag);
                                 }
                                 CrlState::CompressionThisRacOtherRac => {
                                     // Engage in CIL
-                                    cil_per_cell[ci][vi] = cil_mag;
+                                    cil_per_cell[ci][vi] = cil_per_cell[ci][vi].max
+                                    (cil_mag);
                                 }
                                 CrlState::CompressionThisRhoOtherRac => {
                                     // Engage in CIL
                                     cil_per_cell[ci][vi] = cil_mag;
                                 }
                                 CrlState::CompressionThisRhoOtherRho => {
-                                    // Engage in CIL and CAL
-                                    cal_per_cell[ci][vi] = cal_mag;
-                                    cil_per_cell[ci][vi] = cil_mag;
+                                    // Do nothing.
                                 }
                             }
                             let adh_force = adh_mag
