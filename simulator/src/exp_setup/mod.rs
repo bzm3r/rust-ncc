@@ -75,20 +75,20 @@ impl Default for DistribDef {
 
 #[derive(Clone, Debug, Deserialize, Serialize, Default)]
 pub struct RgtpDistribDef {
-    acts: DistribDef,
-    inacts: DistribDef,
+    pub acts: DistribDef,
+    pub inacts: DistribDef,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, Default)]
 pub struct RgtpDistribDefs {
-    rac: RgtpDistribDef,
-    rho: RgtpDistribDef,
+    pub rac: RgtpDistribDef,
+    pub rho: RgtpDistribDef,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, Default)]
 pub struct PairRgtpDistribDefs {
-    cell0: RgtpDistribDefs,
-    cell1: RgtpDistribDefs,
+    pub cell0: RgtpDistribDefs,
+    pub cell1: RgtpDistribDefs,
 }
 
 impl Default for ExperimentType {

@@ -33,7 +33,7 @@ criterion = "0.3.4"
 [[bench]]
 name = "n_cells"
 harness = false
-path = "src/benches/n_cells.rs"
+path = "benches/n_cells.rs"
 
 [features]
 validate = []

@@ -437,52 +437,29 @@ impl PhysicalContactGenerator {
                             ) {
                                 (
                                     false,
-                                    RhoDominant(_),
                                     RacDominant(_),
-                                ) => {
-                                    // if ci == 0 && vi == 0 {
-                                    //     println!("(tensile, other: Rho, this: Rac)");
-                                    // }
-                                    cal_per_cell[ci][vi] = cal_mag;
-                                }
-                                (
+                                    RhoDominant(_),
+                                )
+                                | (
                                     false,
                                     RacDominant(_),
                                     RacDominant(_),
-                                ) => {
-                                    cal_per_cell[ci][vi] =
-                                        cal_per_cell[ci][vi].max(
-                                            adh_strain * cal_mag,
-                                        );
-                                    // cil_per_cell[ci][vi] =
-                                    //     self.params.cil_mag;
-                                    // if ci == 0 && vi == 0 {
-                                    //     println!("(tensile, other: Rac, this: Rac)");
-                                    // }
-                                }
-                                (
-                                    false,
-                                    RhoDominant(_),
-                                    RhoDominant(_),
-                                ) => {
-                                    // if ci == 0 && vi == 0 {
-                                    //     println!("(tensile, other: Rho, this: Rho)");
-                                    // }
-                                    cal_per_cell[ci][vi] =
-                                        cal_per_cell[ci][vi].max(
-                                            adh_strain * cal_mag,
-                                        );
-                                }
-                                (
-                                    false,
-                                    RacDominant(_),
-                                    RhoDominant(_),
                                 ) => {
                                     // if ci == 0 && vi == 0 {
                                     //     println!("(tensile, other: Rac, this: Rho)");
                                     // }
                                     cil_per_cell[ci][vi] =
-                                        self.params.cil_mag;
+                                        cil_per_cell[ci][vi].max(
+                                            (1.0 - adh_strain.abs())
+                                                * self.params.cil_mag,
+                                        );
+                                }
+                                (false, _, _) => {
+                                    cal_per_cell[ci][vi] =
+                                        cal_per_cell[ci][vi].max(
+                                            adh_strain.abs()
+                                                * cal_mag,
+                                        );
                                 }
                                 (
                                     true,
@@ -494,7 +471,7 @@ impl PhysicalContactGenerator {
                                     // }
                                     cil_per_cell[ci][vi] =
                                         cil_per_cell[ci][vi].max(
-                                            -1.0 * adh_strain
+                                            adh_strain.abs()
                                                 * self.params.cil_mag,
                                         );
                                 }
@@ -507,7 +484,7 @@ impl PhysicalContactGenerator {
                                     //     println!("(compressive, other: Rac, this: Rac)");
                                     // }
                                     cil_per_cell[ci][vi] =
-                                        self.params.cil_mag;
+                                        self.params.cil_mag
                                 }
                                 (
                                     true,
@@ -518,7 +495,10 @@ impl PhysicalContactGenerator {
                                     //     println!("(compressive, other: Rho, this: Rho)");
                                     // }
                                     cil_per_cell[ci][vi] =
-                                        self.params.cil_mag
+                                        cil_per_cell[ci][vi].max(
+                                            adh_strain.abs()
+                                                * self.params.cil_mag,
+                                        );
                                 }
                                 (
                                     true,
@@ -529,7 +509,10 @@ impl PhysicalContactGenerator {
                                     //     println!("(compressive, other: Rac, this: Rho)");
                                     // }
                                     cil_per_cell[ci][vi] =
-                                        self.params.cil_mag;
+                                        cil_per_cell[ci][vi].max(
+                                            adh_strain.abs()
+                                                * self.params.cil_mag,
+                                        );
                                 }
                             }
 
