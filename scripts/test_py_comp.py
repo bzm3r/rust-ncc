@@ -10,7 +10,7 @@ import orjson
 run_experiments = False
 exec_mode = "release"
 root_dir = os.getcwd()
-exp_jsons = ["py_comp_4"]
+exp_jsons = ["py_comp_1", "py_comp_2"]
 for exp_json in exp_jsons:
     exec_path = os.path.join(root_dir, "target", exec_mode, "executor")
     if run_experiments:
@@ -18,7 +18,7 @@ for exp_json in exp_jsons:
             exec_mode) + ["-p", "executor"])
         run_out = subprocess.run([exec_path] +
                                  ["-c", "./cfg.json"] +
-                                 ["-e"] + exp_jsons)
+                                 ["-e"] + [exp_json])
         print(run_out)
 
     exp_path = os.path.join(root_dir, "experiments", "{}.json".format(exp_json))
@@ -59,11 +59,12 @@ for exp_json in exp_jsons:
         # py_dat.animate(vec_ani_opts, "rho_act_net_fluxes")
         # py_dat.animate(vec_ani_opts, "rho_inacts")
 
-        # comp_dat = PythonRustComparisonData(out_dir, py_dat, rust_dat,
-        #                                     [":", "-"], file_name +
-        #                                     "_rust_and_py")
+        comp_dat = PythonRustComparisonData(out_dir, py_dat, rust_dat,
+                                            [":", "-"], file_name +
+                                            "_rust_and_py")
         # comp_dat.plot(["kdgtps_rac", "kdgtps_rho", "rho_acts", "kgtps_rho",
         #                "kdgtps_rho"])
+        comp_dat.animate(vec_ani_opts, "rgtps")
         # comp_dat.animate(vec_ani_opts, "rho_acts")
         # comp_dat.animate(vec_ani_opts, "kdgtps_rho")
         # comp_dat.animate(vec_ani_opts, "kgtps_rho")

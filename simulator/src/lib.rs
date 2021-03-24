@@ -1,3 +1,8 @@
+#![allow(clippy::too_many_arguments)]
+#![allow(clippy::large_enum_variant)]
+#![allow(clippy::needless_range_loop)]
+#![allow(clippy::suspicious_arithmetic_impl)]
+
 pub mod cell;
 pub mod exp_setup;
 pub mod hardio;

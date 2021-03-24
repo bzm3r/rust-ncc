@@ -8,6 +8,7 @@
 
 pub mod quantity;
 use crate::cell::chemistry::RgtpDistribution;
+use crate::exp_setup::defaults;
 use crate::math::geometry::{calc_poly_area, BBox};
 use crate::math::v2d::V2d;
 use crate::parameters::quantity::{
@@ -21,7 +22,14 @@ use std::f64::consts::PI;
 
 /// Characteristic quantities used for normalization.
 #[derive(
-    Clone, Copy, Deserialize, Serialize, Default, Debug, PartialEq,
+    Clone,
+    Copy,
+    Deserialize,
+    Serialize,
+    Default,
+    Debug,
+    PartialEq,
+    Modify,
 )]
 pub struct CharQuantities {
     pub eta: Viscosity,
@@ -81,8 +89,10 @@ impl RawCloseBounds {
     Modify,
 )]
 pub struct RawPhysicalContactParams {
-    pub range: RawCloseBounds,
+    pub one_at: Length,
+    pub zero_at: Length,
     pub adh_mag: Option<Force>,
+    pub adh_slope: Option<f64>,
     pub cal_mag: Option<f64>,
     pub cil_mag: f64,
 }
@@ -92,11 +102,23 @@ impl RawPhysicalContactParams {
         &self,
         cq: &CharQuantities,
     ) -> PhysicalContactParams {
+        let zero_at = cq.normalize(&self.zero_at);
+        let one_at = cq.normalize(&self.one_at);
+        let adh_slope = self.adh_slope.unwrap_or(defaults::ADH_SLOPE);
+        let adh_rest = adh_slope * one_at;
+        if zero_at < 2.0 * adh_slope * one_at {
+            panic!("zero_at < adh_slope * one_at {}! zero_at needs to be at least 1.6 times one_at", 
+                   adh_slope * one_at);
+        }
+        let adh_max = 2.0 * adh_rest;
+        let adh_delta_break = zero_at - adh_max;
         PhysicalContactParams {
-            range: CloseBounds::new(
-                cq.normalize(&self.range.zero_at),
-                cq.normalize(&self.range.one_at),
-            ),
+            zero_at,
+            zero_at_sq: zero_at.pow(2),
+            one_at: cq.normalize(&self.one_at),
+            adh_rest,
+            adh_max,
+            adh_delta_break,
             adh_mag: self
                 .adh_mag
                 .map(|adh_mag| cq.normalize(&adh_mag)),
@@ -248,29 +270,23 @@ pub struct RawWorldParameters {
 #[derive(
     Clone, Copy, Deserialize, Serialize, PartialEq, Default, Debug,
 )]
-pub struct CloseBounds {
-    pub zero_at_sq: f64,
-    pub zero_at: f64,
-    pub one_at: f64,
-}
-
-impl CloseBounds {
-    pub fn new(zero_at: f64, one_at: f64) -> CloseBounds {
-        CloseBounds {
-            zero_at_sq: zero_at.pow(2),
-            zero_at,
-            one_at,
-        }
-    }
-}
-
-#[derive(
-    Clone, Copy, Deserialize, Serialize, PartialEq, Default, Debug,
-)]
 pub struct PhysicalContactParams {
-    /// Maximum distance between two points, for them to be considered
-    /// in contact. This is usually set to 0.5 micrometers.
-    pub range: CloseBounds,
+    /// If two points are within this range, then they are considered
+    /// to be in contact for the purposes of CRL and adhesion.
+    pub zero_at: f64,
+    /// The square of `zero_at`.
+    pub zero_at_sq: f64,
+    /// If two points are within this range, then they are considered
+    /// to be in maximal contact, so that there is no smoothing factor
+    /// applied to CRL (i.e. the smoothing factor is `1.0`).
+    pub one_at: f64,
+    /// The resting length of an adhesion. Same as `range.one_at * 0.8`.
+    pub adh_rest: f64,
+    /// `adh_max` is `2.0 * adh_rest`, so it is the length of the adhesive bond
+    /// `(adh_max - adh_rest)/adh_rest` at is `1.0`.
+    pub adh_max: f64,
+    /// This is the delta between `zero_at` and `adh_max`.
+    pub adh_delta_break: f64,
     /// Optional adhesion magnitude. If it is `None`, no adhesion
     /// will be calculated.
     pub adh_mag: Option<f64>,

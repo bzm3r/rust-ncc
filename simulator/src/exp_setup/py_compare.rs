@@ -5,8 +5,8 @@ use crate::exp_setup::{
 use crate::math::v2d::V2d;
 use crate::parameters::quantity::{Length, Quantity};
 use crate::parameters::{
-    CharQuantities, RawCloseBounds, RawInteractionParams,
-    RawParameters, RawPhysicalContactParams,
+    CharQuantities, RawInteractionParams, RawParameters,
+    RawPhysicalContactParams,
 };
 use crate::Directories;
 
@@ -72,7 +72,6 @@ fn raw_params(group_ix: usize, randomization: bool) -> RawParameters {
         .modify_init_rho(init_rho)
 }
 
-#[allow(clippy::too_many_arguments)]
 fn make_cell_group(
     group_ix: usize,
     char_quants: &CharQuantities,
@@ -109,9 +108,11 @@ pub fn generate(
     let ExperimentArgs {
         ty,
         final_t,
+        char_t,
         cil_mag,
         coa_mag,
-        adh_mag: adh_scale,
+        adh_scale,
+        adh_slope,
         cal_mag,
         one_at,
         zero_at,
@@ -149,7 +150,7 @@ pub fn generate(
         .map(|&seed| {
             let rng = Pcg32::seed_from_u64(seed);
 
-            let char_quants = *CHAR_QUANTS;
+            let char_quants = CHAR_QUANTS.modify_t(char_t);
             let raw_world_params = RAW_WORLD_PARAMS
                 .modify_interactions(RawInteractionParams {
                     coa: coa_mag.map(|mag| {
@@ -160,8 +161,10 @@ pub fn generate(
                     chem_attr: None,
                     bdry: None,
                     phys_contact: RawPhysicalContactParams {
-                        range: RawCloseBounds { zero_at, one_at },
+                        zero_at,
+                        one_at,
                         adh_mag: adh_scale.map(|x| ADH_MAG.scale(x)),
+                        adh_slope,
                         cal_mag,
                         cil_mag,
                     },

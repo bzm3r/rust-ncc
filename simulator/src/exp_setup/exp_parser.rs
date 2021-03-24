@@ -81,9 +81,11 @@ pub struct AnimationOptions {
 struct ParsedExpArgs {
     ty: ExperimentType,
     final_t: f64,
+    char_t: Option<f64>,
     cil_mag: f64,
     coa_mag: Option<f64>,
     adh_mag: Option<f64>,
+    adh_slope: Option<f64>,
     cal_mag: Option<f64>,
     one_at: Option<f64>,
     zero_at: Option<f64>,
@@ -102,10 +104,11 @@ pub struct ExperimentArgs {
     pub file_name: String,
     pub ty: ExperimentType,
     pub final_t: Time,
+    pub char_t: Time,
     pub cil_mag: f64,
     pub coa_mag: Option<f64>,
     pub cal_mag: Option<f64>,
-    pub adh_mag: Option<f64>,
+    pub adh_scale: Option<f64>,
     pub one_at: Length,
     pub zero_at: Length,
     pub too_close_dist: Length,
@@ -115,6 +118,7 @@ pub struct ExperimentArgs {
     pub seeds: Vec<u64>,
     pub int_opts: IntegratorOpts,
     pub rgtp_distrib_defs: RgtpDistribDefs,
+    pub adh_slope: Option<f64>,
 }
 
 impl TryFrom<&PathBuf> for ExperimentArgs {
@@ -129,9 +133,11 @@ impl TryFrom<&PathBuf> for ExperimentArgs {
         let ParsedExpArgs {
             ty,
             final_t,
+            char_t,
             cil_mag,
             coa_mag,
             adh_mag,
+            adh_slope,
             cal_mag,
             one_at,
             zero_at,
@@ -162,12 +168,14 @@ impl TryFrom<&PathBuf> for ExperimentArgs {
             .into();
         let exp_args = ExperimentArgs {
             file_name,
-            ty: ty.clone(),
+            ty,
             final_t: Time(final_t),
+            char_t: char_t.map_or(Time(2.0), |v| Time(v)),
             cil_mag,
             coa_mag,
             cal_mag,
-            adh_mag,
+            adh_scale: adh_mag,
+            adh_slope,
             one_at: one_at.map_or_else(
                 || *PHYS_CLOSE_DIST_ONE_AT,
                 |v| Length(v).micro(),
@@ -185,8 +193,7 @@ impl TryFrom<&PathBuf> for ExperimentArgs {
             randomization,
             seeds,
             int_opts: int_opts.into(),
-            rgtp_distrib_defs: rgtp_distrib_defs
-                .unwrap_or(RgtpDistribDefs::default()),
+            rgtp_distrib_defs: rgtp_distrib_defs.unwrap_or_default(),
         };
         Ok(exp_args)
     }

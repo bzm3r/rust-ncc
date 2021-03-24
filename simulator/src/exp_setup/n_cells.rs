@@ -8,8 +8,8 @@ use crate::exp_setup::{
 use crate::math::v2d::V2d;
 use crate::parameters::quantity::{Length, Quantity};
 use crate::parameters::{
-    CharQuantities, RawCloseBounds, RawInteractionParams,
-    RawParameters, RawPhysicalContactParams,
+    CharQuantities, RawInteractionParams, RawParameters,
+    RawPhysicalContactParams,
 };
 use crate::utils::pcg32::Pcg32;
 use crate::Directories;
@@ -48,12 +48,12 @@ fn raw_params(
     let RgtpDistribDefs { rac, rho } = rgtp_distrib_defns;
 
     let init_rac = RgtpDistribution::new(
-        rac.acts.into_distrib(rng),
-        rac.inacts.into_distrib(rng),
+        rac.acts.to_distrib(rng),
+        rac.inacts.to_distrib(rng),
     );
     let init_rho = RgtpDistribution::new(
-        rho.acts.into_distrib(rng),
-        rho.inacts.into_distrib(rng),
+        rho.acts.to_distrib(rng),
+        rho.inacts.to_distrib(rng),
     );
 
     defaults::RAW_PARAMS
@@ -90,10 +90,12 @@ pub fn generate(
         file_name: toml_name,
         ty,
         final_t,
+        char_t,
         cil_mag,
         coa_mag,
         cal_mag,
-        adh_mag: adh_scale,
+        adh_scale,
+        adh_slope,
         one_at,
         zero_at,
         too_close_dist,
@@ -117,7 +119,7 @@ pub fn generate(
         .map(|&seed| {
             let mut rng = Pcg32::seed_from_u64(seed);
 
-            let char_quants = *defaults::CHAR_QUANTS;
+            let char_quants = defaults::CHAR_QUANTS.modify_t(char_t);
             let raw_world_params = defaults::RAW_WORLD_PARAMS
                 .modify_interactions(RawInteractionParams {
                     coa: coa_mag.map(|mag| {
@@ -128,9 +130,11 @@ pub fn generate(
                     chem_attr: None,
                     bdry: None,
                     phys_contact: RawPhysicalContactParams {
-                        range: RawCloseBounds { zero_at, one_at },
+                        zero_at,
+                        one_at,
                         adh_mag: adh_scale
                             .map(|x| defaults::ADH_MAG.scale(x)),
+                        adh_slope,
                         cal_mag,
                         cil_mag,
                     },

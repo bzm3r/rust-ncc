@@ -191,7 +191,6 @@ impl Ks {
     }
 }
 
-#[allow(clippy::too_many_arguments)]
 pub fn integrator(
     mut dt: f64,
     f: CellDynamicsFn,

@@ -1,0 +1,61 @@
+{
+  "description": "one cell experiment",
+  "ty": {
+    "PyCompare": {
+      "num_cells": 1
+    }
+  },
+  "final_t": 5400,
+  "cil_mag": 60,
+  "coa_mag": 24,
+  "snap_period": 10,
+  "one_at": 0.5,
+  "zero_at": 1.0,
+  "too_close_dist": 1.0,
+  "randomization": false,
+  "seeds": [7],
+  "rgtp_distrib_defs": {
+    "rac": {
+      "acts": {
+        "SpecificUniform": {
+          "frac": 0.3,
+          "marked_verts": [0, 1, 2, 3]
+        }
+      },
+      "inacts": {
+        "SpecificUniform": {
+          "frac": 0.3,
+          "marked_verts": [0, 1, 2, 3]
+        }
+      }
+    },
+    "rho": {
+      "acts": {
+        "SpecificUniform": {
+          "frac": 0.3,
+          "marked_verts": [8, 9, 10, 11]
+        }
+      },
+      "inacts": {
+        "SpecificUniform": {
+          "frac": 0.3,
+          "marked_verts": [8, 9, 10, 11]
+        }
+      }
+    }
+  },
+  "int_opts": {
+    "EulerDebug": {
+      "num_int_steps": 10
+    }
+  },
+  "ani_opts": [
+    {
+      "label_verts":  false,
+      "label_cells": false,
+      "follow_group": false,
+      "show_trails":  false,
+      "arrow_scale":  1.0
+    }
+  ]
+}

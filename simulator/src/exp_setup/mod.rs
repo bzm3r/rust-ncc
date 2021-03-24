@@ -54,7 +54,7 @@ pub enum DistribDef {
 }
 
 impl DistribDef {
-    pub fn into_distrib(&self, rng: &mut Pcg32) -> [f64; NVERTS] {
+    pub fn to_distrib(&self, rng: &mut Pcg32) -> [f64; NVERTS] {
         match self {
             DistribDef::Random { frac } => random(rng, *frac),
             DistribDef::SpecificRandom { frac, marked_verts } => {
@@ -98,7 +98,6 @@ impl Default for ExperimentType {
 }
 
 /// Generate the experiment, so that it can be run.
-#[allow(clippy::too_many_arguments)]
 pub fn generate(
     dirs: Directories,
     args: ExperimentArgs,

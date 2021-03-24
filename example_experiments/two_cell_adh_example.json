@@ -1,16 +1,19 @@
 {
-  "description": "two cell experiment",
+  "description": "two cell experiments",
   "ty": {
     "NCells": {
       "num_cells": 2
     }
   },
-  "final_t": 22000,
+  "final_t": 2000,
+  "char_t": 1.0,
   "cil_mag": 60,
   "coa_mag": 24,
-  "one_at": 0.5,
-  "zero_at": 1.0,
-  "too_close_dist": 1.0,
+  "adh_scale": 10,
+  "one_at": 1.0,
+  "zero_at": 2.0,
+  "adh_slope": 0.99,
+  "too_close_dist": 2.0,
   "snap_period": 10,
   "randomization": true,
   "seeds": [7],
@@ -41,14 +44,16 @@
     }
   },
   "int_opts": {
-    "RkDp5": {}
+    "RkDp5": {
+      "max_iters": 1000
+    }
   },
   "ani_opts": [
     {
       "label_verts":  false,
       "label_cells": false,
       "follow_group": true,
-      "show_trails":  false,
+      "show_trails":  true,
       "arrow_scale":  1.0
     }
   ]

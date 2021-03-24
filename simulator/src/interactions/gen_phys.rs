@@ -6,7 +6,7 @@ use crate::math::v2d::V2d;
 use crate::math::{
     capped_linear_fn, close_to_zero, in_unit_interval, InUnitInterval,
 };
-use crate::parameters::{CloseBounds, PhysicalContactParams};
+use crate::parameters::PhysicalContactParams;
 use crate::utils::circ_ix_plus;
 use crate::NVERTS;
 use serde::{Deserialize, Serialize};
@@ -47,7 +47,9 @@ impl ClosePoint {
     /// Returns the point closest to `p` (`ClosePoint`) on the line
     /// segment `k = (b - a)*t + a, 0 <= t < 1`.
     pub fn calc(
-        range: CloseBounds,
+        one_at: f64,
+        zero_at: f64,
+        zero_at_sq: f64,
         test_point: V2d,
         seg_start: V2d,
         seg_end: V2d,
@@ -56,11 +58,8 @@ impl ClosePoint {
         let s_to_tp = test_point - seg_start;
         let s_to_tp_dsq = s_to_tp.mag_squared();
         if s_to_tp_dsq < 1e-6 {
-            let smooth_factor = capped_linear_fn(
-                s_to_tp_dsq.sqrt(),
-                range.zero_at,
-                range.one_at,
-            );
+            let smooth_factor =
+                capped_linear_fn(s_to_tp_dsq.sqrt(), zero_at, one_at);
             ClosePoint::Vertex {
                 vector_to: -1.0 * s_to_tp,
                 smooth_factor,
@@ -82,14 +81,14 @@ impl ClosePoint {
                         let c = t * (seg_vec) + seg_start;
                         let tp_to_c = c - test_point;
                         let tp_to_c_mag_sq = tp_to_c.mag_squared();
-                        if tp_to_c_mag_sq < range.zero_at_sq {
+                        if tp_to_c_mag_sq < zero_at_sq {
                             ClosePoint::OnEdge {
                                 edge_point_param: t,
                                 vector_to: tp_to_c,
                                 smooth_factor: capped_linear_fn(
                                     tp_to_c_mag_sq.sqrt(),
-                                    range.zero_at,
-                                    range.one_at,
+                                    zero_at,
+                                    one_at,
                                 ),
                                 dist_sq: tp_to_c_mag_sq,
                             }
@@ -171,7 +170,7 @@ impl PhysicalContactGenerator {
             CvCvDat::empty(num_cells, ClosePoint::default());
         let contact_bbs = cell_polys
             .iter()
-            .map(|cp| cp.bbox.expand_by(params.range.zero_at_sq))
+            .map(|cp| cp.bbox.expand_by(params.zero_at_sq))
             .collect::<Vec<BBox>>();
         let contact_matrix = gen_contact_matrix(&contact_bbs);
         for (ci, poly) in cell_polys.iter().enumerate() {
@@ -190,7 +189,9 @@ impl PhysicalContactGenerator {
                                     oci,
                                     ovi,
                                     ClosePoint::calc(
-                                        params.range,
+                                        params.one_at,
+                                        params.zero_at,
+                                        params.zero_at_sq,
                                         *v,
                                         *ov,
                                         *ow,
@@ -212,7 +213,6 @@ impl PhysicalContactGenerator {
         }
         let mut min_dist_matrix =
             vec![[f64::INFINITY; NVERTS]; num_cells];
-        #[allow(clippy::needless_range_loop)]
         for ci in 0..num_cells {
             min_dist_matrix[ci] =
                 PhysicalContactGenerator::eval_min_dist(
@@ -232,9 +232,8 @@ impl PhysicalContactGenerator {
 
     pub fn update(&mut self, ci: usize, cell_polys: &[Poly]) {
         let poly = cell_polys[ci];
-        let bb = cell_polys[ci]
-            .bbox
-            .expand_by(self.params.range.zero_at_sq);
+        let bb =
+            cell_polys[ci].bbox.expand_by(self.params.zero_at_sq);
         self.contact_bbs[ci] = bb;
         for (oci, obb) in self.contact_bbs.iter().enumerate() {
             if oci != ci {
@@ -255,7 +254,9 @@ impl PhysicalContactGenerator {
                                 oci,
                                 ovi,
                                 ClosePoint::calc(
-                                    self.params.range,
+                                    self.params.one_at,
+                                    self.params.zero_at,
+                                    self.params.zero_at_sq,
                                     *v,
                                     *ov,
                                     *ow,
@@ -267,7 +268,9 @@ impl PhysicalContactGenerator {
                                 ci,
                                 vi,
                                 ClosePoint::calc(
-                                    self.params.range,
+                                    self.params.one_at,
+                                    self.params.zero_at,
+                                    self.params.zero_at_sq,
                                     *ov,
                                     *v,
                                     *w,
@@ -307,7 +310,6 @@ impl PhysicalContactGenerator {
         dat: &CvCvDat<ClosePoint>,
     ) -> [f64; NVERTS] {
         let mut r = [f64::INFINITY; NVERTS];
-        #[allow(clippy::needless_range_loop)]
         for vi in 0..NVERTS {
             for oci in 0..contact_matrix.num_cells {
                 if oci != ci && contact_matrix.get(ci, oci) {
@@ -441,12 +443,27 @@ impl PhysicalContactGenerator {
                     }
 
                     if let Some(adh_mag) = self.params.adh_mag {
-                        let x = -1.0
-                            * (vector_to.mag()
-                                / self.params.range.one_at)
-                            * smooth_factor;
-                        let adh_force =
-                            -1.0 * adh_mag * x * vector_to;
+                        let vc_mag = vector_to.mag();
+                        let adh_strain = if vc_mag
+                            > self.params.adh_max
+                        {
+                            if vc_mag > self.params.zero_at {
+                                0.0
+                            } else {
+                                1.0 - ((vc_mag - self.params.adh_max)
+                                    / self.params.adh_delta_break)
+                            }
+                        } else {
+                            (vc_mag / self.params.adh_rest) - 1.0
+                        };
+                        if ci == 0 && vi == 0 {
+                            println!("zero_at: {}, adh_max: {}, adh_delta_break: {}, adh_rest: {}, vc_mag: {}, adh_strain: {}", self.params
+                                .zero_at, self.params.adh_max, self.params.adh_delta_break, self
+                                         .params.adh_rest, vc_mag, adh_strain);
+                        }
+                        let adh_force = adh_mag
+                            * adh_strain
+                            * vector_to.unitize();
                         //* ((1.0 / self.params.range) * delta);
                         // We are close to the vertex.
                         if close_to_zero(edge_point_param, 1e-3) {

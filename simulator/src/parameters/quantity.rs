@@ -151,7 +151,6 @@ impl Units {
 impl Mul for Units {
     type Output = Units;
 
-    #[allow(clippy::suspicious_arithmetic_impl)]
     fn mul(self, rhs: Self) -> Self::Output {
         Units {
             f: self.f + rhs.f,
@@ -172,7 +171,6 @@ impl Display for Units {
 impl Div for Units {
     type Output = Units;
 
-    #[allow(clippy::suspicious_arithmetic_impl)]
     fn div(self, rhs: Units) -> Self::Output {
         Units {
             f: self.f - rhs.f,

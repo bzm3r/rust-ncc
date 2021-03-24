@@ -50,12 +50,13 @@ class SharedSimData:
         common_ts, snap_ixs_per_sim = find_common_ts(cropped_ixs_ts_per_sim)
         return common_ts, snap_ixs_per_sim
 
-    def combined_paint_animation(self, common_t_ix, ax):
+    def combined_paint_animation(self, common_t_ix, ax, ty):
         ax.cla()
         ax.set_aspect("equal")
         print("making frame: {}".format(common_t_ix))
         for (sim_ix, sim_dat) in enumerate(self.sim_dats):
-            sim_dat.paint_cells(self.snap_ixs_per_sim[sim_ix][common_t_ix], ax)
+            sim_dat.paint_cells(self.snap_ixs_per_sim[sim_ix][common_t_ix],
+                                ax, ty)
         ax.set_title("t = {}s".format(self.common_ts[common_t_ix]))
         return ax.get_children()
 
@@ -64,7 +65,7 @@ class SharedSimData:
             sim_dat.ani_opts = copy.deepcopy(ani_opts)
             sim_dat.ani_opts.poly_line_style = pls
 
-    def animate(self, vec_ani_opts):
+    def animate(self, vec_ani_opts, ty):
         print("beginning combined animation...")
         print("num frames: {}".format(len(self.common_ts)))
         self.ax.set_aspect('equal')
@@ -81,7 +82,7 @@ class SharedSimData:
                                                self.combined_paint_animation,
                                                frames=np.arange(
                                                    len(self.common_ts)),
-                                               fargs=(self.ax,),
+                                               fargs=(self.ax, ty),
                                                interval=1, blit=True)
             ani_file_path = self.mp4_file_name + ani_opts.description() + ".mp4"
             ani_save_path = os.path.join(self.out_dir, ani_file_path)

@@ -76,6 +76,9 @@ class SimulationData:
     x_coas_arrows_per_c_per_s = None
     x_coas_arrow_group = None
     x_adhs_per_c_per_s = None
+    x_adhs_arrows_per_c_per_s = None
+    x_adhs_arrow_group = None
+    x_adhs_and_rgtps_arrow_group = None
 
     edge_strains_per_c_per_s = None
     rgtp_forces_per_c_per_s = None
@@ -106,11 +109,11 @@ class SimulationData:
         all_params["vertex_eta"] = vertex_eta
         inter_params = world_params["interactions"]
         phys_params = inter_params["phys_contact"]
-        range_params = phys_params["range"]
-        all_params.update(range_params)
+        all_params["one_at"] = phys_params["one_at"]
+        all_params["zero_at"] = phys_params["zero_at"]
         all_params["cil_mag"] = phys_params["cil_mag"]
         coa_params = inter_params["coa"]
-        if coa_params != None:
+        if coa_params is not None:
             for key in coa_params.keys():
                 all_params["coa_" + key] = coa_params[key]
         all_params.update(self.world_info["cell_params"][0])
@@ -157,6 +160,13 @@ class SimulationData:
             self.x_coas_per_c_per_s[:, :, :, np.newaxis] * \
             self.uovs_per_c_per_s
         self.x_coas_arrow_group = [(3.0, "b", self.x_coas_arrows_per_c_per_s)]
+
+        if self.tag == "rust":
+            self.x_adhs_arrows_per_c_per_s = \
+                self.x_adhs_per_c_per_s[:, :, :]
+            self.x_adhs_arrow_group = [(5.0, "teal",
+                                        self.x_coas_arrows_per_c_per_s)]
+            self.x_adhs_and_rgtps_arrow_group = self.x_adhs_arrow_group + self.rgtps_arrow_group
 
         self.kgtps_rho_arrows_per_c_per_s = \
             self.kgtps_rho_per_c_per_s[:, :, :, np.newaxis] * \
@@ -205,9 +215,9 @@ class SimulationData:
                         else:
                             is_rac_force[s_ix, c_ix, v_ix, :] = ones2d
 
-        self.rgtp_forces_arrow_group = [(0.1, "orange",
+        self.rgtp_forces_arrow_group = [(5.0, "orange",
                                          self.rgtp_forces_per_c_per_s * is_rho_force),
-                                        (0.1, "green",
+                                        (5.0, "green",
                                          self.rgtp_forces_per_c_per_s * is_rac_force)]
 
     def load_rust_dat(self, out_dir, file_name):

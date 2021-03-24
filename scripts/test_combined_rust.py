@@ -7,10 +7,13 @@ import os
 import subprocess
 import orjson
 
-run_experiments = True
+run_experiments = False
 exec_mode = "release"
 root_dir = os.getcwd()
-exp_jsons = ["two_cell_adh"]
+exp_jsons = ["two_cell_coa_12", "two_cell_coa_24"]
+poly_ls = [":", "-"]
+sim_dats = []
+all_vec_ani_opts = []
 for exp_json in exp_jsons:
     exec_path = os.path.join(root_dir, "target", exec_mode, "executor")
     if run_experiments:
@@ -28,19 +31,16 @@ for exp_json in exp_jsons:
     exp_dict = orjson.loads(json_str)
     seeds, file_names = determine_file_names(exp_json, exp_dict)
     out_dir = os.path.join(root_dir, "output")
-    for file_name in file_names:
+    for (ix, file_name) in enumerate(file_names):
         rust_dat = SimulationData()
         rust_dat.load_rust_dat(out_dir, file_name)
         rust_dat.tag = "rust"
         vec_ani_opts = get_vec_ani_opts(exp_dict)
+        if ix == 0:
+            all_vec_ani_opts = vec_ani_opts
+            sim_dats.append(rust_dat)
+        # rust_dat.animate(vec_ani_opts, "rgtps")
 
-        rust_dat.animate(vec_ani_opts, "rgtps")
-        # rust_dat.animate(vec_ani_opts, "x_cils")
-        # # rust_dat.animate(vec_ani_opts, "x_cals")
-        # rust_dat.animate(vec_ani_opts, "kgtps_rho")
-        # rust_dat.animate(vec_ani_opts, "kgtps_rac")
-        # rust_dat.animate(vec_ani_opts, "rgtp_forces")
-        # rust_dat.animate(vec_ani_opts, "x_coas")
-        # rust_dat.animate(vec_ani_opts, "kdgtps_rac")
-        # rust_dat.animate(vec_ani_opts, "kdgtps_rho")
-        # rust_dat.animate(vec_ani_opts, "x_tens")
+shared_sim_dat = SharedSimData(out_dir, sim_dats, poly_ls,
+                               "combined_animation")
+shared_sim_dat.animate(all_vec_ani_opts, "rgtps")
