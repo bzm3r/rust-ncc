@@ -85,7 +85,7 @@ struct ParsedExpArgs {
     cil_mag: f64,
     coa_mag: Option<f64>,
     adh_mag: Option<f64>,
-    adh_slope: Option<f64>,
+    adh_index: Option<f64>,
     cal_mag: Option<f64>,
     one_at: Option<f64>,
     zero_at: Option<f64>,
@@ -118,7 +118,7 @@ pub struct ExperimentArgs {
     pub seeds: Vec<u64>,
     pub int_opts: IntegratorOpts,
     pub rgtp_distrib_defs: RgtpDistribDefs,
-    pub adh_slope: Option<f64>,
+    pub adh_index: Option<f64>,
 }
 
 impl TryFrom<&PathBuf> for ExperimentArgs {
@@ -137,7 +137,7 @@ impl TryFrom<&PathBuf> for ExperimentArgs {
             cil_mag,
             coa_mag,
             adh_mag,
-            adh_slope,
+            adh_index,
             cal_mag,
             one_at,
             zero_at,
@@ -175,7 +175,7 @@ impl TryFrom<&PathBuf> for ExperimentArgs {
             coa_mag,
             cal_mag,
             adh_scale: adh_mag,
-            adh_slope,
+            adh_index,
             one_at: one_at.map_or_else(
                 || *PHYS_CLOSE_DIST_ONE_AT,
                 |v| Length(v).micro(),

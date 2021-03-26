@@ -95,7 +95,7 @@ pub fn generate(
         coa_mag,
         cal_mag,
         adh_scale,
-        adh_slope,
+        adh_index,
         one_at,
         zero_at,
         too_close_dist,
@@ -134,7 +134,7 @@ pub fn generate(
                         one_at,
                         adh_mag: adh_scale
                             .map(|x| defaults::ADH_MAG.scale(x)),
-                        adh_slope,
+                        adh_index,
                         cal_mag,
                         cil_mag,
                     },

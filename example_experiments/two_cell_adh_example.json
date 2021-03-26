@@ -12,7 +12,7 @@
   "adh_scale": 10,
   "one_at": 1.0,
   "zero_at": 2.0,
-  "adh_slope": 0.99,
+  "adh_index": 0.99,
   "too_close_dist": 2.0,
   "snap_period": 10,
   "randomization": true,

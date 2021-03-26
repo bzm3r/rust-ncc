@@ -92,7 +92,7 @@ pub struct RawPhysicalContactParams {
     pub one_at: Length,
     pub zero_at: Length,
     pub adh_mag: Option<Force>,
-    pub adh_slope: Option<f64>,
+    pub adh_index: Option<f64>,
     pub cal_mag: Option<f64>,
     pub cil_mag: f64,
 }
@@ -104,11 +104,11 @@ impl RawPhysicalContactParams {
     ) -> PhysicalContactParams {
         let zero_at = cq.normalize(&self.zero_at);
         let one_at = cq.normalize(&self.one_at);
-        let adh_slope = self.adh_slope.unwrap_or(defaults::ADH_SLOPE);
-        let adh_rest = adh_slope * one_at;
-        if zero_at < 2.0 * adh_slope * one_at {
-            panic!("zero_at < adh_slope * one_at {}! zero_at needs to be at least 1.6 times one_at", 
-                   adh_slope * one_at);
+        let adh_index = self.adh_index.unwrap_or(defaults::ADH_INDEX);
+        let adh_rest = adh_index * one_at;
+        if zero_at < 2.0 * adh_index * one_at {
+            panic!("zero_at < adh_index * one_at {}! zero_at needs to be at least 1.6 times one_at", 
+                   adh_index * one_at);
         }
         let adh_max = 2.0 * adh_rest;
         let adh_delta_break = zero_at - adh_max;

@@ -143,7 +143,7 @@ pub fn generate(
         zero_at,
         too_close_dist,
         adh_scale,
-        adh_slope,
+        adh_index,
         snap_period,
         max_on_ram,
         randomization,
@@ -182,7 +182,7 @@ pub fn generate(
                         one_at,
                         adh_mag: adh_scale
                             .map(|x| defaults::ADH_MAG.scale(x)),
-                        adh_slope,
+                        adh_index,
                         cal_mag,
                         cil_mag,
                     },

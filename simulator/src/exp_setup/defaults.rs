@@ -41,7 +41,7 @@ pub static CHAR_QUANTS: Lazy<CharQuantities> =
 
 pub static MAX_CELL_V: Lazy<General> =
     Lazy::new(|| Length(3.0).micro().g() * Tinv(1.0 / 60.0).g());
-pub const ADH_SLOPE: f64 = 0.99;
+pub const ADH_INDEX: f64 = 0.99;
 pub static ADH_MAG: Lazy<Force> = Lazy::new(|| {
     (CHAR_VISCOSITY.g() * (*MAX_CELL_V))
         .scale(1.0 / NVERTS as f64)
@@ -137,7 +137,7 @@ pub static RAW_WORLD_PARAMS: Lazy<RawWorldParameters> =
                     zero_at: one_at.scale(2.0),
                     one_at,
                     adh_mag: None,
-                    adh_slope: None,
+                    adh_index: None,
                     cal_mag: None,
                     cil_mag: CIL_MAG,
                 },
