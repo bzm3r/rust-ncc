@@ -132,8 +132,10 @@ pub fn generate(
                     phys_contact: RawPhysicalContactParams {
                         zero_at,
                         one_at,
-                        adh_mag: adh_scale
-                            .map(|x| defaults::ADH_MAG.scale(x)),
+                        adh_mag: {
+                            adh_scale
+                                .map(|x| defaults::ADH_MAG.scale(x))
+                        },
                         adh_index,
                         cal_mag,
                         cil_mag,
