@@ -85,9 +85,9 @@ struct ParsedExpArgs {
     cil_mag: f64,
     coa_mag: Option<f64>,
     adh_scale: Option<f64>,
-    adh_index: Option<f64>,
+    adh_break: Option<f64>,
     cal_mag: Option<f64>,
-    one_at: Option<f64>,
+    crl_one_at: Option<f64>,
     zero_at: Option<f64>,
     too_close_dist: Option<f64>,
     snap_period: f64,
@@ -109,7 +109,8 @@ pub struct ExperimentArgs {
     pub coa_mag: Option<f64>,
     pub cal_mag: Option<f64>,
     pub adh_scale: Option<f64>,
-    pub one_at: Length,
+    pub adh_break: Option<Length>,
+    pub crl_one_at: Length,
     pub zero_at: Length,
     pub too_close_dist: Length,
     pub snap_period: Time,
@@ -118,7 +119,6 @@ pub struct ExperimentArgs {
     pub seeds: Vec<u64>,
     pub int_opts: IntegratorOpts,
     pub rgtp_distrib_defs: RgtpDistribDefs,
-    pub adh_index: Option<f64>,
 }
 
 impl TryFrom<&PathBuf> for ExperimentArgs {
@@ -137,9 +137,9 @@ impl TryFrom<&PathBuf> for ExperimentArgs {
             cil_mag,
             coa_mag,
             adh_scale,
-            adh_index,
+            adh_break,
             cal_mag,
-            one_at,
+            crl_one_at,
             zero_at,
             too_close_dist,
             snap_period,
@@ -175,8 +175,8 @@ impl TryFrom<&PathBuf> for ExperimentArgs {
             coa_mag,
             cal_mag,
             adh_scale,
-            adh_index,
-            one_at: one_at.map_or_else(
+            adh_break: adh_break.map(|v| Length(v).micro()),
+            crl_one_at: crl_one_at.map_or_else(
                 || *PHYS_CLOSE_DIST_ONE_AT,
                 |v| Length(v).micro(),
             ),

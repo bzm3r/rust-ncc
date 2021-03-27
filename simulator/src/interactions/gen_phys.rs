@@ -189,7 +189,7 @@ impl PhysicalContactGenerator {
                                     oci,
                                     ovi,
                                     ClosePoint::calc(
-                                        params.one_at,
+                                        params.crl_one_at,
                                         params.zero_at,
                                         params.zero_at_sq,
                                         *v,
@@ -254,7 +254,7 @@ impl PhysicalContactGenerator {
                                 oci,
                                 ovi,
                                 ClosePoint::calc(
-                                    self.params.one_at,
+                                    self.params.crl_one_at,
                                     self.params.zero_at,
                                     self.params.zero_at_sq,
                                     *v,
@@ -268,7 +268,7 @@ impl PhysicalContactGenerator {
                                 ci,
                                 vi,
                                 ClosePoint::calc(
-                                    self.params.one_at,
+                                    self.params.crl_one_at,
                                     self.params.zero_at,
                                     self.params.zero_at_sq,
                                     *ov,
@@ -444,22 +444,22 @@ impl PhysicalContactGenerator {
 
                     if let Some(adh_mag) = self.params.adh_mag {
                         let vc_mag = vector_to.mag();
-                        let adh_strain = if vc_mag
-                            > self.params.adh_max
-                        {
-                            if vc_mag > self.params.zero_at {
-                                0.0
+                        let adh_strain =
+                            if vc_mag > self.params.adh_break {
+                                if vc_mag > self.params.zero_at {
+                                    0.0
+                                } else {
+                                    1.0 - ((vc_mag
+                                        - self.params.adh_break)
+                                        / self.params.adh_break)
+                                }
                             } else {
-                                1.0 - ((vc_mag - self.params.adh_max)
-                                    / self.params.adh_delta_break)
-                            }
-                        } else {
-                            (vc_mag / self.params.adh_rest) - 1.0
-                        };
+                                (vc_mag / self.params.adh_rest) - 1.0
+                            };
                         if ci == 0 && vi == 0 && oci == 1 && ovi == 8
                         {
                             println!("zero_at: {}, adh_max: {}, adh_delta_break: {}, adh_rest: {}, vc_mag: {}, adh_strain: {}", self.params
-                                .zero_at, self.params.adh_max, self.params.adh_delta_break, self
+                                .zero_at, self.params.adh_break, self.params.adh_break, self
                                          .params.adh_rest, vc_mag, adh_strain);
                         }
                         let adh_force = adh_mag

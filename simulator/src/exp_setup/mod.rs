@@ -75,14 +75,14 @@ impl Default for DistribDef {
 
 #[derive(Clone, Debug, Deserialize, Serialize, Default)]
 pub struct RgtpDistribDef {
-    acts: DistribDef,
-    inacts: DistribDef,
+    pub acts: DistribDef,
+    pub inacts: DistribDef,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, Default)]
 pub struct RgtpDistribDefs {
-    rac: RgtpDistribDef,
-    rho: RgtpDistribDef,
+    pub rac: RgtpDistribDef,
+    pub rho: RgtpDistribDef,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, Default)]

@@ -134,12 +134,12 @@ pub static RAW_WORLD_PARAMS: Lazy<RawWorldParameters> =
                 chem_attr: None,
                 bdry: None,
                 phys_contact: RawPhysicalContactParams {
+                    crl_one_at: one_at,
                     zero_at: one_at.scale(2.0),
-                    one_at,
                     adh_mag: None,
-                    adh_index: None,
                     cal_mag: None,
                     cil_mag: CIL_MAG,
+                    adh_break: None,
                 },
             },
         }

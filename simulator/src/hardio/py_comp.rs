@@ -335,7 +335,7 @@ impl Writer {
             close_one_at: world_params
                 .interactions
                 .phys_contact
-                .one_at,
+                .crl_one_at,
             cil_mag: world_params.interactions.phys_contact.cil_mag,
             coa_los_penalty: world_params
                 .interactions

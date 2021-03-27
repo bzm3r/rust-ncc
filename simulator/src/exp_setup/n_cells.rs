@@ -95,8 +95,8 @@ pub fn generate(
         coa_mag,
         cal_mag,
         adh_scale,
-        adh_index,
-        one_at,
+        adh_break,
+        crl_one_at,
         zero_at,
         too_close_dist,
         snap_period,
@@ -131,12 +131,12 @@ pub fn generate(
                     bdry: None,
                     phys_contact: RawPhysicalContactParams {
                         zero_at,
-                        one_at,
+                        crl_one_at,
                         adh_mag: {
                             adh_scale
                                 .map(|x| defaults::ADH_MAG.scale(x))
                         },
-                        adh_index,
+                        adh_break,
                         cal_mag,
                         cil_mag,
                     },
