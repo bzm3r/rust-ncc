@@ -34,8 +34,8 @@ for ix, line in enumerate(data):
 
 # plt.plot(vc_mags, adh_strains, ls="", marker=".")
 begin = 0
-end = 100000
+end = 10
 plt.plot(vc_mags[begin:end], adh_strains[begin:end], marker=".", ls="")
-# for ix in range(begin, end):
-#     plt.annotate("{}".format(ix), (vc_mags[ix], adh_strains[ix]))
-#
+for ix in range(begin, end):
+    plt.annotate("{}".format(ix), (vc_mags[ix], adh_strains[ix]))
+

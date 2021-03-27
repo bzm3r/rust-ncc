@@ -9,13 +9,15 @@ from sim_data import *
 
 
 class PythonRustComparisonData:
-    def __init__(self, out_dir, py_dat, rust_dat, poly_line_styles,
+    def __init__(self, verify_parameter_equality, out_dir, py_dat, rust_dat,
+                 poly_line_styles,
                  mp4_file_name):
         self.out_dir = out_dir
         self.py_dat = py_dat
         self.rust_dat = rust_dat
         self.sim_dats = [py_dat, rust_dat]
-        self.verify_parameter_equality()
+        # if verify_parameter_equality:
+        #     self.verify_parameter_equality()
         self.mp4_file_name = mp4_file_name
         self.poly_line_styles = poly_line_styles
 

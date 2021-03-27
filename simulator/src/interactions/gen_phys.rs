@@ -456,7 +456,8 @@ impl PhysicalContactGenerator {
                         } else {
                             (vc_mag / self.params.adh_rest) - 1.0
                         };
-                        if true {
+                        if ci == 0 && vi == 0 && oci == 1 && ovi == 8
+                        {
                             println!("zero_at: {}, adh_max: {}, adh_delta_break: {}, adh_rest: {}, vc_mag: {}, adh_strain: {}", self.params
                                 .zero_at, self.params.adh_max, self.params.adh_delta_break, self
                                          .params.adh_rest, vc_mag, adh_strain);
