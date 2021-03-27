@@ -110,7 +110,7 @@ class SimulationData:
         inter_params = world_params["interactions"]
         phys_params = inter_params["phys_contact"]
         if self.tag == "rust":
-            all_params["crl_one_at"] = phys_params["one_at"]
+            all_params["one_at"] = phys_params["crl_one_at"]
         else:
             all_params["one_at"] = phys_params["one_at"]
         all_params["zero_at"] = phys_params["zero_at"]
