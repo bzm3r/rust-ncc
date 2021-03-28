@@ -87,8 +87,8 @@ pub struct RgtpDistribDefs {
 
 #[derive(Clone, Debug, Deserialize, Serialize, Default)]
 pub struct PairRgtpDistribDefs {
-    cell0: RgtpDistribDefs,
-    cell1: RgtpDistribDefs,
+    pub cell0: RgtpDistribDefs,
+    pub cell1: RgtpDistribDefs,
 }
 
 impl Default for ExperimentType {
