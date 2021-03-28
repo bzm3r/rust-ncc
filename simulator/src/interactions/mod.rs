@@ -148,8 +148,8 @@ impl InteractionGenerator {
                 &self.phys_contact_generator,
             )
         }
-        if let Some(_chema_gen) = self.chem_attr_generator.as_mut() {
-            unimplemented!()
+        if let Some(chema_gen) = self.chem_attr_generator.as_mut() {
+            chema_gen.update()
         }
         if let Some(_bdry_gen) = self.bdry_generator.as_mut() {
             unimplemented!()

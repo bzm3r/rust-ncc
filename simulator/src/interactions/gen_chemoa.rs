@@ -25,6 +25,8 @@ impl ChemAttrGenerator {
         }
     }
 
+    pub fn update(&self) {}
+
     pub fn generate(
         &self,
         cell_polys: &[Poly],

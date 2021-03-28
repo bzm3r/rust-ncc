@@ -8,8 +8,8 @@ use crate::exp_setup::{
 use crate::math::v2d::V2d;
 use crate::parameters::quantity::{Length, Quantity};
 use crate::parameters::{
-    CharQuantities, RawInteractionParams, RawParameters,
-    RawPhysicalContactParams,
+    CharQuantities, RawChemAttrParams, RawInteractionParams,
+    RawParameters, RawPhysicalContactParams,
 };
 use crate::utils::pcg32::Pcg32;
 use crate::Directories;
@@ -96,6 +96,9 @@ pub fn generate(
         cal_mag,
         adh_scale,
         adh_break,
+        chem_center,
+        chem_mag,
+        chem_drop,
         crl_one_at,
         zero_at,
         too_close_dist,
@@ -127,7 +130,15 @@ pub fn generate(
                             .modify_mag(mag)
                             .modify_too_close_dist(too_close_dist)
                     }),
-                    chem_attr: None,
+                    chem_attr: chem_center.map(|c| {
+                        RawChemAttrParams {
+                            center: c,
+                            mag: chem_mag.unwrap_or(10.0),
+                            drop_per_char_l: chem_drop
+                                .unwrap_or(0.02),
+                            char_l: *defaults::CELL_DIAMETER,
+                        }
+                    }),
                     bdry: None,
                     phys_contact: RawPhysicalContactParams {
                         zero_at,

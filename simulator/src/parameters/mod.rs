@@ -166,10 +166,10 @@ impl RawCoaParams {
     Deserialize, Serialize, Clone, Copy, PartialEq, Default, Debug,
 )]
 pub struct RawChemAttrParams {
-    center: [Length; 2],
-    center_mag: f64,
-    drop_per_char_l: f64,
-    char_l: Length,
+    pub center: [Length; 2],
+    pub mag: f64,
+    pub drop_per_char_l: f64,
+    pub char_l: Length,
 }
 
 impl RawChemAttrParams {
@@ -179,7 +179,7 @@ impl RawChemAttrParams {
                 x: bq.normalize(&self.center[0]),
                 y: bq.normalize(&self.center[1]),
             },
-            center_mag: self.center_mag,
+            center_mag: self.mag,
             slope: self.drop_per_char_l / bq.normalize(&self.char_l),
         }
     }

@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import os
 import cbor2
 from matplotlib import animation
+from matplotlib.patches import CirclePolygon
 from paint_opts import *
 import get_comp as cd
 import get_cbor as cb
@@ -19,6 +20,8 @@ class SimulationData:
     tpoints = None
 
     world_info = None
+    chem_attr_params = None
+    chem_center = None
     header = None
     tag = None
 
@@ -260,6 +263,11 @@ class SimulationData:
               .format(file_name, len(snapshots)))
         self.world_info = world_info
         self.generate_header_from_world_info()
+        inter_params = self.world_info["world_params"]["interactions"]
+        self.chem_attr_params = inter_params["chem_attr"]
+        if self.chem_attr_params is not None:
+            self.chem_center = np.array([self.chem_attr_params["center"]["x"],
+                                         self.chem_attr_params["center"]["y"]])
         self.char_t = world_info["char_quants"]["t"]
         self.tpoints = [s["cells"][0]["tpoint"] * self.char_t for s in
                         snapshots]
@@ -457,7 +465,7 @@ class SimulationData:
                                                  metadata=dict(artist='Me'),
                                                  bitrate=1800)
             cell_ani = animation.FuncAnimation(self.fig_ani,
-                                               self.paint_animation,
+                                               self.paint_frame,
                                                frames=frame_ixs,
                                                fargs=(self.ax_ani, ty),
                                                interval=1, blit=True)
@@ -472,7 +480,7 @@ class SimulationData:
             ani_save_path = os.path.join(self.out_dir, ani_file_path)
             cell_ani.save(ani_save_path, writer=writer)
 
-    def paint_animation(self, snap_ix, ax, ty):
+    def paint_frame(self, snap_ix, ax, ty):
         ax.cla()
         ax.set_aspect("equal")
         print("painting snapshot: {}".format(snap_ix))
@@ -493,6 +501,7 @@ class SimulationData:
                 ])
             ax.plot(bbox[:, 0], bbox[:, 1], color=(0.0, 0.0, 0.0, 0.0))
 
+        self.paint_chemo_dot(ax)
         self.paint_cells(snap_ix, ax, ty)
         ax.relim()
 
@@ -502,6 +511,12 @@ class SimulationData:
             )
         )
         return ax.get_children()
+
+    def paint_chemo_dot(self, ax):
+        if self.chem_attr_params is not None:
+            c = CirclePolygon((self.chem_center[0], self.chem_center[1]),
+                              resolution=10, color="green")
+            ax.add_artist(c)
 
     def paint_cells(self, snap_ix, ax, ty):
         pls = self.ani_opts.poly_line_style
