@@ -1,0 +1,62 @@
+{
+  "description": "two cell experiments",
+  "ty": {
+    "NCells": {
+      "num_cells": 2
+    }
+  },
+  "final_t": 2000,
+  "char_t": 0.5,
+  "cil_mag": 60,
+  "coa_mag": 24,
+  "crl_one_at": 1.0,
+  "zero_at": 2.0,
+  "too_close_dist": 2.0,
+  "chem_center": [250, 250],
+  "chem_drop": 0.02,
+  "snap_period": 10.0,
+  "randomization": true,
+  "seeds": [7],
+  "rgtp_distrib_defs": {
+    "rac": {
+      "acts": {
+        "Random": {
+          "frac": 0.1
+        }
+      },
+      "inacts": {
+        "Random": {
+          "frac": 0.1
+        }
+      }
+    },
+    "rho": {
+      "acts": {
+        "Random": {
+          "frac": 0.1
+        }
+      },
+      "inacts": {
+        "Random": {
+          "frac": 0.1
+        }
+      }
+    }
+  },
+  "int_opts": {
+    "RkDp5": {
+      "atol": 1e-3,
+      "rtol": 1e-3,
+      "max_iters": 1000
+    }
+  },
+  "ani_opts": [
+    {
+      "label_verts":  false,
+      "label_cells": false,
+      "follow_group": false,
+      "show_trails":  true,
+      "arrow_scale":  1.0
+    }
+  ]
+}
