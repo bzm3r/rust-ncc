@@ -128,10 +128,9 @@ impl V2d {
         V2d::default()
     }
 
-    #[inline]
-    pub fn close_to(&self, other: &V2d) -> bool {
-        close_to_zero(self.x - other.x, 1e-3)
-            && close_to_zero(self.y - other.y, 1e-3)
+    pub fn close_to(&self, other: &V2d, eps: f64) -> bool {
+        close_to_zero(self.x - other.x, eps)
+            && close_to_zero(self.y - other.y, eps)
     }
 
     pub fn cross(&self, other: &V2d) -> f64 {

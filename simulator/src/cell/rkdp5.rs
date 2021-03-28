@@ -1,4 +1,4 @@
-use crate::cell::states::DCoreDt;
+use crate::cell::states::{DCoreDt, VolExErr};
 use crate::cell::{chemistry::RacRandState, states::Core};
 use crate::interactions::{ContactData, Interactions};
 use crate::math::min_f64;
@@ -60,8 +60,13 @@ const INV_QP1: f64 = 1.0 / 5.0; // inverse (max of p and p_hat) + 1, see explana
 const FAC: f64 = 0.8; // safety factor, approximately 0.38^QP1, see explanation for equation 4.12 in HWN vol1
 const FAC_MAX: f64 = (5.0 - 1.5) / 2.0; // see explanation for equation 4.12 in HWN vol1
 
+pub enum RkErr {
+    VolEx(String),
+    TooManyIters(String),
+}
+
 pub struct Solution {
-    pub state: Result<Core, String>,
+    pub state: Result<Core, RkErr>,
     pub num_rejections: usize,
     pub num_iters: usize,
 }
@@ -214,10 +219,10 @@ pub fn integrator(
 
     let mut num_iters: usize = 0;
     let mut fac_max = FAC_MAX;
-    let mut last_iter = false;
+    let mut try_as_last_iter = false;
     let mut num_rejections: usize = 0;
 
-    while num_iters < max_iters {
+    while num_iters < max_iters && h > 1e-14 {
         let Ks {
             k0,
             k1,
@@ -245,21 +250,6 @@ pub fn integrator(
             + B[5] * k5.time_step(h)
             + B[6] * k6.time_step(h);
 
-        if last_iter {
-            assert!((h - dt).abs() < f64::EPSILON);
-            next_state
-                .strict_enforce_volume_exclusion(
-                    &init_state.poly,
-                    &contact_data,
-                )
-                .map_or_else(|e| panic!(e), |_| {});
-            return Solution {
-                state: Ok(next_state),
-                num_rejections,
-                num_iters,
-            };
-        }
-
         let next_state_hat = init_state
             + h * (k0.time_step(B_HAT[0])
                 + k1.time_step(B_HAT[1])
@@ -279,32 +269,54 @@ pub fn integrator(
             h * min_f64(fac_max, FAC * (1.0 / error).powf(INV_QP1));
 
         // see explanation for equation 4.13 in HNW vol1
-        if error <= 1.0 {
-            fac_max = FAC_MAX;
-            next_state
-                .strict_enforce_volume_exclusion(
-                    &init_state.poly,
-                    &contact_data,
-                )
-                .map_or_else(|e| panic!(e), |_| {});
-            init_state = next_state;
-            if h + h_new > dt {
-                h_new = dt - h;
-                last_iter = true;
-            };
-            dt -= h;
-            h = h_new;
-        } else {
-            fac_max = 1.0;
-            num_rejections += 1;
-            h = h_new;
+        match (
+            error <= 1.0,
+            next_state.strict_enforce_volume_exclusion(
+                &init_state.poly,
+                &contact_data,
+            ),
+        ) {
+            (true, Ok(_)) => {
+                if try_as_last_iter {
+                    assert!((h - dt).abs() < f64::EPSILON);
+                    return Solution {
+                        state: Ok(next_state),
+                        num_rejections,
+                        num_iters,
+                    };
+                } else {
+                    fac_max = FAC_MAX;
+                    init_state = next_state;
+                    if h + h_new > dt {
+                        h_new = dt - h;
+                        try_as_last_iter = true;
+                    };
+                    dt -= h;
+                    h = h_new;
+                }
+            }
+            (true, Err(VolExErr::OldVs(s))) => {
+                return Solution {
+                    state: Err(RkErr::VolEx(s)),
+                    num_rejections,
+                    num_iters,
+                };
+            }
+            (false, _) | (true, Err(VolExErr::NewVs(_))) => {
+                fac_max = 1.0;
+                num_rejections += 1;
+                h = h_new;
+                try_as_last_iter = false;
+            }
         }
 
         num_iters += 1;
     }
 
     Solution {
-        state: Err("Too many iterations!".to_string()),
+        state: Err(RkErr::TooManyIters(
+            "Too many iterations!".to_string(),
+        )),
         num_rejections,
         num_iters,
     }

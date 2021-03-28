@@ -96,7 +96,6 @@ impl WorldCells {
         interaction_generator: &mut InteractionGenerator,
         int_opts: RkOpts,
     ) -> Result<WorldCells, String> {
-        // println!("tpoint: {} ", tpoint);
         let mut new_cells = self.cells.clone();
         let mut rel_rgtps = new_cells
             .iter()

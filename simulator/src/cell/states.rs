@@ -10,9 +10,7 @@ use crate::cell::mechanics::{
 use crate::interactions::{
     ContactData, Interactions, RelativeRgtpActivity,
 };
-use crate::math::geometry::{
-    check_intersection, is_point_in_poly, LineSeg2D,
-};
+use crate::math::geometry::{lsegs_intersect, LineSeg2D};
 use crate::math::v2d::{SqP2d, V2d};
 use crate::math::{hill_function3, max_f64};
 use crate::parameters::{Parameters, WorldParameters};
@@ -852,12 +850,14 @@ impl Core {
         &mut self,
         old_vs: &[V2d; NVERTS],
         contacts: &[ContactData],
-    ) -> Result<(), String> {
-        confirm_volume_exclusion(&old_vs, &contacts, "old_vs")?;
+    ) -> Result<(), VolExErr> {
+        confirm_volume_exclusion(&old_vs, &contacts, "old_vs")
+            .map_err(VolExErr::OldVs)?;
 
         self.enforce_volume_exclusion(old_vs, contacts);
 
-        confirm_volume_exclusion(&self.poly, &contacts, "new_vs")?;
+        confirm_volume_exclusion(&self.poly, &contacts, "new_vs")
+            .map_err(VolExErr::NewVs)?;
         Ok(())
     }
 
@@ -877,15 +877,15 @@ impl Core {
             let old_w = old_vs[wi];
             for contact in contacts {
                 for other in contact.poly.edges.iter() {
-                    if check_intersection(&v, &w, other)
-                        || check_intersection(&u, &v, other)
+                    if lsegs_intersect(&v, &w, other)
+                        || lsegs_intersect(&u, &v, other)
                     {
                         let (new_u, new_v, new_w) =
                             fix_edge_intersection(
                                 (old_u, old_v, old_w),
                                 (u, v, w),
                                 other,
-                                10,
+                                1000,
                             );
                         self.poly[ui] = new_u;
                         self.poly[vi] = new_v;
@@ -929,12 +929,8 @@ fn violates_volume_exclusion(
     contacts: &[ContactData],
 ) -> bool {
     for contact in contacts {
-        if is_point_in_poly(test_v, None, &contact.poly.verts) {
-            return true;
-        }
-
         for other in contact.poly.edges.iter() {
-            if check_intersection(test_v, test_w, other) {
+            if lsegs_intersect(test_v, test_w, other) {
                 return true;
             }
         }
@@ -952,18 +948,24 @@ fn fix_edge_intersection(
     let (mut good_u, mut good_v, mut good_w) = good_uvw;
     let (mut new_u, mut new_v, mut new_w) = new_uvw;
     while n < num_iters {
+        if new_u.close_to(&good_u, 1e-16)
+            && new_v.close_to(&good_v, 1e-16)
+            && new_w.close_to(&good_w, 1e-16)
+        {
+            break;
+        }
         let test_v = 0.5 * (good_v + new_v);
         let test_u = 0.5 * (good_u + new_u);
         let test_w = 0.5 * (good_w + new_w);
 
         let mut shifted = false;
-        if check_intersection(&test_u, &test_v, other) {
+        if lsegs_intersect(&test_u, &test_v, other) {
             new_u = test_u;
             shifted = true;
         } else {
             good_u = test_u;
         }
-        if check_intersection(&test_v, &test_w, other) {
+        if lsegs_intersect(&test_v, &test_w, other) {
             new_w = test_w;
             shifted = true;
         } else {
@@ -977,6 +979,11 @@ fn fix_edge_intersection(
         n += 1;
     }
     (good_u, good_v, good_w)
+}
+
+pub enum VolExErr {
+    OldVs(String),
+    NewVs(String),
 }
 
 pub fn confirm_volume_exclusion(

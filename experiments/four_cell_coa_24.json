@@ -6,11 +6,17 @@
     }
   },
   "final_t": 10800,
+  "char_t": 0.1,
   "cil_mag": 60,
+  "cal_mag": 60,
   "coa_mag": 24,
+  "adh_mag": 20,
+  "one_at": 0.5,
+  "zero_at": 1.5,
+  "too_close_dist": 1.0,
   "snap_period": 10,
   "randomization": true,
-  "seeds": [7,77,777],
+  "seeds": [7],
   "rgtp_distrib_defs": {
     "rac": {
       "acts": {
@@ -38,7 +44,8 @@
     }
   },
   "int_opts": {
-    "RkDp5": {}
+    "RkDp5": {
+    }
   },
   "ani_opts": [
     {

@@ -1,5 +1,5 @@
 use crate::exp_setup::defaults::{
-    PHYS_CLOSE_DIST_ONE_AT, PHYS_CLOSE_DIST_ZERO_AT,
+    CHAR_QUANTS, PHYS_CLOSE_DIST_ONE_AT, PHYS_CLOSE_DIST_ZERO_AT,
     RAW_COA_PARAMS_WITH_ZERO_MAG,
 };
 use crate::exp_setup::{ExperimentType, RgtpDistribDefs};
