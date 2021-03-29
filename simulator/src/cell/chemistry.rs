@@ -102,7 +102,7 @@ impl RgtpDistribution {
         if active.iter().sum::<f64>() + inactive.iter().sum::<f64>()
             > 1.0
         {
-            panic!("active + inactive > 1.0".to_string())
+            panic!("{}", "active + inactive > 1.0".to_string())
         } else {
             RgtpDistribution { active, inactive }
         }

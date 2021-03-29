@@ -139,10 +139,13 @@ pub fn generate(
                 run_python.unwrap_or(true),
             )
         } else {
-            panic!(format!(
+            panic!(
+                "{}",
+                format!(
             "expected ExperimentType::PyCompare, instead found: {:?}",
             ty
-        ));
+        )
+            );
         };
 
     seeds
