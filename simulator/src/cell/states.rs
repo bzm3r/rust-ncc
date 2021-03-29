@@ -960,23 +960,16 @@ fn fix_edge_intersection(
         let test_u = 0.5 * (good_u + new_u);
         let test_w = 0.5 * (good_w + new_w);
 
-        let mut shifted = false;
-        if lsegs_intersect(&test_u, &test_v, other) {
+        if lsegs_intersect(&test_u, &test_v, other)
+            || lsegs_intersect(&test_v, &test_w, other)
+        {
             new_u = test_u;
-            shifted = true;
+            new_v = test_v;
+            new_w = test_w;
         } else {
             good_u = test_u;
-        }
-        if lsegs_intersect(&test_v, &test_w, other) {
-            new_w = test_w;
-            shifted = true;
-        } else {
-            good_w = test_w;
-        }
-        if shifted {
-            new_v = test_v;
-        } else {
             good_v = test_v;
+            good_w = test_w;
         }
 
         n += 1;
