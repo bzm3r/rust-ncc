@@ -74,6 +74,7 @@
   "snap_period": 10,
   "adh_scale": 6,
   "crl_one_at": 1.0,
+  "adh_break": 1.0,
   "zero_at": 2.0,
   "too_close_dist": 2.0,
   "randomization": false,
