@@ -70,20 +70,20 @@
   "final_t": 2000,
   "cil_mag": 60,
   "coa_mag": 24,
-  "char_t": 2.0,
+  "char_t": 0.5,
   "snap_period": 10,
-  "adh_scale": 6,
+  "adh_scale": 1,
   "crl_one_at": 1.0,
   "adh_break": 1.0,
   "zero_at": 2.0,
   "too_close_dist": 2.0,
-  "randomization": false,
+  "randomization": true,
   "seeds": [7],
   "int_opts": {
     "RkDp5": {
       "atol": 1e-3,
       "rtol": 1e-3,
-      "max_iters": 100000
+      "max_iters": 1000
     }
   },
   "ani_opts": [
