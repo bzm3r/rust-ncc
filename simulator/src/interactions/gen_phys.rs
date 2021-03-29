@@ -454,7 +454,7 @@ impl PhysicalContactGenerator {
                                         / self.params.adh_break)
                                 }
                             } else {
-                                (vc_mag / self.params.adh_rest) - 1.0
+                                1.0
                             };
                         // println!("ci_vi_oci_ovi: ({}, {}, {}, {}), zero_at: {}, adh_break: {}, \
                         //     adh_rest: {}, vc_mag: {}, adh_strain: {}, smooth_factor: {}",
