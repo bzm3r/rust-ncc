@@ -1,0 +1,97 @@
+{
+  "description": "separated pair",
+  "ty": {
+    "Pair": {
+      "sep_in_cell_diams": 1,
+      "rgtp_distrib_defs_per_cell": {
+        "cell0": {
+          "rac": {
+            "acts": {
+              "SpecificUniform": {
+                "frac": 0.1,
+                "marked_verts": [2, 3, 4, 5, 6]
+              }
+            },
+            "inacts": {
+              "SpecificUniform": {
+                "frac": 0.1,
+                "marked_verts":  [2, 3, 4, 5, 6]
+              }
+            }
+          },
+          "rho": {
+            "acts": {
+              "SpecificUniform": {
+                "frac": 0.1,
+                "marked_verts": [10, 11, 12, 13, 14]
+              }
+            },
+            "inacts": {
+              "SpecificUniform": {
+                "frac": 0.1,
+                "marked_verts": [10, 11, 12, 13, 14]
+              }
+            }
+          }
+        },
+        "cell1": {
+          "rac": {
+            "acts": {
+              "SpecificUniform": {
+                "frac": 0.1,
+                "marked_verts": [10, 11, 12, 13, 14]
+              }
+            },
+            "inacts": {
+              "SpecificUniform": {
+                "frac": 0.1,
+                "marked_verts": [10, 11, 12, 13, 14]
+              }
+            }
+          },
+          "rho": {
+            "acts": {
+              "SpecificUniform": {
+                "frac": 0.1,
+                "marked_verts": [2, 3, 4, 5, 6]
+              }
+            },
+            "inacts": {
+              "SpecificUniform": {
+                "frac": 0.1,
+                "marked_verts": [2, 3, 4, 5, 6]
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "final_t": 2000,
+  "cil_mag": 60,
+  "coa_mag": 24,
+  "char_t": 2.0,
+  "snap_period": 10,
+  "adh_scale": 6,
+  "crl_one_at": 1.0,
+  "zero_at": 2.0,
+  "too_close_dist": 2.0,
+  "randomization": false,
+  "seeds": [7],
+  "int_opts": {
+    "RkDp5": {
+      "atol": 1e-3,
+      "rtol": 1e-3,
+      "max_iters": 100000
+    }
+  },
+  "ani_opts": [
+    {
+      "label_verts":  false,
+      "label_cells": false,
+      "follow_group": true,
+      "show_trails":  true,
+      "arrow_scale":  1.0
+    }
+  ]
+}
