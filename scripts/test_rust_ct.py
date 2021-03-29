@@ -11,8 +11,8 @@ import copy
 run_experiments = True
 exec_mode = "release"
 root_dir = os.getcwd()
-char_ts = [2.0, 1.0, 0.5, 0.25, 0.1] #, 0.01, 0.005, 0.001]
-exp_jsons = ["2_cell_ct_char_t_{}".format(x) for x in char_ts]
+char_ts = [2.0]#[2.0, 1.0, 0.5, 0.25, 0.1] #, 0.01, 0.005, 0.001]
+exp_jsons = ["2_cell_ct_char_t_{}_adh".format(x) for x in char_ts]
 sim_dats = []
 for exp_json in exp_jsons:
     exec_path = os.path.join(root_dir, "target", exec_mode, "executor")
@@ -49,13 +49,13 @@ for exp_json in exp_jsons:
         # rust_dat.animate(vec_ani_opts, "kdgtps_rho")
         # rust_dat.animate(vec_ani_opts, "x_tens")
 
-c0v0 = [sim_dat.poly_per_c_per_s[-1, 0, 0] for sim_dat in sim_dats]
-c1v8 = [sim_dat.poly_per_c_per_s[-1, 1, 8] for sim_dat in sim_dats]
-dists = np.array([np.linalg.norm(x - y) for x, y in zip(c0v0, c1v8)])
-import matplotlib.pyplot as plt
-plt.xlabel("dt")
-plt.ylabel("final distance between vertices")
-plt.semilogx(char_ts, dists, marker=".")
+# c0v0 = [sim_dat.poly_per_c_per_s[-1, 0, 0] for sim_dat in sim_dats]
+# c1v8 = [sim_dat.poly_per_c_per_s[-1, 1, 8] for sim_dat in sim_dats]
+# dists = np.array([np.linalg.norm(x - y) for x, y in zip(c0v0, c1v8)])
+# import matplotlib.pyplot as plt
+# plt.xlabel("dt")
+# plt.ylabel("final distance between vertices")
+# plt.semilogx(char_ts, dists, marker=".")
 # out_dir = os.path.join(root_dir, "output")
 # shared_sim_dat = SharedSimData(out_dir, sim_dats, poly_ls,
 #                                "ct_combined")
