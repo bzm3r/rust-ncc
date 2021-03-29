@@ -856,8 +856,8 @@ impl Core {
 
         self.enforce_volume_exclusion(old_vs, contacts);
 
-        confirm_volume_exclusion(&self.poly, &contacts, "new_vs")
-            .map_err(VolExErr::NewVs)?;
+        // confirm_volume_exclusion(&self.poly, &contacts, "new_vs")
+        //     .map_err(VolExErr::NewVs)?;
         Ok(())
     }
 
@@ -885,7 +885,8 @@ impl Core {
                                 (old_u, old_v, old_w),
                                 (u, v, w),
                                 other,
-                                1000,
+                                20,
+                                1e-1,
                             );
                         self.poly[ui] = new_u;
                         self.poly[vi] = new_v;
@@ -943,14 +944,15 @@ fn fix_edge_intersection(
     new_uvw: (V2d, V2d, V2d),
     other: &LineSeg2D,
     num_iters: u32,
+    eps: f64,
 ) -> (V2d, V2d, V2d) {
     let mut n = 0;
     let (mut good_u, mut good_v, mut good_w) = good_uvw;
     let (mut new_u, mut new_v, mut new_w) = new_uvw;
     while n < num_iters {
-        if new_u.close_to(&good_u, 1e-16)
-            && new_v.close_to(&good_v, 1e-16)
-            && new_w.close_to(&good_w, 1e-16)
+        if new_u.close_to(&good_u, eps)
+            && new_v.close_to(&good_v, eps)
+            && new_w.close_to(&good_w, eps)
         {
             break;
         }
@@ -976,6 +978,7 @@ fn fix_edge_intersection(
         } else {
             good_v = test_v;
         }
+
         n += 1;
     }
     (good_u, good_v, good_w)
