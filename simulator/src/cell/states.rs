@@ -885,8 +885,8 @@ impl Core {
                                 (old_u, old_v, old_w),
                                 (u, v, w),
                                 other,
-                                100,
-                                1e-3,
+                                1000,
+                                1e-6,
                             );
                         self.poly[ui] = new_u;
                         self.poly[vi] = new_v;
