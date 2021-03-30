@@ -8,11 +8,11 @@ import subprocess
 import orjson
 import copy
 
-run_experiments = False
+run_experiments = True
 exec_mode = "release"
 root_dir = os.getcwd()
-char_ts = [2.0, 1.0, 0.5, 0.25, 0.1, 0.005, 0.001]
-exp_jsons = ["2_cell_ct_char_t_{}_adh".format(x) for x in char_ts]
+char_ts = [2.0, 1.0, 0.5, 0.25] + [0.1, 0.005, 0.001]
+exp_jsons = ["2_cell_ct_char_t_{}_adh_{}".format(x) for x in char_ts]
 sim_dats = []
 for exp_json in exp_jsons:
     exec_path = os.path.join(root_dir, "target", exec_mode, "executor")

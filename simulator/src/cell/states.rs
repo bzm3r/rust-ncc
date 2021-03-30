@@ -885,8 +885,6 @@ impl Core {
                                 (old_u, old_v, old_w),
                                 (u, v, w),
                                 other,
-                                1000,
-                                1e-6,
                             );
                         self.poly[ui] = new_u;
                         self.poly[vi] = new_v;
@@ -943,36 +941,29 @@ fn fix_edge_intersection(
     good_uvw: (V2d, V2d, V2d),
     new_uvw: (V2d, V2d, V2d),
     other: &LineSeg2D,
-    num_iters: u32,
-    eps: f64,
 ) -> (V2d, V2d, V2d) {
-    let mut n = 0;
-    let (mut good_u, mut good_v, mut good_w) = good_uvw;
-    let (mut new_u, mut new_v, mut new_w) = new_uvw;
-    while n < num_iters {
-        if new_u.close_to(&good_u, eps)
-            && new_v.close_to(&good_v, eps)
-            && new_w.close_to(&good_w, eps)
-        {
-            break;
-        }
-        let test_v = 0.5 * (good_v + new_v);
-        let test_u = 0.5 * (good_u + new_u);
-        let test_w = 0.5 * (good_w + new_w);
-
+    let num_divs = 10;
+    let d = 1.0 / (num_divs as f64);
+    let (good_u, good_v, good_w) = good_uvw;
+    let (new_u, new_v, new_w) = new_uvw;
+    let (delta_u, delta_v, delta_w) = (
+        (new_u - good_u).scale(d),
+        (new_v - good_v).scale(d),
+        (new_w - good_w).scale(d),
+    );
+    for n in 1..num_divs {
+        let (test_u, test_v, test_w) = (
+            new_u - delta_u.scale(n as f64),
+            new_v - delta_v.scale(n as f64),
+            new_w - delta_w.scale(n as f64),
+        );
         if lsegs_intersect(&test_u, &test_v, other)
             || lsegs_intersect(&test_v, &test_w, other)
         {
-            new_u = test_u;
-            new_v = test_v;
-            new_w = test_w;
+            continue;
         } else {
-            good_u = test_u;
-            good_v = test_v;
-            good_w = test_w;
+            return (test_u, test_v, test_w);
         }
-
-        n += 1;
     }
     (good_u, good_v, good_w)
 }
