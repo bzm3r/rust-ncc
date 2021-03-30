@@ -10,7 +10,7 @@ use crate::cell::mechanics::{
 use crate::interactions::{
     ContactData, Interactions, RelativeRgtpActivity,
 };
-use crate::math::geometry::{lsegs_intersect, LineSeg2D};
+use crate::math::geometry::{lsegs_intersect, LineSeg2D, Poly};
 use crate::math::v2d::{SqP2d, V2d};
 use crate::math::{hill_function3, max_f64};
 use crate::parameters::{Parameters, WorldParameters};
@@ -926,15 +926,15 @@ fn violates_volume_exclusion(
     test_v: &V2d,
     test_w: &V2d,
     contacts: &[ContactData],
-) -> bool {
+) -> Option<(Poly, V2d, V2d)> {
     for contact in contacts {
         for other in contact.poly.edges.iter() {
             if lsegs_intersect(test_v, test_w, other) {
-                return true;
+                return Some((contact.poly, other.p0, other.p1));
             }
         }
     }
-    false
+    None
 }
 
 fn fix_edge_intersection(
@@ -942,7 +942,7 @@ fn fix_edge_intersection(
     new_uvw: (V2d, V2d, V2d),
     other: &LineSeg2D,
 ) -> (V2d, V2d, V2d) {
-    let num_divs = 10;
+    let num_divs = 6;
     let d = 1.0 / (num_divs as f64);
     let (good_u, good_v, good_w) = good_uvw;
     let (new_u, new_v, new_w) = new_uvw;
@@ -951,7 +951,8 @@ fn fix_edge_intersection(
         (new_v - good_v).scale(d),
         (new_w - good_w).scale(d),
     );
-    for n in 1..num_divs {
+    let mut n = 1;
+    loop {
         let (test_u, test_v, test_w) = (
             new_u - delta_u.scale(n as f64),
             new_v - delta_v.scale(n as f64),
@@ -960,12 +961,11 @@ fn fix_edge_intersection(
         if lsegs_intersect(&test_u, &test_v, other)
             || lsegs_intersect(&test_v, &test_w, other)
         {
-            continue;
+            n += 1;
         } else {
             return (test_u, test_v, test_w);
         }
     }
-    (good_u, good_v, good_w)
 }
 
 pub enum VolExErr {
@@ -982,21 +982,22 @@ pub fn confirm_volume_exclusion(
     for (vi, v) in vs.iter().enumerate() {
         let wi = circ_ix_plus(vi, NVERTS);
         let w = vs[wi];
-        for ContactData { poly, oci } in contacts {
-            if violates_volume_exclusion(v, &w, contacts) {
-                return Err(format!(
-                    "{} violates volume exclusion.\n\
-                    vs[{}] = {}, \n\
-                    other poly ({}) = {}  \n\
-                    this_vs = {}",
-                    msg,
-                    vi,
-                    v,
-                    oci,
-                    &poly_to_string(&poly.verts),
-                    &poly_to_string(vs)
-                ));
-            }
+        if let Some((p, a, b)) =
+            violates_volume_exclusion(v, &w, contacts)
+        {
+            return Err(format!(
+                "{} violates volume exclusion.\n\
+                    vs = {}, \n\
+                    other poly = {}  \n\
+                    this_vs = {} \n\
+                    a = {}, b = {}",
+                msg,
+                v,
+                &poly_to_string(&p.verts),
+                &poly_to_string(vs),
+                a,
+                b,
+            ));
         }
     }
     Ok(())
