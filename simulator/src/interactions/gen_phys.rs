@@ -431,19 +431,9 @@ impl PhysicalContactGenerator {
                 {
                     if let Some(cal_mag) = self.params.cal_mag {
                         if let Some(adh_mag) = self.params.adh_mag {
-                            let vc_mag = vector_to.mag();
-                            let adh_strain =
-                                if vc_mag > self.params.adh_break {
-                                    if vc_mag > self.params.zero_at {
-                                        0.0
-                                    } else {
-                                        1.0 - ((vc_mag
-                                            - self.params.adh_break)
-                                            / self.params.adh_break)
-                                    }
-                                } else {
-                                    1.0
-                                };
+                            let adh_strain = (vector_to.mag()
+                                - self.params.crl_one_at)
+                                / self.params.crl_one_at;
 
                             match CrlState::new(
                                 adh_strain,
