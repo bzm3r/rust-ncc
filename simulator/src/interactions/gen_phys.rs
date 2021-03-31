@@ -47,9 +47,9 @@ impl ClosePoint {
     /// Returns the point closest to `p` (`ClosePoint`) on the line
     /// segment `k = (b - a)*t + a, 0 <= t < 1`.
     pub fn calc(
-        one_at: f64,
-        zero_at: f64,
-        zero_at_sq: f64,
+        close_one_at: f64,
+        close_zero_at: f64,
+        close_zero_at_sq: f64,
         test_point: V2d,
         seg_start: V2d,
         seg_end: V2d,
@@ -58,8 +58,11 @@ impl ClosePoint {
         let s_to_tp = test_point - seg_start;
         let s_to_tp_dsq = s_to_tp.mag_squared();
         if s_to_tp_dsq < 1e-6 {
-            let smooth_factor =
-                capped_linear_fn(s_to_tp_dsq.sqrt(), zero_at, one_at);
+            let smooth_factor = capped_linear_fn(
+                s_to_tp_dsq.sqrt(),
+                close_zero_at,
+                close_one_at,
+            );
             ClosePoint::Vertex {
                 vector_to: -1.0 * s_to_tp,
                 smooth_factor,
@@ -81,14 +84,14 @@ impl ClosePoint {
                         let c = t * (seg_vec) + seg_start;
                         let tp_to_c = c - test_point;
                         let tp_to_c_mag_sq = tp_to_c.mag_squared();
-                        if tp_to_c_mag_sq < zero_at_sq {
+                        if tp_to_c_mag_sq < close_zero_at_sq {
                             ClosePoint::OnEdge {
                                 edge_point_param: t,
                                 vector_to: tp_to_c,
                                 smooth_factor: capped_linear_fn(
                                     tp_to_c_mag_sq.sqrt(),
-                                    zero_at,
-                                    one_at,
+                                    close_zero_at,
+                                    close_one_at,
                                 ),
                                 dist_sq: tp_to_c_mag_sq,
                             }
@@ -213,6 +216,7 @@ impl PhysicalContactGenerator {
         }
         let mut min_dist_matrix =
             vec![[f64::INFINITY; NVERTS]; num_cells];
+        #[allow(clippy::needless_range_loop)]
         for ci in 0..num_cells {
             min_dist_matrix[ci] =
                 PhysicalContactGenerator::eval_min_dist(
@@ -310,6 +314,7 @@ impl PhysicalContactGenerator {
         dat: &CvCvDat<ClosePoint>,
     ) -> [f64; NVERTS] {
         let mut r = [f64::INFINITY; NVERTS];
+        #[allow(clippy::needless_range_loop)]
         for vi in 0..NVERTS {
             for oci in 0..contact_matrix.num_cells {
                 if oci != ci && contact_matrix.get(ci, oci) {
@@ -344,7 +349,6 @@ impl PhysicalContactGenerator {
         oci: usize,
         rel_rgtps_per_cell: &[[RelativeRgtpActivity; NVERTS]],
     ) -> Vec<CloseEdge> {
-        let v_rgtp = rel_rgtps_per_cell[ci][vi];
         (0..NVERTS)
             .filter_map(|ovi| match self.dat.get(ci, vi, oci, ovi) {
                 ClosePoint::None { .. } => None,
@@ -362,9 +366,7 @@ impl PhysicalContactGenerator {
                     Some(CloseEdge {
                         cell_ix: oci,
                         vert_ix: ovi,
-                        crl: CrlEffect::calc_crl_on_focus(
-                            v_rgtp, edge_rgtp,
-                        ),
+                        relative_rgtp_act: edge_rgtp,
                         vector_to,
                         edge_point_param,
                         smooth_factor,
@@ -377,10 +379,7 @@ impl PhysicalContactGenerator {
                 } => Some(CloseEdge {
                     cell_ix: oci,
                     vert_ix: ovi,
-                    crl: CrlEffect::calc_crl_on_focus(
-                        v_rgtp,
-                        rel_rgtps_per_cell[oci][ovi],
-                    ),
+                    relative_rgtp_act: rel_rgtps_per_cell[oci][ovi],
                     vector_to,
                     edge_point_param: 0.0,
                     smooth_factor,
@@ -415,74 +414,127 @@ impl PhysicalContactGenerator {
             vec![[V2d::default(); NVERTS]; num_cells];
         let mut cal_per_cell = vec![[0.0f64; NVERTS]; num_cells];
         let mut cil_per_cell = vec![[0.0f64; NVERTS]; num_cells];
+        let cil_mag = self.params.cil_mag;
         for ci in 0..num_cells {
-            let x_cals = &mut cal_per_cell[ci];
-            let x_cils = &mut cil_per_cell[ci];
             for vi in 0..NVERTS {
+                let this_rgtp_act = rel_rgtps_per_cell[ci][vi];
                 for CloseEdge {
                     cell_ix: oci,
                     vert_ix: ovi,
-                    crl,
                     vector_to,
                     edge_point_param,
                     smooth_factor,
+                    relative_rgtp_act: other_rgtp_act,
                 } in self
                     .get_close_edges_to(ci, vi, rel_rgtps_per_cell)
                     .into_iter()
                 {
-                    match (self.params.cal_mag, crl) {
-                        (Some(cal_mag), CrlEffect::Cal) => {
-                            x_cals[vi] = x_cals[vi]
-                                .max(smooth_factor * cal_mag);
-                        }
-                        (Some(_), CrlEffect::Cil) | (None, _) => {
-                            x_cils[vi] = x_cils[vi].max(
-                                smooth_factor * self.params.cil_mag,
-                            );
-                        }
-                    }
-
-                    if let Some(adh_mag) = self.params.adh_mag {
-                        let vc_mag = vector_to.mag();
-                        let adh_strain =
-                            if vc_mag > self.params.adh_break {
-                                if vc_mag > self.params.zero_at {
-                                    0.0
+                    if let Some(cal_mag) = self.params.cal_mag {
+                        if let Some(adh_mag) = self.params.adh_mag {
+                            let vc_mag = vector_to.mag();
+                            let adh_strain =
+                                if vc_mag > self.params.adh_break {
+                                    if vc_mag > self.params.zero_at {
+                                        0.0
+                                    } else {
+                                        1.0 - ((vc_mag
+                                            - self.params.adh_break)
+                                            / self.params.adh_break)
+                                    }
                                 } else {
-                                    1.0 - ((vc_mag
-                                        - self.params.adh_break)
-                                        / self.params.adh_break)
+                                    1.0
+                                };
+
+                            match CrlState::new(
+                                adh_strain,
+                                this_rgtp_act,
+                                other_rgtp_act,
+                            ) {
+                                CrlState::TensionThisRacOtherRho => {
+                                    // Engage in CAL
+                                    cal_per_cell[ci][vi] = cal_per_cell[ci][vi].max
+                                    (adh_strain.abs() * cal_mag);
                                 }
+                                CrlState::TensionThisRacOtherRac => {
+                                    // Engage in CIL and CAL
+                                    cil_per_cell[ci][vi] = cil_per_cell[ci][vi].max
+                                    ((1.0 - adh_strain.abs()) * cil_mag);
+                                }
+                                CrlState::TensionThisRhoOtherRac => {
+                                    // Engage in CIL
+                                    cil_per_cell[ci][vi] = cil_per_cell[ci][vi].max
+                                    ((1.0 - adh_strain.abs()) * cil_mag);
+                                }
+                                CrlState::TensionThisRhoOtherRho => {
+                                    // Engage in CAL
+                                    cal_per_cell[ci][vi] = cal_per_cell[ci][vi].max
+                                    (adh_strain.abs() * cal_mag);
+                                }
+                                CrlState::CompressionThisRacOtherRho => {
+                                    // Engage in CIL tentatively
+                                    cil_per_cell[ci][vi] = cil_per_cell[ci][vi].max
+                                    (adh_strain.abs() * cil_mag);
+                                }
+                                CrlState::CompressionThisRacOtherRac => {
+                                    // Engage in CIL
+                                    cil_per_cell[ci][vi] = cil_per_cell[ci][vi].max
+                                    (cil_mag);
+                                }
+                                CrlState::CompressionThisRhoOtherRac => {
+                                    // Engage in CIL
+                                    cil_per_cell[ci][vi] = cil_mag;
+                                }
+                                CrlState::CompressionThisRhoOtherRho => {
+                                    // Do nothing.
+                                }
+                            }
+                            let adh_force = adh_mag
+                                * adh_strain
+                                * vector_to.unitize();
+                            //* ((1.0 / self.params.range) * delta);
+                            // We are close to the vertex.
+                            if close_to_zero(edge_point_param, 1e-3) {
+                                adh_per_cell[oci][ovi] = adh_per_cell
+                                    [oci][ovi]
+                                    - adh_force;
+                                adh_per_cell[ci][vi] =
+                                    adh_per_cell[ci][vi] + adh_force;
                             } else {
-                                1.0
-                            };
-                        // println!("ci_vi_oci_ovi: ({}, {}, {}, {}), zero_at: {}, adh_break: {}, \
-                        //     adh_rest: {}, vc_mag: {}, adh_strain: {}, smooth_factor: {}",
-                        //          ci, vi, oci, ovi, self.params.zero_at, self.params.adh_break,
-                        //          self.params.adh_rest, vc_mag, adh_strain, smooth_factor);
-                        let adh_force = adh_mag
-                            * adh_strain
-                            * vector_to.unitize();
-                        //* ((1.0 / self.params.range) * delta);
-                        // We are close to the vertex.
-                        if close_to_zero(edge_point_param, 1e-3) {
-                            adh_per_cell[oci][ovi] =
-                                adh_per_cell[oci][ovi] - adh_force;
-                            adh_per_cell[ci][vi] =
-                                adh_per_cell[ci][vi] + adh_force;
+                                adh_per_cell[oci][ovi] = adh_per_cell
+                                    [oci][ovi]
+                                    - (1.0 - edge_point_param)
+                                        * adh_force;
+                                let owi = circ_ix_plus(ovi, NVERTS);
+                                adh_per_cell[oci][owi] = adh_per_cell
+                                    [oci][owi]
+                                    - edge_point_param * adh_force;
+                                adh_per_cell[ci][vi] =
+                                    adh_per_cell[ci][vi] + adh_force;
+                            }
                         } else {
-                            adh_per_cell[oci][ovi] = adh_per_cell
-                                [oci][ovi]
-                                - (1.0 - edge_point_param)
-                                    * adh_force;
-                            let owi = circ_ix_plus(ovi, NVERTS);
-                            adh_per_cell[oci][owi] = adh_per_cell
-                                [oci][owi]
-                                - edge_point_param * adh_force;
-                            adh_per_cell[ci][vi] =
-                                adh_per_cell[ci][vi] + adh_force;
+                            match CrlEffect::calc_crl_on_focus(
+                                this_rgtp_act,
+                                other_rgtp_act,
+                            ) {
+                                CrlEffect::Cil => {
+                                    cil_per_cell[ci][vi] =
+                                        cil_per_cell[ci][vi].max(
+                                            self.params.cil_mag
+                                                * smooth_factor,
+                                        )
+                                }
+                                CrlEffect::Cal => {
+                                    cal_per_cell[ci][vi] =
+                                        cal_per_cell[ci][vi].max(
+                                            cal_mag * smooth_factor,
+                                        )
+                                }
+                            }
                         }
-                    };
+                    } else {
+                        cil_per_cell[ci][vi] = cil_per_cell[ci][vi]
+                            .max(self.params.cil_mag * smooth_factor);
+                    }
                 }
             }
         }
@@ -490,6 +542,61 @@ impl PhysicalContactGenerator {
             adh: adh_per_cell,
             cil: cil_per_cell,
             cal: cal_per_cell,
+        }
+    }
+}
+
+pub enum CrlState {
+    TensionThisRacOtherRho,
+    TensionThisRacOtherRac,
+    TensionThisRhoOtherRac,
+    TensionThisRhoOtherRho,
+    CompressionThisRacOtherRho,
+    CompressionThisRacOtherRac,
+    CompressionThisRhoOtherRac,
+    CompressionThisRhoOtherRho,
+}
+
+impl CrlState {
+    pub fn new(
+        strain: f64,
+        this: RelativeRgtpActivity,
+        other: RelativeRgtpActivity,
+    ) -> CrlState {
+        use CrlState::{
+            CompressionThisRacOtherRac, CompressionThisRacOtherRho,
+            CompressionThisRhoOtherRac, CompressionThisRhoOtherRho,
+        };
+        use CrlState::{
+            TensionThisRacOtherRac, TensionThisRacOtherRho,
+            TensionThisRhoOtherRac, TensionThisRhoOtherRho,
+        };
+        use RelativeRgtpActivity::{RacDominant, RhoDominant};
+        match (strain < 0.0, this, other) {
+            (false, RacDominant(_), RacDominant(_)) => {
+                TensionThisRacOtherRac
+            }
+            (false, RacDominant(_), RhoDominant(_)) => {
+                TensionThisRacOtherRho
+            }
+            (false, RhoDominant(_), RacDominant(_)) => {
+                TensionThisRhoOtherRac
+            }
+            (false, RhoDominant(_), RhoDominant(_)) => {
+                TensionThisRhoOtherRho
+            }
+            (true, RacDominant(_), RacDominant(_)) => {
+                CompressionThisRacOtherRac
+            }
+            (true, RacDominant(_), RhoDominant(_)) => {
+                CompressionThisRacOtherRho
+            }
+            (true, RhoDominant(_), RacDominant(_)) => {
+                CompressionThisRhoOtherRac
+            }
+            (true, RhoDominant(_), RhoDominant(_)) => {
+                CompressionThisRhoOtherRho
+            }
         }
     }
 }
@@ -523,7 +630,7 @@ pub struct CloseEdge {
     /// Close edge runs from `vert_ix` to `vert_ix + 1`.
     pub vert_ix: usize,
     /// Contact regulation of motion.
-    pub crl: CrlEffect,
+    pub relative_rgtp_act: RelativeRgtpActivity,
     /// Let the position of the focus vertex be denoted `p`, and
     /// the point on the close edge closest to the focus vertex
     /// be denoted `c`. `delta` is such that `delta + p = c`.
