@@ -328,7 +328,7 @@ pub fn is_left_pointwise(
     p1: &V2d,
     p: &V2d,
 ) -> IsLeftResult {
-    let r = p - &p0;
+    let r = p - p0;
     let vector = p1 - p0;
     let cross = vector.cross(&r);
 
