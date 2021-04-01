@@ -431,11 +431,22 @@ impl PhysicalContactGenerator {
                 {
                     if let Some(cal_mag) = self.params.cal_mag {
                         if let Some(adh_mag) = self.params.adh_mag {
-                            let adh_strain = (vector_to.mag()
-                                - self.params.crl_one_at)
-                                / self.params.crl_one_at;
+                            let vc_mag = vector_to.mag();
+                            let adh_strain =
+                                if vc_mag > self.params.adh_break {
+                                    if vc_mag > self.params.zero_at {
+                                        0.0
+                                    } else {
+                                        1.0 - ((vc_mag
+                                            - self.params.adh_break)
+                                            / self.params.adh_break)
+                                    }
+                                } else {
+                                    1.0
+                                };
 
                             match CrlState::new(
+                                self.params.adh_break,
                                 adh_strain,
                                 this_rgtp_act,
                                 other_rgtp_act,
@@ -550,6 +561,7 @@ pub enum CrlState {
 impl CrlState {
     pub fn new(
         strain: f64,
+        adh_break: f64,
         this: RelativeRgtpActivity,
         other: RelativeRgtpActivity,
     ) -> CrlState {
@@ -562,7 +574,7 @@ impl CrlState {
             TensionThisRhoOtherRac, TensionThisRhoOtherRho,
         };
         use RelativeRgtpActivity::{RacDominant, RhoDominant};
-        match (strain < 0.0, this, other) {
+        match (strain < adh_break, this, other) {
             (false, RacDominant(_), RacDominant(_)) => {
                 TensionThisRacOtherRac
             }
