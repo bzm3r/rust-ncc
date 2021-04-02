@@ -90,9 +90,6 @@ struct ParsedExpArgs {
     crl_one_at: Option<f64>,
     zero_at: Option<f64>,
     too_close_dist: Option<f64>,
-    chem_center: Option<Vec<f64>>,
-    chem_mag: Option<f64>,
-    chem_drop: Option<f64>,
     snap_period: f64,
     max_on_ram: Option<usize>,
     randomization: bool,
@@ -113,9 +110,6 @@ pub struct ExperimentArgs {
     pub cal_mag: Option<f64>,
     pub adh_scale: Option<f64>,
     pub adh_break: Option<Length>,
-    pub chem_center: Option<[Length; 2]>,
-    pub chem_mag: Option<f64>,
-    pub chem_drop: Option<f64>,
     pub crl_one_at: Length,
     pub zero_at: Length,
     pub too_close_dist: Length,
@@ -148,9 +142,6 @@ impl TryFrom<&PathBuf> for ExperimentArgs {
             crl_one_at,
             zero_at,
             too_close_dist,
-            chem_center,
-            chem_mag,
-            chem_drop,
             snap_period,
             max_on_ram,
             randomization,
@@ -185,14 +176,6 @@ impl TryFrom<&PathBuf> for ExperimentArgs {
             cal_mag,
             adh_scale,
             adh_break: adh_break.map(|v| Length(v).micro()),
-            chem_center: chem_center.map(|v| {
-                let mut r = [Length(0.0); 2];
-                (0..r.len())
-                    .for_each(|ix| r[ix] = Length(v[ix]).micro());
-                r
-            }),
-            chem_mag,
-            chem_drop,
             crl_one_at: crl_one_at.map_or_else(
                 || *PHYS_CLOSE_DIST_ONE_AT,
                 |v| Length(v).micro(),

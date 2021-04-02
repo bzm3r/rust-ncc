@@ -34,6 +34,8 @@ use std::path::PathBuf;
 pub enum ExperimentType {
     NCells {
         num_cells: usize,
+        chem_dist: Option<f64>,
+        chem_mag: Option<f64>,
     },
     Pair {
         sep_in_cell_diams: usize,
@@ -93,7 +95,11 @@ pub struct PairRgtpDistribDefs {
 
 impl Default for ExperimentType {
     fn default() -> Self {
-        ExperimentType::NCells { num_cells: 1 }
+        ExperimentType::NCells {
+            chem_dist: None,
+            chem_mag: None,
+            num_cells: 1,
+        }
     }
 }
 

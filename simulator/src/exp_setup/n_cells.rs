@@ -18,14 +18,15 @@ use rand::SeedableRng;
 /// Generate the group bounding box to use for this experiment.
 fn group_bbox(
     num_cells: usize,
+    cell_diam: Length,
     char_quants: &CharQuantities,
 ) -> Result<GroupBBox, String> {
+    let side_len = (num_cells as f64).sqrt();
     // specify initial location of group centroid
     let centroid = V2d {
-        x: char_quants.normalize(&Length(0.0)),
+        x: char_quants.normalize(&cell_diam.scale(-1.0 * side_len)),
         y: char_quants.normalize(&Length(0.0)),
     };
-    let side_len = (num_cells as f64).sqrt();
     let r = GroupBBox {
         width: side_len.ceil() as usize,
         height: (num_cells as f64 / side_len).ceil() as usize,
@@ -67,12 +68,14 @@ fn make_cell_groups(
     rng: &mut Pcg32,
     char_quants: &CharQuantities,
     num_cells: usize,
+    cell_diam: Length,
     rgtp_distrib_defns: &RgtpDistribDefs,
     randomization: bool,
 ) -> Vec<CellGroup> {
     vec![CellGroup {
         num_cells,
-        layout: group_bbox(num_cells, char_quants).unwrap(),
+        layout: group_bbox(num_cells, cell_diam, char_quants)
+            .unwrap(),
         parameters: raw_params(
             rng,
             rgtp_distrib_defns,
@@ -96,9 +99,6 @@ pub fn generate(
         cal_mag,
         adh_scale,
         adh_break,
-        chem_center,
-        chem_mag,
-        chem_drop,
         crl_one_at,
         zero_at,
         too_close_dist,
@@ -110,19 +110,32 @@ pub fn generate(
         randomization,
     } = args;
 
-    let num_cells = if let ExperimentType::NCells { num_cells } = &ty
-    {
-        *num_cells
-    } else {
-        panic!("Expected an n_cell experiment, but got: {:?}", ty)
-    };
+    let (num_cells, chem_dist, chem_mag) =
+        if let ExperimentType::NCells {
+            num_cells,
+            chem_dist,
+            chem_mag,
+        } = &ty
+        {
+            (*num_cells, chem_dist.map(|v| v), chem_mag.map(|v| v))
+        } else {
+            panic!("Expected an n_cell experiment, but got: {:?}", ty)
+        };
 
     seeds
         .iter()
         .map(|&seed| {
             let mut rng = Pcg32::seed_from_u64(seed);
-
             let char_quants = defaults::CHAR_QUANTS.modify_t(char_t);
+            let cgs = make_cell_groups(
+                &mut rng,
+                &char_quants,
+                num_cells,
+                *defaults::CELL_DIAMETER,
+                &rgtp_distribs,
+                randomization,
+            );
+
             let raw_world_params = defaults::RAW_WORLD_PARAMS
                 .modify_interactions(RawInteractionParams {
                     coa: coa_mag.map(|mag| {
@@ -130,14 +143,11 @@ pub fn generate(
                             .modify_mag(mag)
                             .modify_too_close_dist(too_close_dist)
                     }),
-                    chem_attr: chem_center.map(|c| {
-                        RawChemAttrParams {
-                            center: c,
-                            mag: chem_mag.unwrap_or(10.0),
-                            drop_per_char_l: chem_drop
-                                .unwrap_or(0.02),
-                            char_l: *defaults::CELL_DIAMETER,
-                        }
+                    chem_attr: chem_dist.map(|c| RawChemAttrParams {
+                        center: [Length(c).micro(), Length(0.0)],
+                        mag: chem_mag.unwrap_or(7.5),
+                        drop_per_char_l: 0.02,
+                        char_l: *defaults::CELL_DIAMETER,
                     }),
                     bdry: None,
                     phys_contact: RawPhysicalContactParams {
@@ -153,13 +163,6 @@ pub fn generate(
                     },
                 });
             let world_params = raw_world_params.refine(&char_quants);
-            let cgs = make_cell_groups(
-                &mut rng,
-                &char_quants,
-                num_cells,
-                &rgtp_distribs,
-                randomization,
-            );
 
             Experiment {
                 ty: ty.clone(),
