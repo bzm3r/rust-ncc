@@ -942,7 +942,7 @@ fn fix_edge_intersection(
     new_uvw: (V2d, V2d, V2d),
     other: &LineSeg2D,
 ) -> (V2d, V2d, V2d) {
-    let num_divs = 6;
+    let num_divs = 3;
     let d = 1.0 / (num_divs as f64);
     let (good_u, good_v, good_w) = good_uvw;
     let (new_u, new_v, new_w) = new_uvw;
