@@ -52,7 +52,7 @@ pub fn calc_cyto_forces(
     let mut r = [V2d::default(); NVERTS];
     let area = calc_poly_area(vertex_coords);
     let areal_strain = (area / rest_area) - 1.0;
-    let mag = if stiffness_cyto > 0.0 {
+    let mag = if areal_strain > 0.0 {
         0.0
     } else {
         stiffness_cyto * areal_strain
