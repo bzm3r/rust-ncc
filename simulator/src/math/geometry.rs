@@ -27,6 +27,13 @@ pub struct Poly {
     pub bbox: BBox,
 }
 
+#[derive(Clone, Deserialize, Serialize)]
+pub struct ExpandedPoly {
+    pub verts: Vec<V2d>,
+    pub edges: Vec<LineSeg2D>,
+    pub bbox: BBox,
+}
+
 impl Poly {
     pub fn gen_edges(verts: &[V2d; NVERTS]) -> [LineSeg2D; NVERTS] {
         let mut edges =
@@ -67,23 +74,24 @@ impl Poly {
         }
     }
 
-    pub fn balloon(&self, factor: f64) -> Poly {
-        let mut verts = [V2d::default(); NVERTS];
-        let uevs = self
-            .edges
-            .iter()
-            .map(|e| e.vector.unitize())
-            .collect::<Vec<V2d>>();
-        let mut uivs = [V2d::default(); NVERTS];
-        (0..NVERTS).for_each(|j| {
-            let i = circ_ix_minus(j, NVERTS);
-            let tangent = (uevs[j] + uevs[i]).unitize();
-            uivs[j] = tangent.normal();
-        });
-        (0..NVERTS).for_each(|i| {
-            verts[i] = self.verts[i] + uivs[i].scale(factor);
-        });
-        Poly::from_verts(&verts)
+    pub fn expand(&self, factor: f64) -> ExpandedPoly {
+        unimplemented!()
+        // let mut verts = [V2d::default(); NVERTS];
+        // let uevs = self
+        //     .edges
+        //     .iter()
+        //     .map(|e| e.vector.unitize())
+        //     .collect::<Vec<V2d>>();
+        // let mut uivs = [V2d::default(); NVERTS];
+        // (0..NVERTS).for_each(|j| {
+        //     let i = circ_ix_minus(j, NVERTS);
+        //     let tangent = (uevs[j] + uevs[i]).unitize();
+        //     uivs[j] = tangent.normal();
+        // });
+        // (0..NVERTS).for_each(|i| {
+        //     verts[i] = self.verts[i] + uivs[i].scale(factor);
+        // });
+        // Poly::from_verts(&verts)
     }
 }
 

@@ -91,7 +91,7 @@ impl WorldCells {
         &self,
         tpoint: f64,
         rng: &mut Pcg32,
-        balloon_factor: f64,
+        _balloon_factor: f64,
         world_parameters: &WorldParameters,
         group_parameters: &[Parameters],
         interaction_generator: &mut InteractionGenerator,
@@ -116,14 +116,13 @@ impl WorldCells {
         for cells in shuffled_cells {
             let ci = cells.ix;
 
-            let ballooned_contacts = interaction_generator
-                .get_contacts_ballooned(ci, balloon_factor);
+            let contacts = interaction_generator.get_contacts(ci);
 
             let new_cell = cells.simulate_rkdp5(
                 tpoint,
                 dt,
                 &interactions[ci],
-                ballooned_contacts,
+                contacts,
                 world_parameters,
                 &group_parameters[cells.group_ix],
                 rng,

@@ -213,20 +213,6 @@ impl InteractionGenerator {
             })
             .collect()
     }
-
-    pub fn get_contacts_ballooned(
-        &self,
-        ci: usize,
-        factor: f64,
-    ) -> Vec<Contact> {
-        self.get_physical_contacts(ci)
-            .into_iter()
-            .map(|oci| Contact {
-                oci,
-                poly: self.cell_polys[oci].balloon(factor),
-            })
-            .collect()
-    }
 }
 
 /// Generate a `SymCcDat<bool>` which records whether two cells

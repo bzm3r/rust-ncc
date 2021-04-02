@@ -12,7 +12,7 @@ use crate::parameters::{
     RawParameters, RawPhysicalContactParams,
 };
 use crate::utils::pcg32::Pcg32;
-use crate::Directories;
+use crate::{Directories, NVERTS};
 use rand::SeedableRng;
 
 /// Generate the group bounding box to use for this experiment.
@@ -145,7 +145,7 @@ pub fn generate(
                     }),
                     chem_attr: chem_dist.map(|c| RawChemAttrParams {
                         center: [Length(c).micro(), Length(0.0)],
-                        mag: chem_mag.unwrap_or(7.5),
+                        mag: chem_mag.unwrap_or(7.5) / NVERTS as f64,
                         drop_per_char_l: 0.02,
                         char_l: *defaults::CELL_DIAMETER,
                     }),

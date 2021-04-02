@@ -10,7 +10,7 @@ import orjson
 run_experiments = True
 exec_mode = "release"
 root_dir = os.getcwd()
-exp_jsons = ["two_cell_tough_adh_10"]
+exp_jsons = ["four_cells_adh_5_chem_625_7.5"]
 for exp_json in exp_jsons:
     exec_path = os.path.join(root_dir, "target", exec_mode, "executor")
     if run_experiments:
