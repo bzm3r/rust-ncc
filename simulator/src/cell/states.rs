@@ -8,7 +8,7 @@ use crate::cell::mechanics::{
     calc_rgtp_forces,
 };
 use crate::interactions::{
-    ContactData, Interactions, RelativeRgtpActivity,
+    Contact, Interactions, RelativeRgtpActivity,
 };
 use crate::math::geometry::{lsegs_intersect, LineSeg2D, Poly};
 use crate::math::v2d::{SqP2d, V2d};
@@ -849,22 +849,22 @@ impl Core {
     pub fn strict_enforce_volume_exclusion(
         &mut self,
         old_vs: &[V2d; NVERTS],
-        contacts: &[ContactData],
+        contacts: &[Contact],
     ) -> Result<(), VolExErr> {
-        confirm_volume_exclusion(&old_vs, &contacts, "old_vs")
-            .map_err(VolExErr::OldVs)?;
+        // confirm_volume_exclusion(&old_vs, &contacts, "old_vs")
+        //     .map_err(VolExErr::OldVs)?;
 
         self.enforce_volume_exclusion(old_vs, contacts);
 
-        // confirm_volume_exclusion(&self.poly, &contacts, "new_vs")
-        //     .map_err(VolExErr::NewVs)?;
+        confirm_volume_exclusion(&self.poly, &contacts, "new_vs")
+            .map_err(VolExErr::NewVs)?;
         Ok(())
     }
 
     pub fn enforce_volume_exclusion(
         &mut self,
         old_vs: &[V2d; NVERTS],
-        contacts: &[ContactData],
+        contacts: &[Contact],
     ) {
         for vi in 0..NVERTS {
             let ui = circ_ix_minus(vi, NVERTS);
@@ -925,7 +925,7 @@ impl Core {
 fn violates_volume_exclusion(
     test_v: &V2d,
     test_w: &V2d,
-    contacts: &[ContactData],
+    contacts: &[Contact],
 ) -> Option<(Poly, V2d, V2d)> {
     for contact in contacts {
         for other in contact.poly.edges.iter() {
@@ -973,9 +973,18 @@ pub enum VolExErr {
     NewVs(String),
 }
 
+impl From<VolExErr> for String {
+    fn from(ve: VolExErr) -> Self {
+        use VolExErr::{NewVs, OldVs};
+        match ve {
+            OldVs(s) | NewVs(s) => s,
+        }
+    }
+}
+
 pub fn confirm_volume_exclusion(
     vs: &[V2d; NVERTS],
-    contacts: &[ContactData],
+    contacts: &[Contact],
     msg: &str,
 ) -> Result<(), String> {
     use crate::math::v2d::poly_to_string;

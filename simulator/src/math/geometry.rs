@@ -49,6 +49,7 @@ impl Poly {
     pub fn from_verts(verts: &[V2d; NVERTS]) -> Poly {
         let bbox = BBox::from_points(verts);
         let edges = Poly::gen_edges(verts);
+
         Poly {
             verts: *verts,
             edges,
@@ -64,6 +65,25 @@ impl Poly {
             edges: *edges,
             bbox,
         }
+    }
+
+    pub fn balloon(&self, factor: f64) -> Poly {
+        let mut verts = [V2d::default(); NVERTS];
+        let uevs = self
+            .edges
+            .iter()
+            .map(|e| e.vector.unitize())
+            .collect::<Vec<V2d>>();
+        let mut uivs = [V2d::default(); NVERTS];
+        (0..NVERTS).for_each(|j| {
+            let i = circ_ix_minus(j, NVERTS);
+            let tangent = (uevs[j] + uevs[i]).unitize();
+            uivs[j] = tangent.normal();
+        });
+        (0..NVERTS).for_each(|i| {
+            verts[i] = self.verts[i] + uivs[i].scale(factor);
+        });
+        Poly::from_verts(&verts)
     }
 }
 

@@ -11,9 +11,8 @@ pub mod rkdp5;
 pub mod states;
 
 use crate::cell::chemistry::RacRandState;
-use crate::cell::rkdp5::RkErr;
 use crate::cell::states::{confirm_volume_exclusion, Core, VolExErr};
-use crate::interactions::{ContactData, Interactions};
+use crate::interactions::{Contact, Interactions};
 use crate::parameters::{Parameters, WorldParameters};
 use crate::utils::pcg32::Pcg32;
 use crate::world::{EulerOpts, RkOpts};
@@ -62,7 +61,7 @@ impl Cell {
         &self,
         tpoint: f64,
         interactions: &Interactions,
-        contact_data: Vec<ContactData>,
+        contact_data: Vec<Contact>,
         world_parameters: &WorldParameters,
         parameters: &Parameters,
         rng: &mut Pcg32,
@@ -115,7 +114,7 @@ impl Cell {
     pub fn simulate_euler_debug(
         &self,
         interactions: &Interactions,
-        contact_data: Vec<ContactData>,
+        contact_data: Vec<Contact>,
         world_parameters: &WorldParameters,
         parameters: &Parameters,
         int_opts: EulerOpts,
@@ -193,13 +192,13 @@ impl Cell {
         tpoint: f64,
         dt: f64,
         interactions: &Interactions,
-        contact_data: Vec<ContactData>,
+        ballooned_contacts: Vec<Contact>,
         world_parameters: &WorldParameters,
         parameters: &Parameters,
         rng: &mut Pcg32,
         int_opts: RkOpts,
     ) -> Result<Cell, String> {
-        let mut result = rkdp5::integrator(
+        let mut result = rkdp5::integrate(
             dt,
             Core::derivative,
             self.core,
@@ -207,7 +206,6 @@ impl Cell {
             interactions,
             world_parameters,
             parameters,
-            &contact_data,
             int_opts,
         );
 
@@ -215,6 +213,11 @@ impl Cell {
             Ok(cs) => {
                 #[cfg(feature = "validate")]
                 cs.validate("rkdp5")?;
+
+                cs.strict_enforce_volume_exclusion(
+                    &self.core.poly,
+                    &ballooned_contacts,
+                )?;
 
                 Ok(Cell {
                     ix: self.ix,
@@ -225,9 +228,7 @@ impl Cell {
                         .update(tpoint, rng, parameters),
                 })
             }
-            Err(RkErr::VolEx(s)) | Err(RkErr::TooManyIters(s)) => {
-                Err(format!("{} ({:?})", s, int_opts))
-            }
+            Err(e) => Err(e.into()),
         }
     }
 }

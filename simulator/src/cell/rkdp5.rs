@@ -1,6 +1,6 @@
-use crate::cell::states::{DCoreDt, VolExErr};
+use crate::cell::states::DCoreDt;
 use crate::cell::{chemistry::RacRandState, states::Core};
-use crate::interactions::{ContactData, Interactions};
+use crate::interactions::Interactions;
 use crate::math::min_f64;
 use crate::parameters::{Parameters, WorldParameters};
 use crate::world::RkOpts;
@@ -63,6 +63,14 @@ const FAC_MAX: f64 = (5.0 - 1.5) / 2.0; // see explanation for equation 4.12 in 
 pub enum RkErr {
     VolEx(String),
     TooManyIters(String),
+}
+
+impl From<&mut RkErr> for String {
+    fn from(e: &mut RkErr) -> Self {
+        match e {
+            RkErr::VolEx(s) | RkErr::TooManyIters(s) => s.clone(),
+        }
+    }
 }
 
 pub struct Solution {
@@ -196,7 +204,7 @@ impl Ks {
     }
 }
 
-pub fn integrator(
+pub fn integrate(
     mut dt: f64,
     f: CellDynamicsFn,
     mut init_state: Core,
@@ -204,7 +212,6 @@ pub fn integrator(
     interactions: &Interactions,
     world_parameters: &WorldParameters,
     parameters: &Parameters,
-    contact_data: &[ContactData],
     int_opts: RkOpts,
 ) -> Solution {
     let RkOpts {
@@ -241,7 +248,7 @@ pub fn integrator(
             parameters,
         );
 
-        let mut next_state = init_state
+        let next_state = init_state
             + B[0] * k0.time_step(h)
             + B[1] * k1.time_step(h)
             + B[2] * k2.time_step(h)
@@ -269,45 +276,29 @@ pub fn integrator(
             h * min_f64(fac_max, FAC * (1.0 / error).powf(INV_QP1));
 
         // see explanation for equation 4.13 in HNW vol1
-        match (
-            error <= 1.0,
-            next_state.strict_enforce_volume_exclusion(
-                &init_state.poly,
-                &contact_data,
-            ),
-        ) {
-            (true, Ok(_)) => {
-                if try_as_last_iter {
-                    assert!((h - dt).abs() < f64::EPSILON);
-                    return Solution {
-                        state: Ok(next_state),
-                        num_rejections,
-                        num_iters,
-                    };
-                } else {
-                    fac_max = FAC_MAX;
-                    init_state = next_state;
-                    if h + h_new > dt {
-                        h_new = dt - h;
-                        try_as_last_iter = true;
-                    };
-                    dt -= h;
-                    h = h_new;
-                }
-            }
-            (true, Err(VolExErr::OldVs(s))) => {
+        if error <= 1.0 {
+            if try_as_last_iter {
+                assert!((h - dt).abs() < f64::EPSILON);
                 return Solution {
-                    state: Err(RkErr::VolEx(s)),
+                    state: Ok(next_state),
                     num_rejections,
                     num_iters,
                 };
-            }
-            (false, _) | (true, Err(VolExErr::NewVs(_))) => {
-                fac_max = 1.0;
-                num_rejections += 1;
+            } else {
+                fac_max = FAC_MAX;
+                init_state = next_state;
+                if h + h_new > dt {
+                    h_new = dt - h;
+                    try_as_last_iter = true;
+                };
+                dt -= h;
                 h = h_new;
-                try_as_last_iter = false;
             }
+        } else {
+            fac_max = 1.0;
+            num_rejections += 1;
+            h = h_new;
+            try_as_last_iter = false;
         }
 
         num_iters += 1;
