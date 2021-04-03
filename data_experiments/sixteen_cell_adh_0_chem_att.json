@@ -1,0 +1,61 @@
+{
+  "description": "four cell experiments",
+  "ty": {
+    "NCells": {
+      "num_cells": 16,
+      "chem_dist": 625,
+      "chem_mag": 7.5
+    }
+  },
+  "final_t": 36000,
+  "char_t": 0.1,
+  "cil_mag": 60,
+  "coa_mag": 14,
+  "crl_one_at": 1.0,
+  "zero_at": 2.0,
+  "adh_break": 1.0,
+  "too_close_dist": 2.0,
+  "snap_period": 1000,
+  "randomization": true,
+  "seeds": [2],
+  "rgtp_distrib_defs": {
+    "rac": {
+      "acts": {
+        "Random": {
+          "frac": 0.1
+        }
+      },
+      "inacts": {
+        "Random": {
+          "frac": 0.1
+        }
+      }
+    },
+    "rho": {
+      "acts": {
+        "Random": {
+          "frac": 0.1
+        }
+      },
+      "inacts": {
+        "Random": {
+          "frac": 0.1
+        }
+      }
+    }
+  },
+  "int_opts": {
+    "RkDp5": {
+      "max_iters": 1000
+    }
+  },
+  "ani_opts": [
+    {
+      "label_verts":  false,
+      "label_cells": false,
+      "follow_group": false,
+      "show_trails":  true,
+      "arrow_scale":  1.0
+    }
+  ]
+}
