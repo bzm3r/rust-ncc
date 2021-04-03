@@ -517,10 +517,10 @@ class SimulationData:
 
     def paint_chemo_dot(self, ax):
         if self.chem_attr_params is not None:
-            c = Circle((self.chem_center[0], self.chem_center[1]),
-                              resolution=10, color="green")
+            c = Circle((self.chem_center[0], self.chem_center[1]), radius=5,
+                       color="green")
             c = Circle((self.chem_center[0], self.chem_center[1]), radius=160,
-                       resolution=10, color="green", alpha=0.2)
+                       color="green", alpha=0.2)
             ax.add_artist(c)
 
     def paint_cells(self, snap_ix, ax, ty):
@@ -540,7 +540,8 @@ class SimulationData:
             if self.ani_opts.show_group_trail:
                 group_center_per_s = np.average(
                     self.centroids_per_c_per_s, axis=1)
-                ax.plot(group_center_per_s[:, 0], group_center_per_s[:, 1])
+                ax.plot(group_center_per_s[:snap_ix, 0],
+                        group_center_per_s[:snap_ix, 1])
             if self.ani_opts.label_cells and snap_ix > 0:
                 ax.annotate(str(ci), (c_centers[-1, 0],
                                       c_centers[-1, 1]))
