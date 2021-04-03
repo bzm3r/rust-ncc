@@ -856,8 +856,8 @@ impl Core {
 
         self.enforce_volume_exclusion(old_vs, contacts);
 
-        confirm_volume_exclusion(&self.poly, &contacts, "new_vs")
-            .map_err(VolExErr::NewVs)?;
+        // confirm_volume_exclusion(&self.poly, &contacts, "new_vs")
+        //     .map_err(VolExErr::NewVs)?;
         Ok(())
     }
 
