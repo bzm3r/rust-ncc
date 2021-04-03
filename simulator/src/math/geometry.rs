@@ -73,26 +73,6 @@ impl Poly {
             bbox,
         }
     }
-
-    pub fn expand(&self, factor: f64) -> ExpandedPoly {
-        unimplemented!()
-        // let mut verts = [V2d::default(); NVERTS];
-        // let uevs = self
-        //     .edges
-        //     .iter()
-        //     .map(|e| e.vector.unitize())
-        //     .collect::<Vec<V2d>>();
-        // let mut uivs = [V2d::default(); NVERTS];
-        // (0..NVERTS).for_each(|j| {
-        //     let i = circ_ix_minus(j, NVERTS);
-        //     let tangent = (uevs[j] + uevs[i]).unitize();
-        //     uivs[j] = tangent.normal();
-        // });
-        // (0..NVERTS).for_each(|i| {
-        //     verts[i] = self.verts[i] + uivs[i].scale(factor);
-        // });
-        // Poly::from_verts(&verts)
-    }
 }
 
 /// Calculate the area of a polygon with vertices positioned at `xys`.

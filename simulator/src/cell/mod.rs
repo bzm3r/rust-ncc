@@ -11,7 +11,7 @@ pub mod rkdp5;
 pub mod states;
 
 use crate::cell::chemistry::RacRandState;
-use crate::cell::states::{confirm_volume_exclusion, Core, VolExErr};
+use crate::cell::states::{confirm_volume_exclusion, Core};
 use crate::interactions::{Contact, Interactions};
 use crate::parameters::{Parameters, WorldParameters};
 use crate::utils::pcg32::Pcg32;
@@ -83,14 +83,10 @@ impl Cell {
             );
             state = state + delta.time_step(dt);
             // Enforcing volume exclusion! Tricky!
-            state
-                .strict_enforce_volume_exclusion(
-                    &self.core.poly,
-                    &contact_data,
-                )
-                .map_err(|e| match e {
-                    VolExErr::OldVs(s) | VolExErr::NewVs(s) => s,
-                })?;
+            state.strict_enforce_volume_exclusion(
+                &self.core.poly,
+                &contact_data,
+            )?;
         }
 
         #[cfg(feature = "validate")]
@@ -149,14 +145,10 @@ impl Cell {
             //     focus_vi, state.poly[focus_vi], other_focus_v
             // );
             // Enforcing volume exclusion! Tricky!
-            state
-                .strict_enforce_volume_exclusion(
-                    &old_vs,
-                    &contact_data,
-                )
-                .map_err(|e| match e {
-                    VolExErr::OldVs(s) | VolExErr::NewVs(s) => s,
-                })?;
+            state.strict_enforce_volume_exclusion(
+                &old_vs,
+                &contact_data,
+            )?;
             // println!(
             //     "after vol_ex | state.poly[{}] = {} | other: {}",
             //     focus_vi, state.poly[focus_vi], other_focus_v
