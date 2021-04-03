@@ -37,9 +37,11 @@ def get_vec_ani_opts(exp_dict):
         print("label_verts: ", label_verts)
         label_cells = get_else(raw_ani_opts, "label_cells", False)
         show_trails = get_else(raw_ani_opts, "show_trails", False)
+        show_group_trail = get_else(raw_ani_opts, "show_group_trail", False)
         follow_group = get_else(raw_ani_opts, "follow_group", False)
         vec_ani_opts.append(AniOpts(arrow_scale, label_verts, label_cells,
-                                    show_trails, follow_group))
+                                    show_trails, show_group_trail,
+                                    follow_group))
     return vec_ani_opts
 
 
