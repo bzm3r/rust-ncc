@@ -1,4 +1,5 @@
 use crate::math::geometry::Poly;
+use crate::math::min_f64s;
 use crate::math::v2d::V2d;
 use crate::parameters::ChemAttrParams;
 use crate::NVERTS;
@@ -36,15 +37,20 @@ impl ChemAttrGenerator {
             .map(|poly| {
                 let mut x_chemoas = [0.0f64; NVERTS];
                 poly.verts.iter().zip(x_chemoas.iter_mut()).for_each(
-                    |(&v, x)| {
-                        let r = self.center_mag
-                            * self.slope
-                            * (v - self.center).mag();
-                        if r > 0.0 {
-                            *x = r
+                    |(&v, x_chemoa)| {
+                        let chemo_signal = self.center_mag
+                            * (1.0
+                                - self.slope
+                                    * (v - self.center).mag());
+                        if chemo_signal > 0.0 {
+                            *x_chemoa = chemo_signal
                         }
                     },
                 );
+                let min_chemoa = min_f64s(&x_chemoas);
+                (0..NVERTS).for_each(|ix| {
+                    x_chemoas[ix] -= min_chemoa;
+                });
                 x_chemoas
             })
             .collect()
