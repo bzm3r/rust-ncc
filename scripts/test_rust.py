@@ -7,11 +7,11 @@ import os
 import subprocess
 import orjson
 
-run_experiments = False
+run_experiments = True
 make_animations = True
 exec_mode = "release"
 root_dir = os.getcwd()
-exp_jsons = ["sixteen_cell_adh_0_chem_att"]
+exp_jsons = ["one_cell_adh_0_chem_att"]
 for exp_json in exp_jsons:
     exec_path = os.path.join(root_dir, "target", exec_mode, "executor")
     if run_experiments:
