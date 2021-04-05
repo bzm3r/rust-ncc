@@ -986,8 +986,8 @@ fn fix_edge_intersection(
 }
 
 fn fix_orig_point(
-    orig_v: V2d,
-    delta: V2d,
+    mut orig_v: V2d,
+    new_v: V2d,
     other: &[V2d; NVERTS],
 ) -> V2d {
     while is_point_in_poly(&orig_v, None, &other) {
@@ -1002,14 +1002,10 @@ fn fix_point_in_poly(
     mut new_v: V2d,
     other: &Poly,
 ) -> Result<V2d, VolExErr> {
-    let orig_v = good_v;
-    if is_point_in_poly(&orig_v, Some(&other.bbox), &other.verts) {
-        orig_v = fix_orig_point(
-            orig_v,
-            (new_v - orig_v).scale(10),
-            &other.verts,
-        );
+    if is_point_in_poly(&good_v, Some(&other.bbox), &other.verts) {
+        good_v = fix_orig_point(good_v, new_v, &other.verts);
     }
+    let orig_v = good_v;
     if !is_point_in_poly(&new_v, Some(&other.bbox), &other.verts) {
         return Ok(new_v);
     }
