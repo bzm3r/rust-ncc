@@ -852,26 +852,25 @@ impl Core {
         &mut self,
         old_vs: &[V2d; NVERTS],
         contacts: &[Contact],
-    ) -> Result<(), VolExErr> {
+    ) {
         // confirm_volume_exclusion(&old_vs, &contacts, "old_vs")?;
 
-        self.enforce_volume_exclusion(old_vs, contacts)?;
+        self.enforce_volume_exclusion(old_vs, contacts);
 
         // confirm_volume_exclusion(&self.poly, &contacts, "new_vs")?;
-        Ok(())
     }
 
     pub fn enforce_volume_exclusion(
         &mut self,
         old_vs: &[V2d; NVERTS],
         contacts: &[Contact],
-    ) -> Result<(), VolExErr> {
+    ) {
         for vi in 0..NVERTS {
             let v = self.poly[vi];
             let old_v = old_vs[vi];
             for contact in contacts {
                 self.poly[vi] =
-                    fix_point_in_poly(3, old_v, v, &contact.poly)?;
+                    fix_point_in_poly(3, old_v, v, &contact.poly);
             }
         }
 
@@ -888,14 +887,12 @@ impl Core {
                         (old_v, old_w),
                         (v, w),
                         other,
-                    )?;
+                    );
                     self.poly[vi] = fixed_v;
                     self.poly[wi] = fixed_w;
                 }
             }
         }
-
-        Ok(())
     }
 
     //TODO(BM): automate generation of `num_vars` using proc macro.
@@ -953,16 +950,35 @@ impl From<VolExErr> for String {
     }
 }
 
-fn fix_edge_intersection(
-    num_iters: usize,
-    good_vw: (V2d, V2d),
+fn fix_orig_edge(
+    orig_vw: (V2d, V2d),
     new_vw: (V2d, V2d),
     other: &LineSeg2D,
-) -> Result<(V2d, V2d), VolExErr> {
-    let (orig_v, orig_w) = good_vw;
-    if lsegs_intersect(&orig_v, &orig_w, other) {
-        return Err(VolExErr::OldEdge);
+) -> (V2d, V2d) {
+    let (mut orig_v, mut orig_w) = orig_vw;
+    let (new_v, new_w) = new_vw;
+    let delta_v = (new_v - orig_v).scale(0.1);
+    let delta_w = (new_w - orig_w).scale(0.1);
+    let mut n = 1.0;
+    while lsegs_intersect(&orig_v, &orig_w, &other) {
+        orig_v = orig_v - delta_v.scale(n);
+        orig_w = orig_w - delta_w.scale(n);
+        n += 1.0;
     }
+    (orig_v, orig_w)
+}
+
+fn fix_edge_intersection(
+    num_iters: usize,
+    mut good_vw: (V2d, V2d),
+    new_vw: (V2d, V2d),
+    other: &LineSeg2D,
+) -> (V2d, V2d) {
+    let (good_v, good_w) = good_vw;
+    if lsegs_intersect(&good_v, &good_w, other) {
+        good_vw = fix_orig_edge(good_vw, new_vw, other);
+    }
+    let (orig_v, orig_w) = good_vw;
     let (mut good_v, mut good_w) = good_vw;
     let (mut new_v, mut new_w) = new_vw;
     let mut n = 0;
@@ -979,9 +995,9 @@ fn fix_edge_intersection(
         }
     }
     if lsegs_intersect(&good_v, &good_w, other) {
-        Ok((orig_v, orig_w))
+        (orig_v, orig_w)
     } else {
-        Ok((good_v, good_w))
+        (good_v, good_w)
     }
 }
 
@@ -990,8 +1006,11 @@ fn fix_orig_point(
     new_v: V2d,
     other: &[V2d; NVERTS],
 ) -> V2d {
-    while is_point_in_poly(&orig_v, None, &other) {
-        orig_v = orig_v + delta;
+    let delta = (new_v - orig_v).scale(0.1);
+    let mut n = 1.0;
+    while is_point_in_poly(&orig_v, None, other) {
+        orig_v = orig_v - delta.scale(n);
+        n += 1.0;
     }
     orig_v
 }
@@ -1001,13 +1020,13 @@ fn fix_point_in_poly(
     mut good_v: V2d,
     mut new_v: V2d,
     other: &Poly,
-) -> Result<V2d, VolExErr> {
+) -> V2d {
     if is_point_in_poly(&good_v, Some(&other.bbox), &other.verts) {
         good_v = fix_orig_point(good_v, new_v, &other.verts);
     }
     let orig_v = good_v;
     if !is_point_in_poly(&new_v, Some(&other.bbox), &other.verts) {
-        return Ok(new_v);
+        return new_v;
     }
     let mut n = 0;
     while n < num_iters {
@@ -1021,9 +1040,9 @@ fn fix_point_in_poly(
         }
     }
     if is_point_in_poly(&good_v, Some(&other.bbox), &other.verts) {
-        Ok(orig_v)
+        orig_v
     } else {
-        Ok(good_v)
+        good_v
     }
 }
 
