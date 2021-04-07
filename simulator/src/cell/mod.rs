@@ -86,7 +86,7 @@ impl Cell {
             state.strict_enforce_volume_exclusion(
                 &self.core.poly,
                 &contact_data,
-            );
+            )?;
         }
 
         #[cfg(feature = "validate")]
@@ -148,7 +148,7 @@ impl Cell {
             state.strict_enforce_volume_exclusion(
                 &old_vs,
                 &contact_data,
-            );
+            )?;
             // println!(
             //     "after vol_ex | state.poly[{}] = {} | other: {}",
             //     focus_vi, state.poly[focus_vi], other_focus_v
@@ -184,7 +184,7 @@ impl Cell {
         tpoint: f64,
         dt: f64,
         interactions: &Interactions,
-        ballooned_contacts: Vec<Contact>,
+        contacts: Vec<Contact>,
         world_parameters: &WorldParameters,
         parameters: &Parameters,
         rng: &mut Pcg32,
@@ -208,8 +208,8 @@ impl Cell {
 
                 cs.strict_enforce_volume_exclusion(
                     &self.core.poly,
-                    &ballooned_contacts,
-                );
+                    &contacts,
+                )?;
 
                 Ok(Cell {
                     ix: self.ix,

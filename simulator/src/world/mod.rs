@@ -289,8 +289,8 @@ fn gen_poly(centroid: &V2d, radius: f64) -> [V2d; NVERTS] {
         let vf = (vix as f64) / (NVERTS as f64);
         let theta = 2.0 * PI * vf;
         r[vix] = V2d {
-            x: centroid.x + theta.cos() * radius,
-            y: centroid.y + theta.sin() * radius,
+            x: centroid.x + theta.cos() * 0.98 * radius,
+            y: centroid.y + theta.sin() * 0.98 * radius,
         };
     });
     r
@@ -638,7 +638,8 @@ impl World {
     }
 
     pub fn final_save(&mut self, save_cbor: bool, reason: &str) {
-        if let Some(writer) = self.writer.take() {
+        if let Some(mut writer) = self.writer.take() {
+            writer.push(self.state.clone());
             writer.finish(save_cbor, reason);
         }
     }
