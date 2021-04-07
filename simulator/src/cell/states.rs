@@ -7,12 +7,10 @@ use crate::cell::mechanics::{
     calc_cyto_forces, calc_edge_forces, calc_edge_vecs,
     calc_rgtp_forces,
 };
-use crate::interactions::{
-    Contact, Interactions, RelativeRgtpActivity,
-};
+use crate::interactions::{Contact, RelativeRgtpActivity};
 use crate::math::geometry::{
-    calc_centroid, is_point_in_poly, lsegs_intersect,
-    lsegs_intersect_strong, LineSeg2D, Poly,
+    is_point_in_poly, lsegs_intersect, lsegs_intersect_strong,
+    LineSeg2D, Poly,
 };
 use crate::math::v2d::{poly_to_string, SqP2d, V2d};
 use crate::math::{hill_function3, max_f64};
@@ -509,8 +507,11 @@ impl Core {
         &self,
         mech_state: &MechState,
         rac_rand_state: &RacRandState,
-        interactions: &Interactions,
         parameters: &Parameters,
+        x_coas: [f64; NVERTS],
+        x_cils: [f64; NVERTS],
+        x_cals: [f64; NVERTS],
+        x_chemoas: [f64; NVERTS],
     ) -> ChemState {
         let GeomState { edge_lens, .. } = self.geom;
         // Need to calculate average length of edges meeting at
@@ -539,10 +540,10 @@ impl Core {
             &self.rac_acts,
             &conc_rac_acts,
             &rac_rand_state.x_rands,
-            &interactions.x_coas,
-            &interactions.x_cils,
-            &interactions.x_chem_attrs,
-            &interactions.x_cals,
+            &x_coas,
+            &x_cils,
+            &x_chemoas,
+            &x_cals,
             parameters.kgtp_rac,
             parameters.kgtp_rac_auto,
             parameters.halfmax_vertex_rgtp_conc,
@@ -558,7 +559,7 @@ impl Core {
         let kdgtps_rac = calc_kdgtps_rac(
             &self.rac_acts,
             &conc_rho_acts,
-            &interactions.x_cils,
+            &x_cils,
             x_tens,
             parameters.kdgtp_rac,
             parameters.kdgtp_rho_on_rac,
@@ -567,7 +568,7 @@ impl Core {
         let kgtps_rho = calc_kgtps_rho(
             &self.rho_acts,
             &conc_rho_acts,
-            &interactions.x_cils,
+            &x_cils,
             parameters.kgtp_rho,
             parameters.halfmax_vertex_rgtp_conc,
             parameters.kgtp_rho_auto,
@@ -626,9 +627,13 @@ impl Core {
     pub fn derivative(
         &self,
         rac_rand_state: &RacRandState,
-        interactions: &Interactions,
         world_parameters: &WorldParameters,
         parameters: &Parameters,
+        x_adhs: [V2d; NVERTS],
+        x_coas: [f64; NVERTS],
+        x_cils: [f64; NVERTS],
+        x_cals: [f64; NVERTS],
+        x_chemoas: [f64; NVERTS],
     ) -> DCoreDt {
         //TODO: is it necessary to recalculate chem/mech/geom states in
         // `derivative`, if we have saved this info in the `Cell` struct?
@@ -638,8 +643,11 @@ impl Core {
         let chem_state = self.calc_chem_state(
             &mech_state,
             rac_rand_state,
-            interactions,
             parameters,
+            x_coas,
+            x_cils,
+            x_cals,
+            x_chemoas,
         );
         let mut delta = DCoreDt::default();
         for i in 0..NVERTS {
@@ -691,7 +699,7 @@ impl Core {
                 + vertex_rho_inact_flux
                 - delta_rho_activated;
             delta.poly[i] = (1.0 / world_parameters.vertex_eta)
-                * (mech_state.sum_forces[i] + interactions.x_adhs[i]);
+                * (mech_state.sum_forces[i] + x_adhs[i]);
         }
         delta
     }
@@ -867,16 +875,16 @@ impl Core {
         old_vs: &[V2d; NVERTS],
         contacts: &[Contact],
     ) -> Result<(), VolExErr> {
-        let centroid: V2d = calc_centroid(old_vs);
         for vi in 0..NVERTS {
             let v = self.poly[vi];
             let old_v = old_vs[vi];
+            let uiv_v = self.geom.unit_in_vecs[vi];
             for contact in contacts {
                 self.poly[vi] = fix_point_in_poly(
                     3,
                     old_v,
                     v,
-                    centroid,
+                    uiv_v,
                     &contact.poly,
                 )?;
             }
@@ -888,13 +896,15 @@ impl Core {
             let w = self.poly[wi];
             let old_v = old_vs[vi];
             let old_w = old_vs[wi];
+            let uiv_v = self.geom.unit_in_vecs[vi];
+            let uiv_w = self.geom.unit_in_vecs[wi];
             for contact in contacts {
                 for other in contact.poly.edges.iter() {
                     let (fixed_v, fixed_w) = fix_edge_intersection(
                         3,
                         (old_v, old_w),
                         (v, w),
-                        centroid,
+                        (uiv_v, uiv_w),
                         other,
                     )?;
                     self.poly[vi] = fixed_v;
@@ -963,33 +973,23 @@ impl From<VolExErr> for String {
 
 fn fix_orig_edge(
     orig_vw: (V2d, V2d),
-    new_vw: (V2d, V2d),
-    centroid: V2d,
+    uiv_vw: (V2d, V2d),
     other: &LineSeg2D,
 ) -> Result<(V2d, V2d), VolExErr> {
     let (init_v, init_w) = orig_vw;
-    let (new_v, new_w) = new_vw;
-    let delta_v = (new_v - centroid).scale(0.01);
-    // let delta_v = if init_v.close_to(&new_v, 1e-4) {
-    //     (new_v - centroid).scale(0.01)
-    // } else {
-    //     (new_v - init_v).scale(0.25)
-    // };
-    let delta_w = (new_w - centroid).scale(0.01);
-    // let delta_w = if init_w.close_to(&new_w, 1e-4) {
-    //     (new_w - centroid).scale(0.01)
-    // } else {
-    //     (new_w - init_w).scale(0.25)
-    // };
+    let (delta_v, delta_w) = {
+        let (uiv_v, uiv_w) = uiv_vw;
+        (uiv_v.scale(0.05), uiv_w.scale(0.05))
+    };
     let mut n = 1.0;
     let (mut orig_v, mut orig_w) = orig_vw;
     while lsegs_intersect_strong(&orig_v, &orig_w, &other) {
-        orig_v = orig_v - delta_v.scale(n);
-        orig_w = orig_w - delta_w.scale(n);
+        orig_v = orig_v + delta_v.scale(n);
+        orig_w = orig_w + delta_w.scale(n);
         n += 1.0;
         if n > 10.0 {
             return Err(VolExErr::OldEdge(format!("could not fix orig edge intersection issue: orig_v: \
-            {}, orig_w: {}, new_v: {}, new_w: {}, other.p0: {}, other.p1: {}", init_v, init_w, new_v, new_w,
+            {}, orig_w: {}, other.p0: {}, other.p1: {}", init_v, init_w,
                                                  other.p0, other.p1)));
         }
     }
@@ -1000,7 +1000,7 @@ fn fix_edge_intersection(
     num_iters: usize,
     mut good_vw: (V2d, V2d),
     new_vw: (V2d, V2d),
-    centroid: V2d,
+    uiv_vw: (V2d, V2d),
     other: &LineSeg2D,
 ) -> Result<(V2d, V2d), VolExErr> {
     let (mut new_v, mut new_w) = new_vw;
@@ -1009,7 +1009,7 @@ fn fix_edge_intersection(
     }
     let (good_v, good_w) = good_vw;
     if lsegs_intersect_strong(&good_v, &good_w, other) {
-        good_vw = fix_orig_edge(good_vw, new_vw, centroid, other)?;
+        good_vw = fix_orig_edge(good_vw, uiv_vw, other)?;
     }
     let (orig_v, orig_w) = good_vw;
     let (mut good_v, mut good_w) = good_vw;
@@ -1035,22 +1035,16 @@ fn fix_edge_intersection(
 
 fn fix_orig_point(
     mut orig_v: V2d,
-    new_v: V2d,
-    centroid: V2d,
+    uiv_v: V2d,
     other: &[V2d; NVERTS],
 ) -> Result<V2d, VolExErr> {
-    let delta = (new_v - centroid).scale(0.01);
-    // let delta = if orig_v.close_to(&new_v, 1e-4) {
-    //     (new_v - centroid).scale(0.01)
-    // } else {
-    //     (new_v - orig_v).scale(0.25)
-    // };
+    let delta_v = uiv_v.scale(0.05);
     let mut n = 1.0;
     while is_point_in_poly(&orig_v, None, other) {
-        orig_v = orig_v - delta.scale(n);
+        orig_v = orig_v + delta_v.scale(n);
         n += 1.0;
 
-        if n > 100.0 {
+        if n > 10.0 {
             return Err(VolExErr::OldVert(
                 format!("could not fix orig point in polygon issue: orig_v: {}\nother: {}", orig_v,
                                                  poly_to_string(other))));
@@ -1063,12 +1057,11 @@ fn fix_point_in_poly(
     num_iters: usize,
     mut good_v: V2d,
     mut new_v: V2d,
-    centroid: V2d,
+    uiv_v: V2d,
     other: &Poly,
 ) -> Result<V2d, VolExErr> {
     if is_point_in_poly(&good_v, Some(&other.bbox), &other.verts) {
-        good_v =
-            fix_orig_point(good_v, new_v, centroid, &other.verts)?;
+        good_v = fix_orig_point(good_v, uiv_v, &other.verts)?;
     }
     let orig_v = good_v;
     if !is_point_in_poly(&new_v, Some(&other.bbox), &other.verts) {

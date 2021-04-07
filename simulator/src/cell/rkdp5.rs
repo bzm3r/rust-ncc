@@ -1,6 +1,6 @@
 use crate::cell::states::DCoreDt;
 use crate::cell::{chemistry::RacRandState, states::Core};
-use crate::interactions::Interactions;
+use crate::interactions::{InteractionGenerator, Interactions};
 use crate::math::min_f64;
 use crate::parameters::{Parameters, WorldParameters};
 use crate::world::RkOpts;
@@ -209,7 +209,7 @@ pub fn integrate(
     f: CellDynamicsFn,
     mut init_state: Core,
     rand_state: &RacRandState,
-    interactions: &Interactions,
+    inter_gen: &InteractionGenerator,
     world_parameters: &WorldParameters,
     parameters: &Parameters,
     int_opts: RkOpts,
@@ -243,7 +243,7 @@ pub fn integrate(
             h,
             init_state,
             rand_state,
-            interactions,
+            inter_gen,
             world_parameters,
             parameters,
         );

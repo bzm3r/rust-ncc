@@ -12,7 +12,9 @@ pub mod states;
 
 use crate::cell::chemistry::RacRandState;
 use crate::cell::states::{confirm_volume_exclusion, Core};
-use crate::interactions::{Contact, Interactions};
+use crate::interactions::{
+    Contact, InteractionGenerator, Interactions,
+};
 use crate::parameters::{Parameters, WorldParameters};
 use crate::utils::pcg32::Pcg32;
 use crate::world::{EulerOpts, RkOpts};
@@ -54,136 +56,141 @@ impl Cell {
         }
     }
 
-    /// Suppose our current state is `state`. We want to determine
-    /// the next state after a time period `dt` has elapsed. We
-    /// assume `(next_state - state)/delta(t) = delta(state)`.
-    pub fn simulate_euler(
-        &self,
-        tpoint: f64,
-        interactions: &Interactions,
-        contact_data: Vec<Contact>,
-        world_parameters: &WorldParameters,
-        parameters: &Parameters,
-        rng: &mut Pcg32,
-        int_opts: EulerOpts,
-    ) -> Result<Cell, String> {
-        let mut state = self.core;
-        // Assumed normalized time by time provided in CharQuant.
-        // Therefore, we can take the time period to integrate over
-        // as 1.0.
-        let dt = 1.0 / (int_opts.num_int_steps as f64);
-        for _ in 0..int_opts.num_int_steps {
-            // d(state)/dt = dynamics_f(state) <- calculate RHS of ODE
-            let delta = Core::derivative(
-                &state,
-                &self.rac_rand,
-                &interactions,
-                world_parameters,
-                parameters,
-            );
-            state = state + delta.time_step(dt);
-            // Enforcing volume exclusion! Tricky!
-            state.strict_enforce_volume_exclusion(
-                &self.core.poly,
-                &contact_data,
-            )?;
-        }
+    // /// Suppose our current state is `state`. We want to determine
+    // /// the next state after a time period `dt` has elapsed. We
+    // /// assume `(next_state - state)/delta(t) = delta(state)`.
+    // pub fn simulate_euler(
+    //     &self,
+    //     tpoint: f64,
+    //     interactions: &Interactions,
+    //     contact_data: Vec<Contact>,
+    //     world_parameters: &WorldParameters,
+    //     parameters: &Parameters,
+    //     rng: &mut Pcg32,
+    //     int_opts: EulerOpts,
+    // ) -> Result<Cell, String> {
+    //     let mut state = self.core;
+    //     // Assumed normalized time by time provided in CharQuant.
+    //     // Therefore, we can take the time period to integrate over
+    //     // as 1.0.
+    //     let dt = 1.0 / (int_opts.num_int_steps as f64);
+    //     for _ in 0..int_opts.num_int_steps {
+    //         // d(state)/dt = dynamics_f(state) <- calculate RHS of ODE
+    //         let delta = Core::derivative(
+    //             &state,
+    //             &self.rac_rand,
+    //             &interactions,
+    //             world_parameters,
+    //             parameters,
+    //             x_adhs,
+    //             x_coas,
+    //             x_cils,
+    //             x_cals,
+    //             x_chemoas,
+    //         );
+    //         state = state + delta.time_step(dt);
+    //         // Enforcing volume exclusion! Tricky!
+    //         state.strict_enforce_volume_exclusion(
+    //             &self.core.poly,
+    //             &contact_data,
+    //         )?;
+    //     }
+    //
+    //     #[cfg(feature = "validate")]
+    //     state.validate("euler")?;
+    //
+    //     Ok(Cell {
+    //         ix: self.ix,
+    //         group_ix: self.group_ix,
+    //         core: state,
+    //         rac_rand: self.rac_rand.update(
+    //             tpoint + 1.0,
+    //             rng,
+    //             parameters,
+    //         ),
+    //     })
+    // }
 
-        #[cfg(feature = "validate")]
-        state.validate("euler")?;
-
-        Ok(Cell {
-            ix: self.ix,
-            group_ix: self.group_ix,
-            core: state,
-            rac_rand: self.rac_rand.update(
-                tpoint + 1.0,
-                rng,
-                parameters,
-            ),
-        })
-    }
-
-    /// Suppose our current state is `state`. We want to determine
-    /// the next state after a time period `dt` has elapsed. We
-    /// assume `(next_state - state)/delta(t) = delta(state)`.
-    pub fn simulate_euler_debug(
-        &self,
-        interactions: &Interactions,
-        contact_data: Vec<Contact>,
-        world_parameters: &WorldParameters,
-        parameters: &Parameters,
-        int_opts: EulerOpts,
-    ) -> Result<Vec<Cell>, String> {
-        // println!("cell_ix: {}", cell_ix);
-        let mut r: Vec<Cell> =
-            Vec::with_capacity(int_opts.num_int_steps as usize);
-        let mut state = self.core;
-        let dt = 1.0 / (int_opts.num_int_steps as f64);
-        confirm_volume_exclusion(
-            &self.core.poly,
-            &contact_data,
-            "old_vs",
-        )?;
-        // let (focus_vi, other_focus_v) = if cell_ix == 0 {
-        //     (0, contact_data[0].poly.verts[8])
-        // } else {
-        //     (8, contact_data[0].poly.verts[0])
-        // };
-        for _ in 0..int_opts.num_int_steps {
-            let delta = Core::derivative(
-                &state,
-                &self.rac_rand,
-                &interactions,
-                world_parameters,
-                parameters,
-            );
-            let old_vs = state.poly;
-            state = state + delta.time_step(dt);
-            // println!(
-            //     "before vol_ex: state.poly[{}] = {} | other: {}",
-            //     focus_vi, state.poly[focus_vi], other_focus_v
-            // );
-            // Enforcing volume exclusion! Tricky!
-            state.strict_enforce_volume_exclusion(
-                &old_vs,
-                &contact_data,
-            )?;
-            // println!(
-            //     "after vol_ex | state.poly[{}] = {} | other: {}",
-            //     focus_vi, state.poly[focus_vi], other_focus_v
-            // );
-            r.push(Cell {
-                ix: self.ix,
-                group_ix: self.group_ix,
-                core: state,
-                rac_rand: self.rac_rand,
-            })
-        }
-        #[cfg(feature = "validate")]
-        state.validate("euler")?;
-        // println!(
-        //     "final | state.poly[{}] = {} | other: {}",
-        //     focus_vi,
-        //     r.last().unwrap().core.poly[focus_vi],
-        //     other_focus_v
-        // );
-        // println!(
-        //     "final poly: {}",
-        //     poly_to_string(&r.last().unwrap().core.poly)
-        // );
-        // println!(
-        //     "other poly: {}",
-        //     poly_to_string(&contact_data[0].poly.verts)
-        // );
-        Ok(r)
-    }
+    // /// Suppose our current state is `state`. We want to determine
+    // /// the next state after a time period `dt` has elapsed. We
+    // /// assume `(next_state - state)/delta(t) = delta(state)`.
+    // pub fn simulate_euler_debug(
+    //     &self,
+    //     interactions: &Interactions,
+    //     contact_data: Vec<Contact>,
+    //     world_parameters: &WorldParameters,
+    //     parameters: &Parameters,
+    //     int_opts: EulerOpts,
+    // ) -> Result<Vec<Cell>, String> {
+    //     // println!("cell_ix: {}", cell_ix);
+    //     let mut r: Vec<Cell> =
+    //         Vec::with_capacity(int_opts.num_int_steps as usize);
+    //     let mut state = self.core;
+    //     let dt = 1.0 / (int_opts.num_int_steps as f64);
+    //     confirm_volume_exclusion(
+    //         &self.core.poly,
+    //         &contact_data,
+    //         "old_vs",
+    //     )?;
+    //     // let (focus_vi, other_focus_v) = if cell_ix == 0 {
+    //     //     (0, contact_data[0].poly.verts[8])
+    //     // } else {
+    //     //     (8, contact_data[0].poly.verts[0])
+    //     // };
+    //     for _ in 0..int_opts.num_int_steps {
+    //         let delta = Core::derivative(
+    //             &state,
+    //             &self.rac_rand,
+    //             &interactions,
+    //             world_parameters,
+    //             parameters,
+    //         );
+    //         let old_vs = state.poly;
+    //         state = state + delta.time_step(dt);
+    //         // println!(
+    //         //     "before vol_ex: state.poly[{}] = {} | other: {}",
+    //         //     focus_vi, state.poly[focus_vi], other_focus_v
+    //         // );
+    //         // Enforcing volume exclusion! Tricky!
+    //         state.strict_enforce_volume_exclusion(
+    //             &old_vs,
+    //             &contact_data,
+    //         )?;
+    //         // println!(
+    //         //     "after vol_ex | state.poly[{}] = {} | other: {}",
+    //         //     focus_vi, state.poly[focus_vi], other_focus_v
+    //         // );
+    //         r.push(Cell {
+    //             ix: self.ix,
+    //             group_ix: self.group_ix,
+    //             core: state,
+    //             rac_rand: self.rac_rand,
+    //         })
+    //     }
+    //     #[cfg(feature = "validate")]
+    //     state.validate("euler")?;
+    //     // println!(
+    //     //     "final | state.poly[{}] = {} | other: {}",
+    //     //     focus_vi,
+    //     //     r.last().unwrap().core.poly[focus_vi],
+    //     //     other_focus_v
+    //     // );
+    //     // println!(
+    //     //     "final poly: {}",
+    //     //     poly_to_string(&r.last().unwrap().core.poly)
+    //     // );
+    //     // println!(
+    //     //     "other poly: {}",
+    //     //     poly_to_string(&contact_data[0].poly.verts)
+    //     // );
+    //     Ok(r)
+    // }
 
     pub fn simulate_rkdp5(
         &self,
         tpoint: f64,
         dt: f64,
-        interactions: &Interactions,
+        inter_gen: &mut InteractionGenerator,
         contacts: Vec<Contact>,
         world_parameters: &WorldParameters,
         parameters: &Parameters,
@@ -195,7 +202,7 @@ impl Cell {
             Core::derivative,
             self.core,
             &self.rac_rand,
-            interactions,
+            inter_gen,
             world_parameters,
             parameters,
             int_opts,

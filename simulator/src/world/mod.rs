@@ -113,18 +113,13 @@ impl WorldCells {
             crs
         };
         let dt = 1.0;
-        for cells in shuffled_cells {
-            let ci = cells.ix;
-
-            let contacts = interaction_generator.get_contacts(ci);
-
-            let new_cell = cells.simulate_rkdp5(
+        for cell in shuffled_cells {
+            let new_cell = cell.simulate_rkdp5(
                 tpoint,
                 dt,
-                &interactions[ci],
-                contacts,
+                interaction_generator,
                 world_parameters,
-                &group_parameters[cells.group_ix],
+                &group_parameters[cell.group_ix],
                 rng,
                 int_opts,
             )?;
@@ -133,7 +128,8 @@ impl WorldCells {
                 new_cell.core.calc_relative_rgtp_activity(
                     &group_parameters[new_cell.group_ix],
                 );
-            interaction_generator.update(ci, &new_cell.core.poly);
+            interaction_generator
+                .update_phys_for(ci, &new_cell.core.poly);
             interactions = interaction_generator.generate(&rel_rgtps);
 
             new_cells[ci] = new_cell;
@@ -175,7 +171,8 @@ impl WorldCells {
                 int_opts,
             )?;
 
-            interaction_generator.update(ci, &new_cell.core.poly);
+            interaction_generator
+                .update_phys_for(ci, &new_cell.core.poly);
 
             new_cells[ci] = new_cell;
         }
@@ -239,7 +236,7 @@ impl WorldCells {
             }
             final_states[ci] = r[last_ix];
             interaction_generator
-                .update(ci, &final_states[ci].core.poly);
+                .update_phys_for(ci, &final_states[ci].core.poly);
         }
         Ok(out)
     }

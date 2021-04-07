@@ -155,7 +155,7 @@ pub fn calc_kgtps_rac(
     x_rands: &[f64; NVERTS],
     x_coas: &[f64; NVERTS],
     x_cils: &[f64; NVERTS],
-    x_chemos: &[f64; NVERTS],
+    x_chemoas: &[f64; NVERTS],
     x_cals: &[f64; NVERTS],
     kgtp_rac_base: f64,
     kgtp_rac_auto: f64,
@@ -178,7 +178,7 @@ pub fn calc_kgtps_rac(
         let auto_factor = {
             let af =
                 hill_function3(halfmax_rac_conc, conc_rac_acts[i])
-                    * (1.0 + x_chemos[i]);
+                    * (1.0 + x_chemoas[i]);
             // This comes from the Python code. It's necessary for
             // auto-activation to not blow up, but it also kind of
             // changes the shape of the sigmoid. Is this recorded

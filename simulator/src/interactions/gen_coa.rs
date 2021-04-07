@@ -28,6 +28,8 @@ pub struct CoaGenerator {
     dat: SymCcVvDat<VertexPairInfo>,
     contact_bbs: Vec<BBox>,
     contact_matrix: SymCcDat<bool>,
+    cell_polys: Vec<Poly>,
+    coa_matrix: Vec<[f64; NVERTS]>,
     params: CoaParams,
 }
 
@@ -186,55 +188,71 @@ impl CoaGenerator {
                 }
             }
         }
-        CoaGenerator {
+        let mut r = CoaGenerator {
             dat,
             contact_bbs,
             contact_matrix,
+            coa_matrix: vec![],
+            cell_polys: cell_polys.to_vec(),
             params,
-        }
+        };
+        r.gen_for_all();
+        r
     }
 
-    pub fn update(
+    pub fn update_for(
         &mut self,
-        ci: usize,
-        cell_polys: &[Poly],
+        cell_ix: usize,
+        cell_poly: Poly,
         phys_contact_generator: &PhysicalContactGenerator,
     ) {
-        let poly = cell_polys[ci];
-        let bb = poly.bbox.expand_by(self.params.halfmax_dist);
-        self.contact_bbs[ci] = bb;
+        self.cell_polys[cell_ix] = cell_poly;
+        let bb = cell_poly.bbox.expand_by(self.params.halfmax_dist);
+        self.contact_bbs[cell_ix] = bb;
         // Update contacts.
         for (oci, obb) in self.contact_bbs.iter().enumerate() {
-            if oci != ci {
-                self.contact_matrix.set(ci, oci, obb.intersects(&bb))
+            if oci != cell_ix {
+                self.contact_matrix.set(
+                    cell_ix,
+                    oci,
+                    obb.intersects(&bb),
+                )
             }
         }
-        for (vi, v) in poly.verts.iter().enumerate() {
+        for (vi, v) in
+            self.cell_polys[cell_ix].verts.iter().enumerate()
+        {
             for (ocj, opoly) in
-                cell_polys[(ci + 1)..].iter().enumerate()
+                self.cell_polys[(cell_ix + 1)..].iter().enumerate()
             {
-                let oci = (ci + 1) + ocj;
+                let oci = (cell_ix + 1) + ocj;
                 for (ovi, ov) in opoly.verts.iter().enumerate() {
-                    if !(phys_contact_generator.min_dist_to(ci, vi)
+                    if !(phys_contact_generator
+                        .min_dist_to(cell_ix, vi)
                         < self.params.too_close_dist_sq
                         || phys_contact_generator
                             .min_dist_to(oci, ovi)
                             < self.params.too_close_dist_sq)
-                        && self.contact_matrix.get(ci, oci)
+                        && self.contact_matrix.get(cell_ix, oci)
                     {
                         let lseg = LineSeg2D::new(v, ov);
                         self.dat.set(
-                            ci,
+                            cell_ix,
                             vi,
                             oci,
                             ovi,
                             calc_pair_info(
-                                ci, vi, oci, ovi, lseg, cell_polys,
+                                cell_ix,
+                                vi,
+                                oci,
+                                ovi,
+                                lseg,
+                                &self.cell_polys,
                             ),
                         );
                     } else {
                         self.dat.set(
-                            ci,
+                            cell_ix,
                             vi,
                             oci,
                             ovi,
@@ -244,37 +262,43 @@ impl CoaGenerator {
                 }
             }
         }
+        self.gen_for(cell_ix);
     }
 
-    pub fn generate(&self) -> Vec<[f64; NVERTS]> {
+    fn gen_for_all(&mut self) {
         let num_cells = self.contact_matrix.num_cells;
-        let mut all_x_coas = vec![[0.0f64; NVERTS]; num_cells];
+        for ci in 0..num_cells {
+            self.gen_for(ci);
+        }
+    }
+
+    fn gen_for(&mut self, cell_ix: usize) {
+        let num_cells = self.contact_matrix.num_cells;
+        let mut x_coas = [0.0f64; NVERTS];
         let CoaParams {
             los_penalty,
             vertex_mag,
             distrib_exp,
             ..
         } = self.params;
-        for (ci, x_coas) in all_x_coas.iter_mut().enumerate() {
-            for (vi, x_coa) in x_coas.iter_mut().enumerate() {
-                for oci in 0..num_cells {
-                    if oci != ci {
-                        for ovi in 0..NVERTS {
-                            let VertexPairInfo {
-                                dist,
-                                num_intersects,
-                            } = self.dat.get(ci, vi, oci, ovi);
-                            if num_intersects < f64::INFINITY {
-                                let los_factor = 1.0
-                                    / (num_intersects + 1.0)
-                                        .powf(los_penalty);
-                                let coa_signal = (distrib_exp * dist)
-                                    .exp()
-                                    * los_factor;
-                                let additional_signal =
-                                    vertex_mag * coa_signal;
-                                *x_coa += additional_signal;
-                            }
+        for (vi, x_coa) in x_coas.iter_mut().enumerate() {
+            for oci in 0..num_cells {
+                if oci != cell_ix {
+                    for ovi in 0..NVERTS {
+                        let VertexPairInfo {
+                            dist,
+                            num_intersects,
+                        } = self.dat.get(cell_ix, vi, oci, ovi);
+                        if num_intersects < f64::INFINITY {
+                            let los_factor = 1.0
+                                / (num_intersects + 1.0)
+                                    .powf(los_penalty);
+                            let coa_signal = (distrib_exp * dist)
+                                .exp()
+                                * los_factor;
+                            let additional_signal =
+                                vertex_mag * coa_signal;
+                            *x_coa += additional_signal;
                         }
                     }
                 }
@@ -289,6 +313,10 @@ impl CoaGenerator {
         //     }
         // }
         //println!("{}", max_coa);
-        all_x_coas
+        self.coa_matrix[cell_ix] = x_coas;
+    }
+
+    pub fn fetch_for(&self, cell_ix: usize) -> [f64; NVERTS] {
+        self.coa_matrix[cell_ix]
     }
 }

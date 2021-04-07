@@ -20,7 +20,9 @@ use std::ops::{Add, Mul};
 
 const INTERSECTION_CLOSE_EPS: f64 = 1e-16;
 
-#[derive(Clone, Copy, Deserialize, Serialize)]
+#[derive(
+    Clone, Copy, Deserialize, Serialize, PartialEq, Default, Debug,
+)]
 pub struct Poly {
     pub verts: [V2d; NVERTS],
     pub edges: [LineSeg2D; NVERTS],
@@ -197,7 +199,9 @@ pub fn is_point_in_poly(
 
 /// A line segment from p0 to p1 is the set of points `q = tp + p0`,
 /// where `p = (p1 - p0)`, and `0 <= t <= 1`.
-#[derive(Clone, Copy, Serialize, Deserialize, Debug, PartialEq)]
+#[derive(
+    Clone, Copy, Serialize, Deserialize, Debug, PartialEq, Default,
+)]
 pub struct LineSeg2D {
     /// First point defining line segment.
     pub p0: V2d,
