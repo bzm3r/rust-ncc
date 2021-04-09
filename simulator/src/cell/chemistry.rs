@@ -6,7 +6,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use crate::cell::states::fmt_var_arr;
+use crate::cell::delta_cell::fmt_var_arr;
 use crate::math::hill_function3;
 use crate::parameters::Parameters;
 use crate::utils::normal::NormalDistrib;

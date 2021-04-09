@@ -7,7 +7,7 @@ pub mod py_comp;
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-use crate::cell::states::Core;
+use crate::cell::delta_cell::Core;
 use crate::cell::Cell;
 use crate::exp_setup::{CellGroup, Experiment};
 use crate::hardio::AsyncWriter;
@@ -128,8 +128,10 @@ impl WorldCells {
                 new_cell.core.calc_relative_rgtp_activity(
                     &group_parameters[new_cell.group_ix],
                 );
-            interaction_generator
-                .update_phys_for(ci, &new_cell.core.poly);
+            interaction_generator.update_and_fetch_phys_factors_for(
+                ci,
+                &new_cell.core.poly,
+            );
             interactions = interaction_generator.generate(&rel_rgtps);
 
             new_cells[ci] = new_cell;
@@ -171,8 +173,10 @@ impl WorldCells {
                 int_opts,
             )?;
 
-            interaction_generator
-                .update_phys_for(ci, &new_cell.core.poly);
+            interaction_generator.update_and_fetch_phys_factors_for(
+                ci,
+                &new_cell.core.poly,
+            );
 
             new_cells[ci] = new_cell;
         }
@@ -235,8 +239,10 @@ impl WorldCells {
                     *this_interactions;
             }
             final_states[ci] = r[last_ix];
-            interaction_generator
-                .update_phys_for(ci, &final_states[ci].core.poly);
+            interaction_generator.update_and_fetch_phys_factors_for(
+                ci,
+                &final_states[ci].core.poly,
+            );
         }
         Ok(out)
     }
@@ -399,7 +405,7 @@ impl World {
             let parameters = &group_params[group_ix];
             let mut cell_rng = Pcg32::seed_from_u64(rng.next_u64());
             // Create a new cell.
-            cells.push(Cell::new(
+            cells.push(Cell::new_from_core(
                 cell_ix,
                 group_ix,
                 cell_core_states[cell_ix],

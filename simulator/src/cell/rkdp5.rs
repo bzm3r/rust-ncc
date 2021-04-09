@@ -1,17 +1,18 @@
-use crate::cell::states::DCoreDt;
-use crate::cell::{chemistry::RacRandState, states::Core};
+use crate::cell::delta_cell::DCellDt;
+use crate::cell::{chemistry::RacRandState, delta_cell::Core};
 use crate::interactions::{InteractionGenerator, Interactions};
 use crate::math::min_f64;
+use crate::math::v2d::V2d;
 use crate::parameters::{Parameters, WorldParameters};
 use crate::world::RkOpts;
+use crate::NVERTS;
 
 type CellDynamicsFn = fn(
     state: &Core,
     rac_random_state: &RacRandState,
-    interactions: &Interactions,
     world_parameters: &WorldParameters,
     parameters: &Parameters,
-) -> DCoreDt;
+) -> DCellDt;
 
 // A0s are all zeros
 const A1: f64 = 1.0 / 5.0;
@@ -80,13 +81,13 @@ pub struct Solution {
 }
 
 pub struct Ks {
-    k0: DCoreDt,
-    k1: DCoreDt,
-    k2: DCoreDt,
-    k3: DCoreDt,
-    k4: DCoreDt,
-    k5: DCoreDt,
-    k6: DCoreDt,
+    k0: DCellDt,
+    k1: DCellDt,
+    k2: DCellDt,
+    k3: DCellDt,
+    k4: DCellDt,
+    k5: DCellDt,
+    k6: DCellDt,
 }
 
 impl Ks {
@@ -95,39 +96,21 @@ impl Ks {
         h: f64,
         init_state: Core,
         rand_state: &RacRandState,
-        inter_state: &Interactions,
         world_parameters: &WorldParameters,
         parameters: &Parameters,
     ) -> Ks {
-        let k0 = f(
-            &init_state,
-            rand_state,
-            inter_state,
-            world_parameters,
-            parameters,
-        );
+        let k0 =
+            f(&init_state, rand_state, world_parameters, parameters);
 
         let k1 = {
             let kp = init_state + h * k0.time_step(A1);
-            f(
-                &kp,
-                rand_state,
-                inter_state,
-                world_parameters,
-                parameters,
-            )
+            f(&kp, rand_state, world_parameters, parameters)
         };
 
         let k2 = {
             let kp = init_state
                 + h * (k0.time_step(A2[0]) + k1.time_step(A2[1]));
-            f(
-                &kp,
-                rand_state,
-                inter_state,
-                world_parameters,
-                parameters,
-            )
+            f(&kp, rand_state, world_parameters, parameters)
         };
 
         let k3 = {
@@ -135,13 +118,7 @@ impl Ks {
                 + h * (k0.time_step(A3[0])
                     + k1.time_step(A3[1])
                     + k2.time_step(A3[2]));
-            f(
-                &kp,
-                rand_state,
-                inter_state,
-                world_parameters,
-                parameters,
-            )
+            f(&kp, rand_state, world_parameters, parameters)
         };
 
         let k4 = {
@@ -150,13 +127,7 @@ impl Ks {
                     + k1.time_step(A4[1])
                     + k2.time_step(A4[2])
                     + k3.time_step(A4[3]));
-            f(
-                &kp,
-                rand_state,
-                inter_state,
-                world_parameters,
-                parameters,
-            )
+            f(&kp, rand_state, world_parameters, parameters)
         };
 
         let k5 = {
@@ -166,13 +137,7 @@ impl Ks {
                     + k2.time_step(A5[2])
                     + k3.time_step(A5[3])
                     + k4.time_step(A5[4]));
-            f(
-                &kp,
-                rand_state,
-                inter_state,
-                world_parameters,
-                parameters,
-            )
+            f(&kp, rand_state, world_parameters, parameters)
         };
 
         let k6 = {
@@ -183,13 +148,7 @@ impl Ks {
                     + k3.time_step(A6[3])
                     + k4.time_step(A6[4])
                     + k5.time_step(A6[5]));
-            f(
-                &kp,
-                rand_state,
-                inter_state,
-                world_parameters,
-                parameters,
-            )
+            f(&kp, rand_state, world_parameters, parameters)
         };
 
         Ks {
@@ -243,7 +202,6 @@ pub fn integrate(
             h,
             init_state,
             rand_state,
-            inter_gen,
             world_parameters,
             parameters,
         );
@@ -279,6 +237,7 @@ pub fn integrate(
         if error <= 1.0 {
             if try_as_last_iter {
                 assert!((h - dt).abs() < f64::EPSILON);
+                next_state.update_phys_factors(inter_gen);
                 return Solution {
                     state: Ok(next_state),
                     num_rejections,
@@ -286,6 +245,7 @@ pub fn integrate(
                 };
             } else {
                 fac_max = FAC_MAX;
+                next_state.update_phys_factors(inter_gen);
                 init_state = next_state;
                 if h + h_new > dt {
                     h_new = dt - h;

@@ -7,6 +7,8 @@ use crate::cell::mechanics::{
     calc_cyto_forces, calc_edge_forces, calc_edge_vecs,
     calc_rgtp_forces,
 };
+use crate::cell::Cell;
+use crate::interactions::gen_phys::PhysContactFactors;
 use crate::interactions::{Contact, RelativeRgtpActivity};
 use crate::math::geometry::{
     is_point_in_poly, lsegs_intersect, lsegs_intersect_strong,
@@ -22,32 +24,17 @@ use std::fmt;
 use std::fmt::Display;
 use std::ops::{Add, Div, Mul, Sub};
 
-/// `CoreState` contains all the variables that are simulated between geometric
-/// updates. They are simulated using ODEs which are then integrated using
-/// either the Euler method or Runge-Kutta Dormand-Prince 5 (Matlab's `ode45`).
-#[derive(
-    Copy, Clone, Debug, Default, Deserialize, Serialize, PartialEq,
-)]
-pub struct Core {
-    /// Polygon representing cell shape.
-    pub poly: [V2d; NVERTS],
-    /// Fraction of Rac1 active at each vertex.
-    pub rac_acts: [f64; NVERTS],
-    /// Fraction of Rac1 inactive at each vertex.
-    pub rac_inacts: [f64; NVERTS],
-    /// Fraction of RhoA active at each vertex.
-    pub rho_acts: [f64; NVERTS],
-    /// Fraction of RhoA inactive at each vertex.
-    pub rho_inacts: [f64; NVERTS],
-    /// Geometric state resulting from this core state.
-    pub geom: GeomState,
-}
-
 /// `DCoreDt` is the derivative of `CoreState`.
 #[derive(
     Copy, Clone, Debug, Default, Deserialize, Serialize, PartialEq,
 )]
-pub struct DCoreDt {
+pub struct DCellDt {
+    /// Index of cell within world.
+    pub ix: usize,
+    /// Index of group that cell belongs to.
+    pub group_ix: usize,
+    /// State of Random Rac1 activity that affected this cell.
+    pub rac_rand: RacRandState,
     /// Polygon representing cell shape.
     pub poly: [V2d; NVERTS],
     /// Fraction of Rac1 active at each vertex.
@@ -58,16 +45,22 @@ pub struct DCoreDt {
     pub rho_acts: [f64; NVERTS],
     /// Fraction of RhoA inactive at each vertex.
     pub rho_inacts: [f64; NVERTS],
+    /// COA factor at each vertex.
+    pub x_coas: [f64; NVERTS],
+    /// CIL factor at each vertex.
+    pub x_cils: [f64; NVERTS],
+    /// CAL factor at each vertex,
+    pub x_cals: [f64; NVERTS],
+    /// Chemoattractant factor at each vertex,
+    pub x_chemoas: [f64; NVERTS],
+    /// Adhesive force acting at each vertex,
+    pub x_adhs: [V2d; NVERTS],
+    /// Geometric state due to vertex positions.
+    pub geom: GeomState,
 }
 
-impl From<&Core> for DCoreDt {
-    fn from(_: &Core) -> Self {
-        unimplemented!()
-    }
-}
-
-impl DCoreDt {
-    pub fn time_step(&self, dt: f64) -> Core {
+impl DCellDt {
+    pub fn time_step(&self, dt: f64) -> Cell {
         let mut poly = [V2d::default(); NVERTS];
         let mut rac_acts = [0.0_f64; NVERTS];
         let mut rac_inacts = [0.0_f64; NVERTS];
@@ -82,7 +75,9 @@ impl DCoreDt {
             rho_inacts[i] = dt * self.rho_inacts[i];
         }
 
-        Core::new(poly, rac_acts, rac_inacts, rho_acts, rho_inacts)
+        Cell::update_core(
+            poly, rac_acts, rac_inacts, rho_acts, rho_inacts,
+        )
     }
 }
 
@@ -440,6 +435,15 @@ impl Display for ChemState {
 }
 
 impl Core {
+    pub fn update_phys_factors(
+        &mut self,
+        phys_contact_factors: PhysContactFactors,
+    ) {
+        self.x_cils = phys_contact_factors.x_cils;
+        self.x_cals = phys_contact_factors.x_cals;
+        self.x_adhs = phys_contact_factors.x_adhs;
+    }
+
     pub fn calc_mech_state(
         &self,
         parameters: &Parameters,
@@ -634,7 +638,7 @@ impl Core {
         x_cils: [f64; NVERTS],
         x_cals: [f64; NVERTS],
         x_chemoas: [f64; NVERTS],
-    ) -> DCoreDt {
+    ) -> DCellDt {
         //TODO: is it necessary to recalculate chem/mech/geom states in
         // `derivative`, if we have saved this info in the `Cell` struct?
         // What is the importance of `interactions`---might it have changed
@@ -649,7 +653,7 @@ impl Core {
             x_cals,
             x_chemoas,
         );
-        let mut delta = DCoreDt::default();
+        let mut delta = DCellDt::default();
         for i in 0..NVERTS {
             // rate of rac deactivation * current fraction of rac active
             let inactivated_rac =
@@ -715,6 +719,9 @@ impl Core {
             init_rac.inactive,
             init_rho.active,
             init_rho.inactive,
+            PhysContactFactors::default(),
+            [0.0; NVERTS],
+            [0.0; NVERTS],
         )
     }
 
@@ -724,6 +731,9 @@ impl Core {
         rac_inacts: [f64; NVERTS],
         rho_acts: [f64; NVERTS],
         rho_inacts: [f64; NVERTS],
+        phys_contact_factors: PhysContactFactors,
+        x_coas: [f64; NVERTS],
+        x_chemoas: [f64; NVERTS],
     ) -> Core {
         let geom = GeomState::from(&poly);
         Core {
@@ -732,6 +742,11 @@ impl Core {
             rac_inacts,
             rho_acts,
             rho_inacts,
+            x_coas,
+            x_cils: phys_contact_factors.x_cils,
+            x_cals: phys_contact_factors.x_cals,
+            x_chemoas,
+            x_adhs: phys_contact_factors.x_adhs,
             geom,
         }
     }

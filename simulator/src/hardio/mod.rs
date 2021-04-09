@@ -1,7 +1,7 @@
 pub mod py_comp;
 
 use crate::cell::chemistry::RacRandState;
-use crate::cell::states::{ChemState, Core, MechState};
+use crate::cell::delta_cell::{ChemState, Core, MechState};
 use crate::cell::Cell;
 use crate::interactions::Interactions;
 use crate::parameters::Parameters;

@@ -14,7 +14,7 @@ pub mod dat_sym4d;
 mod dat_utils;
 pub mod gen_bdry;
 pub mod gen_chemoa;
-mod gen_phys;
+pub mod gen_phys;
 
 use crate::interactions::dat_sym2d::SymCcDat;
 use crate::interactions::gen_bdry::BdryEffectGenerator;
@@ -139,7 +139,7 @@ impl InteractionGenerator {
         }
     }
 
-    pub fn update_phys_for(
+    pub fn update_and_fetch_phys_factors_for(
         &mut self,
         cell_ix: usize,
         cell_poly: Poly,
@@ -191,6 +191,8 @@ impl InteractionGenerator {
             })
             .collect()
     }
+
+    pub fn fetch_for(&self, ci: usize) -> Interactions {}
 }
 
 /// Generate a `SymCcDat<bool>` which records whether two cells

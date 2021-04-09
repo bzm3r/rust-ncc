@@ -6,18 +6,22 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 pub mod chemistry;
+pub mod delta_cell;
 pub mod mechanics;
 pub mod rkdp5;
-pub mod states;
 
 use crate::cell::chemistry::RacRandState;
-use crate::cell::states::{confirm_volume_exclusion, Core};
+use crate::cell::delta_cell::{
+    confirm_volume_exclusion, Core, GeomState,
+};
 use crate::interactions::{
     Contact, InteractionGenerator, Interactions,
 };
+use crate::math::v2d::V2d;
 use crate::parameters::{Parameters, WorldParameters};
 use crate::utils::pcg32::Pcg32;
 use crate::world::{EulerOpts, RkOpts};
+use crate::NVERTS;
 use serde::{Deserialize, Serialize};
 
 /// Cell state structure.
@@ -29,17 +33,36 @@ pub struct Cell {
     pub ix: usize,
     /// Index of group that cell belongs to.
     pub group_ix: usize,
-    /// State of Random Rac1 activity that affected `core`.
+    /// State of Random Rac1 activity that affected this cell.
     pub rac_rand: RacRandState,
-    /// Core state of the cell (position, Rho GTPase).
-    pub core: Core,
+    /// Polygon representing cell shape.
+    pub poly: [V2d; NVERTS],
+    /// Fraction of Rac1 active at each vertex.
+    pub rac_acts: [f64; NVERTS],
+    /// Fraction of Rac1 inactive at each vertex.
+    pub rac_inacts: [f64; NVERTS],
+    /// Fraction of RhoA active at each vertex.
+    pub rho_acts: [f64; NVERTS],
+    /// Fraction of RhoA inactive at each vertex.
+    pub rho_inacts: [f64; NVERTS],
+    /// COA factor at each vertex.
+    pub x_coas: [f64; NVERTS],
+    /// CIL factor at each vertex.
+    pub x_cils: [f64; NVERTS],
+    /// CAL factor at each vertex,
+    pub x_cals: [f64; NVERTS],
+    /// Chemoattractant factor at each vertex,
+    pub x_chemoas: [f64; NVERTS],
+    /// Adhesive force acting at each vertex,
+    pub x_adhs: [V2d; NVERTS],
+    /// Geometric state due to vertex positions.
+    pub geom: GeomState,
 }
 
 impl Cell {
     pub fn new(
         ix: usize,
         group_ix: usize,
-        core: Core,
         parameters: &Parameters,
         rng: &mut Pcg32,
     ) -> Cell {
@@ -53,6 +76,32 @@ impl Cell {
             group_ix,
             core,
             rac_rand,
+        }
+    }
+
+    pub fn update_core(
+        &self,
+        poly: [V2d; NVERTS],
+        rac_acts: [f64; NVERTS],
+        rac_inacts: [f64; NVERTS],
+        rho_acts: [f64; NVERTS],
+        rho_inacts: [f64; NVERTS],
+    ) -> Cell {
+        Cell {
+            ix: self.ix,
+            group_ix: self.group_ix,
+            rac_rand: self.rac_rand,
+            poly,
+            rac_acts,
+            rac_inacts,
+            rho_acts,
+            rho_inacts,
+            x_coas: self.x_coas,
+            x_cils: self.x_cils,
+            x_cals: self.x_cals,
+            x_chemoas: self.x_chemoas,
+            x_adhs: self.x_adhs,
+            geom: self.geom,
         }
     }
 

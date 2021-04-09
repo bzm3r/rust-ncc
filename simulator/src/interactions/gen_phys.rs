@@ -158,6 +158,9 @@ pub struct PhysicalContactGenerator {
     pub params: PhysicalContactParams,
 }
 
+#[derive(
+    Clone, Copy, Deserialize, Serialize, PartialEq, Default, Debug,
+)]
 pub struct PhysContactFactors {
     pub x_adhs: [V2d; NVERTS],
     pub x_cils: [f64; NVERTS],
