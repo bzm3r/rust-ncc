@@ -268,6 +268,8 @@ class SimulationData:
         if self.chem_attr_params is not None:
             self.chem_center = np.array([self.chem_attr_params["center"]["x"],
                                          self.chem_attr_params["center"]["y"]])
+        else:
+            self.chem_center = None
         self.char_t = world_info["char_quants"]["t"]
         self.tpoints = [s["cells"][0]["tpoint"] * self.char_t for s in
                         snapshots]

@@ -15,4 +15,4 @@ exclude = [
 ]
 
 [profile.release]
-debug = 2
+debug = true

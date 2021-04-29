@@ -91,6 +91,7 @@ impl WorldCells {
         &self,
         tpoint: f64,
         rng: &mut Pcg32,
+        _balloon_factor: f64,
         world_parameters: &WorldParameters,
         group_parameters: &[Parameters],
         interaction_generator: &mut InteractionGenerator,
@@ -115,14 +116,13 @@ impl WorldCells {
         for cells in shuffled_cells {
             let ci = cells.ix;
 
-            let contact_data =
-                interaction_generator.get_contact_data(ci);
+            let contacts = interaction_generator.get_contacts(ci);
 
             let new_cell = cells.simulate_rkdp5(
                 tpoint,
                 dt,
                 &interactions[ci],
-                contact_data,
+                contacts,
                 world_parameters,
                 &group_parameters[cells.group_ix],
                 rng,
@@ -163,8 +163,7 @@ impl WorldCells {
         };
         for cell in shuffled_cells {
             let ci = cell.ix;
-            let contact_data =
-                interaction_generator.get_contact_data(ci);
+            let contact_data = interaction_generator.get_contacts(ci);
 
             let new_cell = cell.simulate_euler(
                 tpoint,
@@ -223,8 +222,7 @@ impl WorldCells {
             let interactions =
                 interaction_generator.generate(&rel_rgtps);
             let ci = cell.ix;
-            let contact_data =
-                interaction_generator.get_contact_data(ci);
+            let contact_data = interaction_generator.get_contacts(ci);
             let this_interactions = &interactions[ci];
 
             let r = cell.simulate_euler_debug(
@@ -291,8 +289,8 @@ fn gen_poly(centroid: &V2d, radius: f64) -> [V2d; NVERTS] {
         let vf = (vix as f64) / (NVERTS as f64);
         let theta = 2.0 * PI * vf;
         r[vix] = V2d {
-            x: centroid.x + theta.cos() * radius,
-            y: centroid.y + theta.sin() * radius,
+            x: centroid.x + theta.cos() * 0.98 * radius,
+            y: centroid.y + theta.sin() * 0.98 * radius,
         };
     });
     r
@@ -501,6 +499,11 @@ impl World {
                 .simulate_rkdp5(
                     self.state.tpoint,
                     &mut self.state.rng,
+                    self.interaction_generator
+                        .phys_contact_generator
+                        .params
+                        .crl_one_at
+                        * 0.25,
                     &self.params,
                     &self.cell_group_params,
                     &mut self.interaction_generator,
@@ -635,7 +638,8 @@ impl World {
     }
 
     pub fn final_save(&mut self, save_cbor: bool, reason: &str) {
-        if let Some(writer) = self.writer.take() {
+        if let Some(mut writer) = self.writer.take() {
+            writer.push(self.state.clone());
             writer.finish(save_cbor, reason);
         }
     }

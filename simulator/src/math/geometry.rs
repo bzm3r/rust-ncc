@@ -27,6 +27,13 @@ pub struct Poly {
     pub bbox: BBox,
 }
 
+#[derive(Clone, Deserialize, Serialize)]
+pub struct ExpandedPoly {
+    pub verts: Vec<V2d>,
+    pub edges: Vec<LineSeg2D>,
+    pub bbox: BBox,
+}
+
 impl Poly {
     pub fn gen_edges(verts: &[V2d; NVERTS]) -> [LineSeg2D; NVERTS] {
         let mut edges =
@@ -49,6 +56,7 @@ impl Poly {
     pub fn from_verts(verts: &[V2d; NVERTS]) -> Poly {
         let bbox = BBox::from_points(verts);
         let edges = Poly::gen_edges(verts);
+
         Poly {
             verts: *verts,
             edges,
@@ -587,4 +595,40 @@ pub fn lsegs_intersect(
             .intersects(&BBox::from_point_pair(&other.p0, &other.p1)),
         (_, _, _, _) => true,
     }
+}
+
+/// Uses the cross-product to check if a pair of points defining a line segment intersects
+/// a line segment.
+pub fn lsegs_intersect_strong(
+    p0: &V2d,
+    p1: &V2d,
+    other: &LineSeg2D,
+) -> bool {
+    let is_left_results = (
+        is_left_pointwise(p0, p1, &other.p0),
+        is_left_pointwise(p0, p1, &other.p1),
+        is_left_pointwise(&other.p0, &other.p1, p0),
+        is_left_pointwise(&other.p0, &other.p1, p1),
+    );
+    match is_left_results {
+        (IsLeftResult::Left, IsLeftResult::Left, _, _)
+        | (IsLeftResult::Right, IsLeftResult::Right, _, _)
+        | (_, _, IsLeftResult::Left, IsLeftResult::Left)
+        | (_, _, IsLeftResult::Right, IsLeftResult::Right) => false,
+        (
+            IsLeftResult::Collinear,
+            IsLeftResult::Collinear,
+            IsLeftResult::Collinear,
+            IsLeftResult::Collinear,
+        ) => false,
+        (_, _, _, _) => true,
+    }
+}
+
+pub fn calc_centroid(vs: &[V2d]) -> V2d {
+    let avg_x =
+        vs.iter().map(|v| v.x).sum::<f64>() / (vs.len() as f64);
+    let avg_y =
+        vs.iter().map(|v| v.y).sum::<f64>() / (vs.len() as f64);
+    V2d { x: avg_x, y: avg_y }
 }

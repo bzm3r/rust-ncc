@@ -72,7 +72,7 @@ pub static RAW_PARAMS: Lazy<RawParameters> = Lazy::new(|| {
         halfmax_rgtp_frac: 0.4,
         lm_ss: Stress(10.0).kilo(),
         rho_friction: 0.2,
-        stiffness_cyto: Force(1e-7),
+        stiffness_cyto: Force(1e-5),
         diffusion_rgtp: rgtp_d,
         k_mem_off: Tinv(0.15),
         k_mem_on: Tinv(0.02),

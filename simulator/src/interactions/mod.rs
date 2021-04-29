@@ -97,7 +97,7 @@ pub struct InteractionGenerator {
     bdry_generator: Option<BdryEffectGenerator>,
 }
 
-pub struct ContactData {
+pub struct Contact {
     pub oci: usize,
     pub poly: Poly,
 }
@@ -204,10 +204,10 @@ impl InteractionGenerator {
             .collect()
     }
 
-    pub fn get_contact_data(&self, ci: usize) -> Vec<ContactData> {
+    pub fn get_contacts(&self, ci: usize) -> Vec<Contact> {
         self.get_physical_contacts(ci)
             .into_iter()
-            .map(|oci| ContactData {
+            .map(|oci| Contact {
                 oci,
                 poly: self.cell_polys[oci],
             })
