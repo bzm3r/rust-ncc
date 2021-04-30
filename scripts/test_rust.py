@@ -7,7 +7,7 @@ import os
 import subprocess
 import orjson
 
-run_experiments = False
+run_experiments = True
 exec_mode = "release"
 root_dir = os.getcwd()
 exp_jsons = ["nine_cell_adh_6_chem_att"]

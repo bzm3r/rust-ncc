@@ -11,8 +11,8 @@ use crate::interactions::{
     Contact, Interactions, RelativeRgtpActivity,
 };
 use crate::math::geometry::{
-    calc_centroid, is_point_in_poly, lsegs_intersect,
-    lsegs_intersect_strong, LineSeg2D, Poly,
+    is_point_in_poly, lsegs_intersect, lsegs_intersect_strong,
+    LineSeg2D, Poly,
 };
 use crate::math::v2d::{poly_to_string, SqP2d, V2d};
 use crate::math::{hill_function3, max_f64};
@@ -867,16 +867,16 @@ impl Core {
         old_vs: &[V2d; NVERTS],
         contacts: &[Contact],
     ) -> Result<(), VolExErr> {
-        let centroid: V2d = calc_centroid(old_vs);
         for vi in 0..NVERTS {
             let v = self.poly[vi];
             let old_v = old_vs[vi];
+            let uiv_v = self.geom.unit_in_vecs[vi];
             for contact in contacts {
                 self.poly[vi] = fix_point_in_poly(
                     3,
                     old_v,
                     v,
-                    centroid,
+                    uiv_v,
                     &contact.poly,
                 )?;
             }
@@ -888,13 +888,15 @@ impl Core {
             let w = self.poly[wi];
             let old_v = old_vs[vi];
             let old_w = old_vs[wi];
+            let uiv_v = self.geom.unit_in_vecs[vi];
+            let uiv_w = self.geom.unit_in_vecs[wi];
             for contact in contacts {
                 for other in contact.poly.edges.iter() {
                     let (fixed_v, fixed_w) = fix_edge_intersection(
                         3,
                         (old_v, old_w),
                         (v, w),
-                        centroid,
+                        (uiv_v, uiv_w),
                         other,
                     )?;
                     self.poly[vi] = fixed_v;
@@ -964,18 +966,19 @@ impl From<VolExErr> for String {
 fn fix_orig_edge(
     orig_vw: (V2d, V2d),
     new_vw: (V2d, V2d),
-    centroid: V2d,
+    fix_vw: (V2d, V2d),
     other: &LineSeg2D,
 ) -> Result<(V2d, V2d), VolExErr> {
     let (init_v, init_w) = orig_vw;
     let (new_v, new_w) = new_vw;
-    let delta_v = (new_v - centroid).scale(0.01);
+    let (fix_v, fix_w) = fix_vw;
+    let delta_v = (new_v - fix_v).scale(0.01);
     // let delta_v = if init_v.close_to(&new_v, 1e-4) {
     //     (new_v - centroid).scale(0.01)
     // } else {
     //     (new_v - init_v).scale(0.25)
     // };
-    let delta_w = (new_w - centroid).scale(0.01);
+    let delta_w = (new_w - fix_w).scale(0.01);
     // let delta_w = if init_w.close_to(&new_w, 1e-4) {
     //     (new_w - centroid).scale(0.01)
     // } else {
@@ -1000,7 +1003,7 @@ fn fix_edge_intersection(
     num_iters: usize,
     mut good_vw: (V2d, V2d),
     new_vw: (V2d, V2d),
-    centroid: V2d,
+    fix_vw: (V2d, V2d),
     other: &LineSeg2D,
 ) -> Result<(V2d, V2d), VolExErr> {
     let (mut new_v, mut new_w) = new_vw;
@@ -1009,7 +1012,7 @@ fn fix_edge_intersection(
     }
     let (good_v, good_w) = good_vw;
     if lsegs_intersect_strong(&good_v, &good_w, other) {
-        good_vw = fix_orig_edge(good_vw, new_vw, centroid, other)?;
+        good_vw = fix_orig_edge(good_vw, new_vw, fix_vw, other)?;
     }
     let (orig_v, orig_w) = good_vw;
     let (mut good_v, mut good_w) = good_vw;
