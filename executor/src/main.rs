@@ -10,7 +10,6 @@ use clap::{App, AppSettings, Arg};
 use simulator::exp_setup::exp_parser::ExperimentArgs;
 use simulator::{exp_setup, world, Directories};
 use std::convert::TryFrom;
-use std::env::current_dir;
 use std::path::PathBuf;
 use std::time::Instant;
 
@@ -41,14 +40,16 @@ fn main() {
         .setting(AppSettings::TrailingVarArg)
         .get_matches();
 
-    let cfg_path = parsed_args
-        .value_of("config")
-        .map(PathBuf::from)
-        .unwrap();
+    let cfg_path =
+        parsed_args.value_of("config").map(PathBuf::from).unwrap();
 
     let directories = Directories::try_from(&cfg_path);
     if let Err(e) = directories {
-        panic!("Error loading configuration file ({}): {:?}", &cfg_path.display(), e);
+        panic!(
+            "Error loading configuration file ({}): {:?}",
+            &cfg_path.display(),
+            e
+        );
     }
     let directories = directories.unwrap();
 
@@ -64,7 +65,11 @@ fn main() {
         let args = ExperimentArgs::try_from(fp);
         match args {
             Ok(args) => exp_json_args.push(args),
-            Err(e) => panic!("Failed to load experiment ({}): {:?}", fp.display(), e),
+            Err(e) => panic!(
+                "Failed to load experiment ({}): {:?}",
+                fp.display(),
+                e
+            ),
         }
     }
 
