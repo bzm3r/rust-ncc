@@ -38,3 +38,8 @@
 /playground/cbor_read_write/Cargo.lock
 /playground/modify_derive_test/Cargo.lock
 /executor/Cargo.lock
+
+# virtual environment
+venv
+
+
