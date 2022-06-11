@@ -13,6 +13,7 @@ use serde_cbor::ser::IoWrite;
 use std::borrow::Borrow;
 use std::fs::File;
 use std::fs::OpenOptions;
+use std::io::{BufReader, BufWriter};
 use std::path::{Path, PathBuf};
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::thread::JoinHandle;
@@ -63,13 +64,15 @@ pub fn get_read_file(
 }
 
 pub fn save_binc_to_cbor(binc_path: &PathBuf, cbor_path: &PathBuf) {
-    let mut src = OpenOptions::new().read(true).open(binc_path).unwrap();
+    let src = OpenOptions::new().read(true).open(binc_path).unwrap();
+    let mut src = BufReader::new(src);
     let dst = OpenOptions::new()
         .write(true)
         .create(true)
         .truncate(true)
         .open(cbor_path)
         .unwrap();
+    let dst = BufWriter::new(dst);
     let mut serializer = serde_cbor::Serializer::new(IoWrite::new(dst));
     let world_info: WorldInfo = deserialize_from(&mut src).unwrap();
     world_info.serialize(&mut serializer).unwrap();
@@ -84,6 +87,15 @@ pub fn save_binc_to_cbor(binc_path: &PathBuf, cbor_path: &PathBuf) {
             Err(err) => {
                 if let bincode::ErrorKind::Io(std_err) = err.borrow() {
                     if let io::ErrorKind::UnexpectedEof = std_err.kind() {
+                        // Note: Ideally we would want to flush the BufWriter manually instead of relying
+                        // on the automatic flush, however the cbor Write trait does NOT have the
+                        // flush method, and does not have an into_inner function... so we're stuck
+
+                        // Ideally this would work
+                        // let cbor_writer = serializer.into_inner();
+                        // if let Err(e) = Into::<io::Write>::into(cbor_writer).flush() {
+                        //     panic!("Failed to flush cbor writer: {:?}", e);
+                        // }
                         break;
                     }
                 }
