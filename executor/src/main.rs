@@ -10,7 +10,6 @@ use clap::{AppSettings, Arg, Command};
 use simulator::exp_setup::exp_parser::ExperimentArgs;
 use simulator::{exp_setup, world, Directories};
 use std::convert::TryFrom;
-use std::env::current_dir;
 use std::path::PathBuf;
 use std::time::Instant;
 
@@ -24,8 +23,9 @@ fn main() {
             Arg::new("config")
                 .short('c')
                 .long("cfg")
-                .takes_value(true)
-                .help("path to cfg.json file containing `output`, `experiment` and `py_main` dirs"),
+                .required(true)
+                .help("Configuration file. A default config can be found in ./cfg.json")
+                .takes_value(true),
         )
         .arg(
             Arg::new("experiments")
@@ -34,35 +34,39 @@ fn main() {
                 .required(true)
                 .takes_value(true)
                 .multiple_occurrences(true)
+                .help("Experiment(s) to be run. Example experiments can be found in ./example-experiments")
                 .min_values(1),
         )
         .get_matches();
 
-    let default_cfg_path: PathBuf =
-        [current_dir().unwrap(), PathBuf::from("cfg")]
-            .iter()
-            .collect();
-    let cfg_path = parsed_args
-        .value_of("config")
-        .map_or_else(|| default_cfg_path, PathBuf::from);
-    let directories = Directories::try_from(&cfg_path)
-        .map_or_else(|e| panic!("{}: {:?}", &cfg_path.display(), e), |d| d);
+    let cfg_path = parsed_args.value_of("config").map(PathBuf::from).unwrap();
 
-    let exp_jsons: Vec<String> = parsed_args
+    let directories = Directories::try_from(&cfg_path);
+    if let Err(e) = directories {
+        panic!(
+            "Error loading configuration file ({}): {:?}",
+            &cfg_path.display(),
+            e
+        );
+    }
+    let directories = directories.unwrap();
+
+    let exp_jsons: Vec<PathBuf> = parsed_args
         .values_of("experiments")
         .unwrap()
-        .map(|s| s.into())
+        .map(Into::<String>::into)
+        .map(PathBuf::from)
         .collect();
 
     let mut exp_json_args = vec![];
-    for exp_json in exp_jsons.iter() {
-        let fp: PathBuf = [
-            &directories.exp,
-            &PathBuf::from(format!("{}.json", exp_json)),
-        ]
-        .iter()
-        .collect();
-        exp_json_args.push(ExperimentArgs::try_from(&fp).unwrap());
+    for fp in exp_jsons.iter() {
+        let args = ExperimentArgs::try_from(fp);
+        match args {
+            Ok(args) => exp_json_args.push(args),
+            Err(e) => {
+                panic!("Failed to load experiment ({}): {:?}", fp.display(), e)
+            }
+        }
     }
 
     for exp_args in exp_json_args {
