@@ -37,13 +37,9 @@ pub mod distrib_gens {
         distrib
     }
 
-    pub fn random(
-        rng: &mut Pcg32,
-        frac: f64,
-    ) -> [f64; NVERTS as usize] {
+    pub fn random(rng: &mut Pcg32, frac: f64) -> [f64; NVERTS as usize] {
         let mut r = [0.0; NVERTS as usize];
-        let prob_distrib: Uniform<f64> =
-            Uniform::new_inclusive(0.0, 1.0);
+        let prob_distrib: Uniform<f64> = Uniform::new_inclusive(0.0, 1.0);
         r.iter_mut().for_each(|e| {
             *e = rng.sample(prob_distrib);
         });
@@ -56,13 +52,14 @@ pub mod distrib_gens {
     ) -> [f64; NVERTS as usize] {
         //println!("marking in gen_specific: {:?}", &marked_verts);
         let mut r = [0.0; NVERTS as usize];
-        marked_verts.iter().zip(r.iter_mut()).for_each(
-            |(&marked, e)| {
+        marked_verts
+            .iter()
+            .zip(r.iter_mut())
+            .for_each(|(&marked, e)| {
                 if marked {
                     *e = 1.0;
                 }
-            },
-        );
+            });
         scaled_unitize(frac, r)
     }
 
@@ -73,22 +70,20 @@ pub mod distrib_gens {
     ) -> [f64; NVERTS as usize] {
         //println!("marking in gen_specific: {:?}", &marked_verts);
         let mut r = [0.0; NVERTS as usize];
-        let prob_distrib: Uniform<f64> =
-            Uniform::new_inclusive(0.0, 1.0);
-        marked_verts.iter().zip(r.iter_mut()).for_each(
-            |(&marked, e)| {
+        let prob_distrib: Uniform<f64> = Uniform::new_inclusive(0.0, 1.0);
+        marked_verts
+            .iter()
+            .zip(r.iter_mut())
+            .for_each(|(&marked, e)| {
                 if marked {
                     *e = rng.sample(prob_distrib);
                 }
-            },
-        );
+            });
         scaled_unitize(frac, r)
     }
 }
 
-#[derive(
-    Clone, Copy, Deserialize, Serialize, Default, Debug, PartialEq,
-)]
+#[derive(Clone, Copy, Deserialize, Serialize, Default, Debug, PartialEq)]
 pub struct RgtpDistribution {
     pub active: [f64; NVERTS],
     pub inactive: [f64; NVERTS],
@@ -99,9 +94,7 @@ impl RgtpDistribution {
         active: [f64; NVERTS],
         inactive: [f64; NVERTS],
     ) -> RgtpDistribution {
-        if active.iter().sum::<f64>() + inactive.iter().sum::<f64>()
-            > 1.0
-        {
+        if active.iter().sum::<f64>() + inactive.iter().sum::<f64>() > 1.0 {
             panic!("{}", "active + inactive > 1.0".to_string())
         } else {
             RgtpDistribution { active, inactive }
@@ -117,8 +110,8 @@ fn calc_directed_fluxes(
     let mut r = [0.0_f64; NVERTS];
     for i in 0..NVERTS {
         let plus_i = circ_ix_plus(i, NVERTS);
-        r[i] = -1.0 * rgtp_d * (conc_rgtps[plus_i] - conc_rgtps[i])
-            / edge_lens[i];
+        r[i] =
+            -1.0 * rgtp_d * (conc_rgtps[plus_i] - conc_rgtps[i]) / edge_lens[i];
     }
     r
 }
@@ -128,8 +121,7 @@ pub fn calc_net_fluxes(
     rgtp_d: f64,
     conc_rgtps: &[f64; NVERTS],
 ) -> [f64; NVERTS] {
-    let directed_fluxes =
-        calc_directed_fluxes(edge_lens, rgtp_d, conc_rgtps);
+    let directed_fluxes = calc_directed_fluxes(edge_lens, rgtp_d, conc_rgtps);
     let mut r = [0.0_f64; NVERTS];
     (0..NVERTS).for_each(|i| {
         let min_i = circ_ix_minus(i, NVERTS);
@@ -167,18 +159,15 @@ pub fn calc_kgtps_rac(
     for i in 0..nvs {
         // Base activation rate of Rac1 is increased (not multiplied!)
         // by: CAL, randomization, and co-attraction.
-        let this_x_coa =
-            if x_cils[i] > 0.0 { 0.0 } else { x_coas[i] };
-        let base = (x_cals[i] + x_rands[i] + this_x_coa + 1.0)
-            * kgtp_rac_base;
+        let this_x_coa = if x_cils[i] > 0.0 { 0.0 } else { x_coas[i] };
+        let base = (x_cals[i] + x_rands[i] + this_x_coa + 1.0) * kgtp_rac_base;
         // Auto activation rate of Rac1 is increased by
         // chemoattraction only. This is because we assume that Sdf1
         // only stabilizes existing Rac1 activity. It does not
         // generate new Rac1 activity. See SI in Merchant(2020)?
         let auto_factor = {
-            let af =
-                hill_function3(halfmax_rac_conc, conc_rac_acts[i])
-                    * (1.0 + x_chemos[i]);
+            let af = hill_function3(halfmax_rac_conc, conc_rac_acts[i])
+                * (1.0 + x_chemos[i]);
             // This comes from the Python code. It's necessary for
             // auto-activation to not blow up, but it also kind of
             // changes the shape of the sigmoid. Is this recorded
@@ -217,9 +206,8 @@ pub fn calc_kdgtps_rac(
         let base = (1.0 + x_tens + cil) * kdgtp_rac_base;
         // Effect of RhoA on Rac1, related to activity of RhoA at a
         // vertex.
-        let mutual =
-            hill_function3(halfmax_conc_rho, conc_rho_acts[i])
-                * kdgtp_rho_on_rac;
+        let mutual = hill_function3(halfmax_conc_rho, conc_rho_acts[i])
+            * kdgtp_rho_on_rac;
         kdgtps_rac[i] = base + mutual;
     }
 
@@ -245,9 +233,8 @@ pub fn calc_kgtps_rho(
                 + x_cils[circ_ix_plus(i, NVERTS)])
                 / 3.0)
             * kgtp_rho_base;
-        let auto =
-            hill_function3(halfmax_rho_thresh, conc_rho_acts[i])
-                * kgtp_rho_auto;
+        let auto = hill_function3(halfmax_rho_thresh, conc_rho_acts[i])
+            * kgtp_rho_auto;
         kgtps_rho[i] = base + auto;
     }
 
@@ -266,9 +253,8 @@ pub fn calc_kdgtps_rho(
     let mut kdgtps_rho = [0.0_f64; NVERTS];
 
     for i in 0..nvs {
-        let mutual =
-            hill_function3(halfmax_conc_rac, conc_rac_acts[i])
-                * kdgtp_rac_on_rho;
+        let mutual = hill_function3(halfmax_conc_rac, conc_rac_acts[i])
+            * kdgtp_rac_on_rho;
         kdgtps_rho[i] = kdgtp_rho_base + mutual;
     }
 
@@ -304,10 +290,7 @@ impl RacRandState {
         r
     }
 
-    pub fn new(
-        rng: &mut Pcg32,
-        parameters: &Parameters,
-    ) -> RacRandState {
+    pub fn new(rng: &mut Pcg32, parameters: &Parameters) -> RacRandState {
         let ut = Uniform::from(0.0..parameters.rand_avg_t);
         RacRandState {
             enabled: true,

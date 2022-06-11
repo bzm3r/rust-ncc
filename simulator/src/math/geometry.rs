@@ -8,8 +8,7 @@
 
 use crate::math::v2d::V2d;
 use crate::math::{
-    close_to_zero, in_unit_interval, max_f64s, min_f64s,
-    InUnitInterval,
+    close_to_zero, in_unit_interval, max_f64s, min_f64s, InUnitInterval,
 };
 use crate::utils::{circ_ix_minus, circ_ix_plus};
 use crate::NVERTS;
@@ -36,11 +35,9 @@ pub struct ExpandedPoly {
 
 impl Poly {
     pub fn gen_edges(verts: &[V2d; NVERTS]) -> [LineSeg2D; NVERTS] {
-        let mut edges =
-            [LineSeg2D::new(&V2d::zeros(), &V2d::zeros()); NVERTS];
+        let mut edges = [LineSeg2D::new(&V2d::zeros(), &V2d::zeros()); NVERTS];
         (0..NVERTS).for_each(|vi| {
-            edges[vi]
-                .refresh(&verts[vi], &verts[circ_ix_plus(vi, NVERTS)])
+            edges[vi].refresh(&verts[vi], &verts[circ_ix_plus(vi, NVERTS)])
         });
         edges
     }
@@ -90,9 +87,7 @@ pub fn calc_poly_area(xys: &[V2d]) -> f64 {
     area * 0.5
 }
 
-#[derive(
-    Copy, Clone, Deserialize, Serialize, PartialEq, Default, Debug,
-)]
+#[derive(Copy, Clone, Deserialize, Serialize, PartialEq, Default, Debug)]
 pub struct BBox {
     pub xmin: f64,
     pub ymin: f64,
@@ -176,16 +171,13 @@ pub fn is_point_in_poly(
 
         if p0.y < p.y || close_to_zero(p0.y - p.y, 1e-16) {
             if p1.y > p.y {
-                if let IsLeftResult::Left =
-                    is_left_pointwise(p0, p1, p)
-                {
+                if let IsLeftResult::Left = is_left_pointwise(p0, p1, p) {
                     //println!("vi: {}, + 1", vi);
                     wn += 1;
                 }
             }
         } else if p1.y < p.y || close_to_zero(p1.y - p.y, 1e-16) {
-            if let IsLeftResult::Right = is_left_pointwise(p0, p1, p)
-            {
+            if let IsLeftResult::Right = is_left_pointwise(p0, p1, p) {
                 //println!("vi: {}, - 1", vi);
                 wn -= 1;
             }
@@ -280,9 +272,7 @@ impl Display for IntersectCalcResult {
             IntersectCalcResult::IntersectionPointNotOnOther(u) => {
                 format!("IntersectionPointNotOnSelf({})", u)
             }
-            IntersectCalcResult::NoBBoxOverlap => {
-                "NoBBoxOverlap".to_string()
-            }
+            IntersectCalcResult::NoBBoxOverlap => "NoBBoxOverlap".to_string(),
             IntersectCalcResult::OtherIsPointNotOnSelf => {
                 "OtherIsPointNotOnSelf".to_string()
             }
@@ -331,11 +321,7 @@ pub fn is_left(lseg: &LineSeg2D, p: &V2d, eps: f64) -> IsLeftResult {
 
 /// Version of `is_left` which takes a point-wise definition of the focus
 /// line segment.
-pub fn is_left_pointwise(
-    p0: &V2d,
-    p1: &V2d,
-    p: &V2d,
-) -> IsLeftResult {
+pub fn is_left_pointwise(p0: &V2d, p1: &V2d, p: &V2d) -> IsLeftResult {
     let r = p - p0;
     let vector = p1 - p0;
     let cross = vector.cross(&r);
@@ -417,14 +403,10 @@ impl LineSeg2D {
         let dy_o = other.vector.y;
 
         // Let us quickly rule out some simple cases.
-        let self_is_vertical =
-            close_to_zero(dx_s, INTERSECTION_CLOSE_EPS);
-        let self_is_horizontal =
-            close_to_zero(dy_s, INTERSECTION_CLOSE_EPS);
-        let other_is_vertical =
-            close_to_zero(dx_o, INTERSECTION_CLOSE_EPS);
-        let other_is_horizontal =
-            close_to_zero(dy_o, INTERSECTION_CLOSE_EPS);
+        let self_is_vertical = close_to_zero(dx_s, INTERSECTION_CLOSE_EPS);
+        let self_is_horizontal = close_to_zero(dy_s, INTERSECTION_CLOSE_EPS);
+        let other_is_vertical = close_to_zero(dx_o, INTERSECTION_CLOSE_EPS);
+        let other_is_horizontal = close_to_zero(dy_o, INTERSECTION_CLOSE_EPS);
         match (
             self_is_vertical,
             self_is_horizontal,
@@ -510,8 +492,7 @@ impl LineSeg2D {
                 // vectors of both line segments are parallel. Therefore,
                 // let us check to see if that is the case.
                 let denominator = dx_s * dy_o - dy_s * dx_o;
-                if close_to_zero(denominator, INTERSECTION_CLOSE_EPS)
-                {
+                if close_to_zero(denominator, INTERSECTION_CLOSE_EPS) {
                     return IntersectCalcResult::ParallelLineSegs;
                 }
                 let dx0_so = self.p0.x - other.p0.x;
@@ -526,8 +507,7 @@ impl LineSeg2D {
                 // and `t * (dy_s / dy_o) + (dy0_so / dy_o)`. Which formula
                 // we use to determine `u` depends on whether or not `other`
                 // is vertical.
-                let u = match (other_is_vertical, other_is_horizontal)
-                {
+                let u = match (other_is_vertical, other_is_horizontal) {
                     (false, _) => t * (dx_s / dx_o) + (dx0_so / dx_o),
                     (_, false) => t * (dy_s / dy_o) + (dy0_so / dy_o),
                     (true, true) => {
@@ -570,11 +550,7 @@ impl LineSeg2D {
 
 /// Uses the cross-product to check if a pair of points defining a line segment intersects
 /// a line segment.
-pub fn lsegs_intersect(
-    p0: &V2d,
-    p1: &V2d,
-    other: &LineSeg2D,
-) -> bool {
+pub fn lsegs_intersect(p0: &V2d, p1: &V2d, other: &LineSeg2D) -> bool {
     let is_left_results = (
         is_left_pointwise(p0, p1, &other.p0),
         is_left_pointwise(p0, p1, &other.p1),
@@ -599,11 +575,7 @@ pub fn lsegs_intersect(
 
 /// Uses the cross-product to check if a pair of points defining a line segment intersects
 /// a line segment.
-pub fn lsegs_intersect_strong(
-    p0: &V2d,
-    p1: &V2d,
-    other: &LineSeg2D,
-) -> bool {
+pub fn lsegs_intersect_strong(p0: &V2d, p1: &V2d, other: &LineSeg2D) -> bool {
     let is_left_results = (
         is_left_pointwise(p0, p1, &other.p0),
         is_left_pointwise(p0, p1, &other.p1),
@@ -626,9 +598,7 @@ pub fn lsegs_intersect_strong(
 }
 
 pub fn calc_centroid(vs: &[V2d]) -> V2d {
-    let avg_x =
-        vs.iter().map(|v| v.x).sum::<f64>() / (vs.len() as f64);
-    let avg_y =
-        vs.iter().map(|v| v.y).sum::<f64>() / (vs.len() as f64);
+    let avg_x = vs.iter().map(|v| v.x).sum::<f64>() / (vs.len() as f64);
+    let avg_y = vs.iter().map(|v| v.y).sum::<f64>() / (vs.len() as f64);
     V2d { x: avg_x, y: avg_y }
 }

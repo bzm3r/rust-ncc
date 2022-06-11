@@ -142,9 +142,7 @@ impl fmt::Display for ClosePoint {
 /// Generates CIL/CAL/adhesion related interaction information. These
 /// are the interactions that require cells to engage in
 /// physical contact.
-#[derive(
-    Clone, Deserialize, Serialize, PartialEq, Default, Debug,
-)]
+#[derive(Clone, Deserialize, Serialize, PartialEq, Default, Debug)]
 pub struct PhysicalContactGenerator {
     dat: CvCvDat<ClosePoint>,
     min_dist_matrix: Vec<[f64; NVERTS]>,
@@ -166,8 +164,7 @@ impl PhysicalContactGenerator {
         params: PhysicalContactParams,
     ) -> PhysicalContactGenerator {
         let num_cells = cell_polys.len();
-        let mut dat =
-            CvCvDat::empty(num_cells, ClosePoint::default());
+        let mut dat = CvCvDat::empty(num_cells, ClosePoint::default());
         let contact_bbs = cell_polys
             .iter()
             .map(|cp| cp.bbox.expand_by(params.zero_at_sq))
@@ -177,11 +174,8 @@ impl PhysicalContactGenerator {
             for (oci, other) in cell_polys.iter().enumerate() {
                 if ci != oci {
                     for (vi, v) in poly.verts.iter().enumerate() {
-                        for (ovi, ov) in
-                            other.verts.iter().enumerate()
-                        {
-                            let ow = &other.verts
-                                [circ_ix_plus(ovi, NVERTS)];
+                        for (ovi, ov) in other.verts.iter().enumerate() {
+                            let ow = &other.verts[circ_ix_plus(ovi, NVERTS)];
                             if contact_matrix.get(ci, oci) {
                                 dat.set(
                                     ci,
@@ -198,28 +192,20 @@ impl PhysicalContactGenerator {
                                     ),
                                 );
                             } else {
-                                dat.set(
-                                    ci,
-                                    vi,
-                                    oci,
-                                    ovi,
-                                    ClosePoint::default(),
-                                )
+                                dat.set(ci, vi, oci, ovi, ClosePoint::default())
                             }
                         }
                     }
                 }
             }
         }
-        let mut min_dist_matrix =
-            vec![[f64::INFINITY; NVERTS]; num_cells];
+        let mut min_dist_matrix = vec![[f64::INFINITY; NVERTS]; num_cells];
         for ci in 0..num_cells {
-            min_dist_matrix[ci] =
-                PhysicalContactGenerator::eval_min_dist(
-                    ci,
-                    &contact_matrix,
-                    &dat,
-                );
+            min_dist_matrix[ci] = PhysicalContactGenerator::eval_min_dist(
+                ci,
+                &contact_matrix,
+                &dat,
+            );
         }
         PhysicalContactGenerator {
             dat,
@@ -232,8 +218,7 @@ impl PhysicalContactGenerator {
 
     pub fn update(&mut self, ci: usize, cell_polys: &[Poly]) {
         let poly = cell_polys[ci];
-        let bb =
-            cell_polys[ci].bbox.expand_by(self.params.zero_at_sq);
+        let bb = cell_polys[ci].bbox.expand_by(self.params.zero_at_sq);
         self.contact_bbs[ci] = bb;
         for (oci, obb) in self.contact_bbs.iter().enumerate() {
             if oci != ci {
@@ -245,8 +230,7 @@ impl PhysicalContactGenerator {
                 for (vi, v) in poly.verts.iter().enumerate() {
                     let w = &poly.verts[circ_ix_plus(vi, NVERTS)];
                     for (ovi, ov) in other.verts.iter().enumerate() {
-                        let ow =
-                            &other.verts[circ_ix_plus(ovi, NVERTS)];
+                        let ow = &other.verts[circ_ix_plus(ovi, NVERTS)];
                         if self.contact_matrix.get(ci, oci) {
                             self.dat.set(
                                 ci,
@@ -296,12 +280,11 @@ impl PhysicalContactGenerator {
                 }
             }
         }
-        self.min_dist_matrix[ci] =
-            PhysicalContactGenerator::eval_min_dist(
-                ci,
-                &self.contact_matrix,
-                &self.dat,
-            );
+        self.min_dist_matrix[ci] = PhysicalContactGenerator::eval_min_dist(
+            ci,
+            &self.contact_matrix,
+            &self.dat,
+        );
     }
 
     pub fn eval_min_dist(
@@ -315,12 +298,8 @@ impl PhysicalContactGenerator {
                 if oci != ci && contact_matrix.get(ci, oci) {
                     for ovi in 0..NVERTS {
                         match dat.get(ci, vi, oci, ovi) {
-                            ClosePoint::OnEdge {
-                                dist_sq, ..
-                            }
-                            | ClosePoint::Vertex {
-                                dist_sq, ..
-                            }
+                            ClosePoint::OnEdge { dist_sq, .. }
+                            | ClosePoint::Vertex { dist_sq, .. }
                             | ClosePoint::None { dist_sq } => {
                                 r[vi] = r[vi].min(dist_sq);
                             }
@@ -354,17 +333,16 @@ impl PhysicalContactGenerator {
                     edge_point_param,
                     ..
                 } => {
-                    let edge_rgtp = RelativeRgtpActivity::mix_rel_rgtp_act_across_edge(
-                        rel_rgtps_per_cell[oci][ovi],
-                        rel_rgtps_per_cell[oci]
-                            [circ_ix_plus(ovi, NVERTS)], edge_point_param,
-                    );
+                    let edge_rgtp =
+                        RelativeRgtpActivity::mix_rel_rgtp_act_across_edge(
+                            rel_rgtps_per_cell[oci][ovi],
+                            rel_rgtps_per_cell[oci][circ_ix_plus(ovi, NVERTS)],
+                            edge_point_param,
+                        );
                     Some(CloseEdge {
                         cell_ix: oci,
                         vert_ix: ovi,
-                        crl: CrlEffect::calc_crl_on_focus(
-                            v_rgtp, edge_rgtp,
-                        ),
+                        crl: CrlEffect::calc_crl_on_focus(v_rgtp, edge_rgtp),
                         vector_to,
                         edge_point_param,
                         smooth_factor,
@@ -398,10 +376,7 @@ impl PhysicalContactGenerator {
     ) -> Vec<CloseEdge> {
         let mut r = vec![];
         for oci in 0..self.dat.num_cells {
-            r.append(
-                &mut self
-                    .get_close_edges_on_cell(ci, vi, oci, cell_rgtps),
-            )
+            r.append(&mut self.get_close_edges_on_cell(ci, vi, oci, cell_rgtps))
         }
         r
     }
@@ -411,8 +386,7 @@ impl PhysicalContactGenerator {
         rel_rgtps_per_cell: &[[RelativeRgtpActivity; NVERTS]],
     ) -> PhysContactFactors {
         let num_cells = self.contact_matrix.num_cells;
-        let mut adh_per_cell =
-            vec![[V2d::default(); NVERTS]; num_cells];
+        let mut adh_per_cell = vec![[V2d::default(); NVERTS]; num_cells];
         let mut cal_per_cell = vec![[0.0f64; NVERTS]; num_cells];
         let mut cil_per_cell = vec![[0.0f64; NVERTS]; num_cells];
         for ci in 0..num_cells {
@@ -432,37 +406,33 @@ impl PhysicalContactGenerator {
                 {
                     match (self.params.cal_mag, crl) {
                         (Some(cal_mag), CrlEffect::Cal) => {
-                            x_cals[vi] = x_cals[vi]
-                                .max(smooth_factor * cal_mag);
+                            x_cals[vi] =
+                                x_cals[vi].max(smooth_factor * cal_mag);
                         }
                         (Some(_), CrlEffect::Cil) | (None, _) => {
-                            x_cils[vi] = x_cils[vi].max(
-                                smooth_factor * self.params.cil_mag,
-                            );
+                            x_cils[vi] = x_cils[vi]
+                                .max(smooth_factor * self.params.cil_mag);
                         }
                     }
 
                     if let Some(adh_mag) = self.params.adh_mag {
                         let vc_mag = vector_to.mag();
-                        let adh_strain =
-                            if vc_mag > self.params.adh_break {
-                                if vc_mag > self.params.zero_at {
-                                    0.0
-                                } else {
-                                    1.0 - ((vc_mag
-                                        - self.params.adh_break)
-                                        / self.params.adh_break)
-                                }
+                        let adh_strain = if vc_mag > self.params.adh_break {
+                            if vc_mag > self.params.zero_at {
+                                0.0
                             } else {
-                                1.0
-                            };
+                                1.0 - ((vc_mag - self.params.adh_break)
+                                    / self.params.adh_break)
+                            }
+                        } else {
+                            1.0
+                        };
                         // println!("ci_vi_oci_ovi: ({}, {}, {}, {}), zero_at: {}, adh_break: {}, \
                         //     adh_rest: {}, vc_mag: {}, adh_strain: {}, smooth_factor: {}",
                         //          ci, vi, oci, ovi, self.params.zero_at, self.params.adh_break,
                         //          self.params.adh_rest, vc_mag, adh_strain, smooth_factor);
-                        let adh_force = adh_mag
-                            * adh_strain
-                            * vector_to.unitize();
+                        let adh_force =
+                            adh_mag * adh_strain * vector_to.unitize();
                         //* ((1.0 / self.params.range) * delta);
                         // We are close to the vertex.
                         if close_to_zero(edge_point_param, 1e-3) {
@@ -471,13 +441,10 @@ impl PhysicalContactGenerator {
                             adh_per_cell[ci][vi] =
                                 adh_per_cell[ci][vi] + adh_force;
                         } else {
-                            adh_per_cell[oci][ovi] = adh_per_cell
-                                [oci][ovi]
-                                - (1.0 - edge_point_param)
-                                    * adh_force;
+                            adh_per_cell[oci][ovi] = adh_per_cell[oci][ovi]
+                                - (1.0 - edge_point_param) * adh_force;
                             let owi = circ_ix_plus(ovi, NVERTS);
-                            adh_per_cell[oci][owi] = adh_per_cell
-                                [oci][owi]
+                            adh_per_cell[oci][owi] = adh_per_cell[oci][owi]
                                 - edge_point_param * adh_force;
                             adh_per_cell[ci][vi] =
                                 adh_per_cell[ci][vi] + adh_force;

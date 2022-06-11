@@ -21,16 +21,9 @@ use std::f64::consts::PI;
 
 /// Characteristic quantities used for normalization.
 #[derive(
-    Clone,
-    Copy,
-    Deserialize,
-    Serialize,
-    Default,
-    Debug,
-    PartialEq,
-    Modify,
+    Clone, Copy, Deserialize, Serialize, Default, Debug, PartialEq, Modify,
 )]
-pub struct CharQuantities {
+pub struct CharacteristicQuantities {
     pub eta: Viscosity,
     pub f: Force,
     pub l: Length,
@@ -39,7 +32,7 @@ pub struct CharQuantities {
     pub kgtp: Tinv,
 }
 
-impl CharQuantities {
+impl CharacteristicQuantities {
     /// Given a quantity `q`, normalize its units using the primary units `f` (Force),
     /// `l` (`Length`) and `t` (`Time`) provided in `CharQuants`.
     pub fn normalize<T: Quantity>(&self, q: &T) -> f64 {
@@ -57,14 +50,7 @@ impl CharQuantities {
 }
 
 #[derive(
-    Clone,
-    Copy,
-    Debug,
-    Default,
-    Deserialize,
-    Serialize,
-    PartialEq,
-    Modify,
+    Clone, Copy, Debug, Default, Deserialize, Serialize, PartialEq, Modify,
 )]
 pub struct RawCloseBounds {
     pub zero_at: Length,
@@ -78,14 +64,7 @@ impl RawCloseBounds {
 }
 
 #[derive(
-    Copy,
-    Clone,
-    Debug,
-    Default,
-    Deserialize,
-    Serialize,
-    PartialEq,
-    Modify,
+    Copy, Clone, Debug, Default, Deserialize, Serialize, PartialEq, Modify,
 )]
 pub struct RawPhysicalContactParams {
     pub crl_one_at: Length,
@@ -99,7 +78,7 @@ pub struct RawPhysicalContactParams {
 impl RawPhysicalContactParams {
     pub fn refine(
         &self,
-        cq: &CharQuantities,
+        cq: &CharacteristicQuantities,
     ) -> PhysicalContactParams {
         let zero_at = cq.normalize(&self.zero_at);
         let crl_one_at = cq.normalize(&self.crl_one_at);
@@ -112,9 +91,7 @@ impl RawPhysicalContactParams {
             crl_one_at,
             adh_rest,
             adh_break,
-            adh_mag: self
-                .adh_mag
-                .map(|adh_mag| cq.normalize(&adh_mag)),
+            adh_mag: self.adh_mag.map(|adh_mag| cq.normalize(&adh_mag)),
             cal_mag: self.cal_mag,
             cil_mag: self.cil_mag,
         }
@@ -122,14 +99,7 @@ impl RawPhysicalContactParams {
 }
 
 #[derive(
-    Deserialize,
-    Serialize,
-    Clone,
-    Copy,
-    PartialEq,
-    Default,
-    Debug,
-    Modify,
+    Deserialize, Serialize, Clone, Copy, PartialEq, Default, Debug, Modify,
 )]
 pub struct RawCoaParams {
     /// Factor controlling to what extent line-of-sight blockage should be
@@ -146,7 +116,7 @@ pub struct RawCoaParams {
 }
 
 impl RawCoaParams {
-    pub fn refine(&self, bq: &CharQuantities) -> CoaParams {
+    pub fn refine(&self, bq: &CharacteristicQuantities) -> CoaParams {
         let halfmax_dist = bq.normalize(&self.halfmax_dist);
         CoaParams {
             los_penalty: self.los_penalty,
@@ -155,16 +125,12 @@ impl RawCoaParams {
             // self.mag * exp(distrib_exp * x), where x is distance
             // between points.
             distrib_exp: 0.5f64.ln() / halfmax_dist,
-            too_close_dist_sq: bq
-                .normalize(&self.too_close_dist)
-                .pow(2),
+            too_close_dist_sq: bq.normalize(&self.too_close_dist).pow(2),
         }
     }
 }
 
-#[derive(
-    Deserialize, Serialize, Clone, Copy, PartialEq, Default, Debug,
-)]
+#[derive(Deserialize, Serialize, Clone, Copy, PartialEq, Default, Debug)]
 pub struct RawChemAttrParams {
     pub center: [Length; 2],
     pub mag: f64,
@@ -173,7 +139,7 @@ pub struct RawChemAttrParams {
 }
 
 impl RawChemAttrParams {
-    pub fn refine(&self, bq: &CharQuantities) -> ChemAttrParams {
+    pub fn refine(&self, bq: &CharacteristicQuantities) -> ChemAttrParams {
         ChemAttrParams {
             center: V2d {
                 x: bq.normalize(&self.center[0]),
@@ -185,9 +151,7 @@ impl RawChemAttrParams {
     }
 }
 
-#[derive(
-    Deserialize, Serialize, Clone, Copy, PartialEq, Default, Debug,
-)]
+#[derive(Deserialize, Serialize, Clone, Copy, PartialEq, Default, Debug)]
 pub struct RawBdryParams {
     shape: [[Length; 2]; 4],
     skip_bb_check: bool,
@@ -195,7 +159,7 @@ pub struct RawBdryParams {
 }
 
 impl RawBdryParams {
-    pub fn refine(&self, bq: &CharQuantities) -> BdryParams {
+    pub fn refine(&self, bq: &CharacteristicQuantities) -> BdryParams {
         let shape = self
             .shape
             .iter()
@@ -215,14 +179,7 @@ impl RawBdryParams {
 }
 
 #[derive(
-    Deserialize,
-    Serialize,
-    Clone,
-    Copy,
-    PartialEq,
-    Default,
-    Debug,
-    Modify,
+    Deserialize, Serialize, Clone, Copy, PartialEq, Default, Debug, Modify,
 )]
 pub struct RawInteractionParams {
     pub coa: Option<RawCoaParams>,
@@ -232,7 +189,7 @@ pub struct RawInteractionParams {
 }
 
 impl RawInteractionParams {
-    pub fn refine(&self, bq: &CharQuantities) -> InteractionParams {
+    pub fn refine(&self, bq: &CharacteristicQuantities) -> InteractionParams {
         InteractionParams {
             coa: self.coa.as_ref().map(|coa| coa.refine(bq)),
             chem_attr: self
@@ -246,23 +203,14 @@ impl RawInteractionParams {
 }
 
 #[derive(
-    Deserialize,
-    Serialize,
-    Copy,
-    Clone,
-    PartialEq,
-    Default,
-    Debug,
-    Modify,
+    Deserialize, Serialize, Copy, Clone, PartialEq, Default, Debug, Modify,
 )]
 pub struct RawWorldParameters {
     pub vertex_eta: Viscosity,
     pub interactions: RawInteractionParams,
 }
 
-#[derive(
-    Clone, Copy, Deserialize, Serialize, PartialEq, Default, Debug,
-)]
+#[derive(Clone, Copy, Deserialize, Serialize, PartialEq, Default, Debug)]
 pub struct PhysicalContactParams {
     /// If two points are within this range, then they are considered
     /// to be in contact for the purposes of CRL and adhesion.
@@ -335,9 +283,7 @@ pub struct BdryParams {
     pub mag: f64,
 }
 
-#[derive(
-    Clone, Deserialize, Serialize, PartialEq, Default, Debug,
-)]
+#[derive(Clone, Deserialize, Serialize, PartialEq, Default, Debug)]
 pub struct InteractionParams {
     pub phys_contact: PhysicalContactParams,
     pub coa: Option<CoaParams>,
@@ -345,9 +291,7 @@ pub struct InteractionParams {
     pub bdry: Option<BdryParams>,
 }
 
-#[derive(
-    Clone, Deserialize, Serialize, PartialEq, Default, Debug,
-)]
+#[derive(Clone, Deserialize, Serialize, PartialEq, Default, Debug)]
 pub struct WorldParameters {
     /// Viscosity value used to calculate change in position of a
     /// vertex due to calculated forces on it.
@@ -356,7 +300,7 @@ pub struct WorldParameters {
 }
 
 impl RawWorldParameters {
-    pub fn refine(&self, bq: &CharQuantities) -> WorldParameters {
+    pub fn refine(&self, bq: &CharacteristicQuantities) -> WorldParameters {
         WorldParameters {
             vertex_eta: bq.normalize(&self.vertex_eta),
             interactions: self.interactions.refine(bq),
@@ -426,9 +370,7 @@ pub struct RawParameters {
     pub rand_vs: f64,
 }
 
-#[derive(
-    Copy, Clone, Deserialize, Serialize, Default, Debug, PartialEq,
-)]
+#[derive(Copy, Clone, Deserialize, Serialize, Default, Debug, PartialEq)]
 pub struct Parameters {
     /// Resting cell radius.
     pub cell_r: f64,
@@ -491,24 +433,19 @@ pub struct Parameters {
 }
 
 impl RawParameters {
-    pub fn refine(&self, bq: &CharQuantities) -> Parameters {
+    pub fn refine(&self, bq: &CharacteristicQuantities) -> Parameters {
         let cell_r = self.cell_diam.scale(0.5);
         let rel = self.cell_diam.scale((PI / (NVERTS as f64)).sin());
         let ra = Length(1.0)
             .pow(2.0)
             .scale(calc_init_cell_area(cell_r.number()));
-        let const_protrusive =
-            (self.lm_h.g() * self.lm_ss.g() * rel.g())
-                .scale(self.halfmax_rgtp_max_f_frac);
-        let const_retractive =
-            const_protrusive.scale(self.rho_friction);
-        let halfmax_vertex_rgtp =
-            self.halfmax_rgtp_frac / NVERTS as f64;
-        let halfmax_vertex_rgtp_conc =
-            rel.pow(-1.0).scale(halfmax_vertex_rgtp);
+        let const_protrusive = (self.lm_h.g() * self.lm_ss.g() * rel.g())
+            .scale(self.halfmax_rgtp_max_f_frac);
+        let const_retractive = const_protrusive.scale(self.rho_friction);
+        let halfmax_vertex_rgtp = self.halfmax_rgtp_frac / NVERTS as f64;
+        let halfmax_vertex_rgtp_conc = rel.pow(-1.0).scale(halfmax_vertex_rgtp);
         let stiffness_edge = self.stiffness_cortex.g() * bq.l3d.g();
-        let stiffness_cyto =
-            self.stiffness_cyto.g().scale(1.0 / NVERTS as f64);
+        let stiffness_cyto = self.stiffness_cyto.g().scale(1.0 / NVERTS as f64);
 
         Parameters {
             cell_r: bq.normalize(&cell_r),
@@ -518,15 +455,13 @@ impl RawParameters {
             const_protrusive: bq.normalize(&const_protrusive),
             const_retractive: bq.normalize(&const_retractive),
             stiffness_cyto: bq.normalize(&stiffness_cyto),
-            k_mem_on_vertex: bq.normalize(&self.k_mem_on)
-                / NVERTS as f64,
+            k_mem_on_vertex: bq.normalize(&self.k_mem_on) / NVERTS as f64,
             k_mem_off: bq.normalize(&self.k_mem_off),
             diffusion_rgtp: bq.normalize(&self.diffusion_rgtp),
             init_rac: self.init_rac,
             init_rho: self.init_rho,
             halfmax_vertex_rgtp,
-            halfmax_vertex_rgtp_conc: bq
-                .normalize(&halfmax_vertex_rgtp_conc),
+            halfmax_vertex_rgtp_conc: bq.normalize(&halfmax_vertex_rgtp_conc),
             kgtp_rac: bq.normalize(&self.kgtp_rac),
             kgtp_rac_auto: bq.normalize(&self.kgtp_rac_auto),
             kdgtp_rac: bq.normalize(&self.kdgtp_rac),

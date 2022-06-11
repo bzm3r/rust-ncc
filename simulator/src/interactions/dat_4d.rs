@@ -103,9 +103,7 @@ use std::fmt::Debug;
 /// a particular vertex on it. All data stored must have
 /// the same type. However, the structure is generic over different
 /// data types as long as they implement `Copy` and `Default`.
-#[derive(
-    Clone, Serialize, Deserialize, PartialEq, Default, Debug,
-)]
+#[derive(Clone, Serialize, Deserialize, PartialEq, Default, Debug)]
 pub struct CvCvDat<T: Copy + Default + Debug + PartialEq> {
     pub num_cells: usize,
     c_stride: usize,
@@ -151,14 +149,7 @@ impl<T: Copy + Debug + Default + PartialEq> CvCvDat<T> {
     //     (begin, begin + NVERTS)
     // }
     //
-    pub fn set(
-        &mut self,
-        ci: usize,
-        vi: usize,
-        oci: usize,
-        ovi: usize,
-        x: T,
-    ) {
+    pub fn set(&mut self, ci: usize, vi: usize, oci: usize, ovi: usize, x: T) {
         if ci != oci {
             let ix = self.calc_ix(ci, vi, oci, ovi);
             self.dat[ix] = x;
@@ -178,13 +169,7 @@ impl<T: Copy + Debug + Default + PartialEq> CvCvDat<T> {
     //     }
     // }
 
-    pub fn get(
-        &self,
-        ci: usize,
-        vi: usize,
-        oci: usize,
-        ovi: usize,
-    ) -> T {
+    pub fn get(&self, ci: usize, vi: usize, oci: usize, ovi: usize) -> T {
         if ci == oci {
             self.undefined
         } else {

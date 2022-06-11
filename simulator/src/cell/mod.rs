@@ -19,9 +19,7 @@ use crate::world::{EulerOpts, RkOpts};
 use serde::{Deserialize, Serialize};
 
 /// Cell state structure.
-#[derive(
-    Copy, Clone, Deserialize, Serialize, PartialEq, Default, Debug,
-)]
+#[derive(Copy, Clone, Deserialize, Serialize, PartialEq, Default, Debug)]
 pub struct Cell {
     /// Index of cell within world.
     pub ix: usize,
@@ -96,11 +94,7 @@ impl Cell {
             ix: self.ix,
             group_ix: self.group_ix,
             core: state,
-            rac_rand: self.rac_rand.update(
-                tpoint + 1.0,
-                rng,
-                parameters,
-            ),
+            rac_rand: self.rac_rand.update(tpoint + 1.0, rng, parameters),
         })
     }
 
@@ -120,11 +114,7 @@ impl Cell {
             Vec::with_capacity(int_opts.num_int_steps as usize);
         let mut state = self.core;
         let dt = 1.0 / (int_opts.num_int_steps as f64);
-        confirm_volume_exclusion(
-            &self.core.poly,
-            &contact_data,
-            "old_vs",
-        )?;
+        confirm_volume_exclusion(&self.core.poly, &contact_data, "old_vs")?;
         // let (focus_vi, other_focus_v) = if cell_ix == 0 {
         //     (0, contact_data[0].poly.verts[8])
         // } else {
@@ -145,10 +135,7 @@ impl Cell {
             //     focus_vi, state.poly[focus_vi], other_focus_v
             // );
             // Enforcing volume exclusion! Tricky!
-            state.strict_enforce_volume_exclusion(
-                &old_vs,
-                &contact_data,
-            )?;
+            state.strict_enforce_volume_exclusion(&old_vs, &contact_data)?;
             // println!(
             //     "after vol_ex | state.poly[{}] = {} | other: {}",
             //     focus_vi, state.poly[focus_vi], other_focus_v
@@ -206,18 +193,13 @@ impl Cell {
                 #[cfg(feature = "validate")]
                 cs.validate("rkdp5")?;
 
-                cs.strict_enforce_volume_exclusion(
-                    &self.core.poly,
-                    &contacts,
-                )?;
+                cs.strict_enforce_volume_exclusion(&self.core.poly, &contacts)?;
 
                 Ok(Cell {
                     ix: self.ix,
                     group_ix: self.group_ix,
                     core: *cs,
-                    rac_rand: self
-                        .rac_rand
-                        .update(tpoint, rng, parameters),
+                    rac_rand: self.rac_rand.update(tpoint, rng, parameters),
                 })
             }
             Err(e) => Err(e.into()),

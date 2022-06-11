@@ -1,6 +1,4 @@
-use criterion::{
-    black_box, criterion_group, criterion_main, Criterion,
-};
+use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use rand::distributions::Uniform;
 use rand::{Rng, SeedableRng};
 use rand_pcg::Pcg32;
@@ -22,10 +20,8 @@ fn star_poly(rng: &mut Pcg32, translation: P2d) -> Poly {
         .map(|k| (k as f64 / NVERTS as f64) * 2.0 * PI)
         .collect();
     points.iter_mut().enumerate().for_each(|(i, p)| {
-        *p = P2d::new(
-            rs[i] * f64::cos(thetas[i]),
-            rs[i] * f64::sin(thetas[i]),
-        ) + translation
+        *p = P2d::new(rs[i] * f64::cos(thetas[i]), rs[i] * f64::sin(thetas[i]))
+            + translation
     });
     Poly::from_points(&points)
 }
@@ -54,8 +50,7 @@ fn star_polys(n: usize) -> Vec<Poly> {
 fn gen_test_lsegs(polys: &[Poly]) -> Vec<LineSeg2D> {
     let num_polys = polys.len();
     let mut lsegs = Vec::with_capacity(
-        (polys.len() * polys.len() - 1) * (NVERTS as usize).pow(2)
-            / 2,
+        (polys.len() * polys.len() - 1) * (NVERTS as usize).pow(2) / 2,
     );
     for m in 0..num_polys {
         let poly_a = &polys[m];
@@ -82,10 +77,7 @@ fn lseg_intersects_poly_check(lsegs: &[LineSeg2D], polys: &[Poly]) {
     }
 }
 
-fn old_lseg_intersects_poly_check(
-    lsegs: &[LineSeg2D],
-    polys: &[Poly],
-) {
+fn old_lseg_intersects_poly_check(lsegs: &[LineSeg2D], polys: &[Poly]) {
     for lseg in lsegs {
         for poly in polys {
             let _ = lseg.old_check_poly_intersect(poly);
@@ -100,18 +92,12 @@ fn criterion_benchmark(c: &mut Criterion) {
     group.measurement_time(Duration::from_secs(15));
     group.bench_function("lseg_intersects_poly_check", |b| {
         b.iter(|| {
-            lseg_intersects_poly_check(
-                black_box(&lsegs),
-                black_box(&polys),
-            )
+            lseg_intersects_poly_check(black_box(&lsegs), black_box(&polys))
         })
     });
     group.bench_function("old_lseg_intersects_poly_check", |b| {
         b.iter(|| {
-            old_lseg_intersects_poly_check(
-                black_box(&lsegs),
-                black_box(&polys),
-            )
+            old_lseg_intersects_poly_check(black_box(&lsegs), black_box(&polys))
         })
     });
     group.finish();

@@ -2,7 +2,6 @@
 members = [
     "simulator",
     "executor",
-    "interface",
     "modify-derive",
 ]
 default-members = ["executor"]

@@ -63,16 +63,14 @@ pub fn get_read_file(
 }
 
 pub fn save_binc_to_cbor(binc_path: &PathBuf, cbor_path: &PathBuf) {
-    let mut src =
-        OpenOptions::new().read(true).open(binc_path).unwrap();
+    let mut src = OpenOptions::new().read(true).open(binc_path).unwrap();
     let dst = OpenOptions::new()
         .write(true)
         .create(true)
         .truncate(true)
         .open(cbor_path)
         .unwrap();
-    let mut serializer =
-        serde_cbor::Serializer::new(IoWrite::new(dst));
+    let mut serializer = serde_cbor::Serializer::new(IoWrite::new(dst));
     let world_info: WorldInfo = deserialize_from(&mut src).unwrap();
     world_info.serialize(&mut serializer).unwrap();
 
@@ -84,11 +82,8 @@ pub fn save_binc_to_cbor(binc_path: &PathBuf, cbor_path: &PathBuf) {
                 snaps.serialize(&mut serializer).unwrap();
             }
             Err(err) => {
-                if let bincode::ErrorKind::Io(std_err) = err.borrow()
-                {
-                    if let io::ErrorKind::UnexpectedEof =
-                        std_err.kind()
-                    {
+                if let bincode::ErrorKind::Io(std_err) = err.borrow() {
+                    if let io::ErrorKind::UnexpectedEof = std_err.kind() {
                         break;
                     }
                 }
@@ -117,8 +112,7 @@ impl AsyncWriter {
         truncate: bool,
         info: WorldInfo,
     ) -> AsyncWriter {
-        let path = output_dir
-            .join(get_file_name(Format::Bincode, &file_name));
+        let path = output_dir.join(get_file_name(Format::Bincode, &file_name));
         let (sender, receiver): (
             Sender<Vec<WorldState>>,
             Receiver<Vec<WorldState>>,
@@ -143,9 +137,7 @@ impl AsyncWriter {
             while let Ok(data_vec) = &r.recv() {
                 let snaps: Vec<WorldSnapshot> = data_vec
                     .iter()
-                    .map(|s| {
-                        WorldSnapshot::from_state(s, &cell_params)
-                    })
+                    .map(|s| WorldSnapshot::from_state(s, &cell_params))
                     .collect();
                 serialize_into(&mut f, &snaps).unwrap();
             }
@@ -172,8 +164,7 @@ impl AsyncWriter {
 
     pub fn drain(&mut self) {
         let num_sent = self.buf.len();
-        if let Ok(()) = self.sender.send(self.buf.drain(..).collect())
-        {
+        if let Ok(()) = self.sender.send(self.buf.drain(..).collect()) {
             self.num_saved += num_sent;
         }
     }
@@ -191,8 +182,8 @@ impl AsyncWriter {
         drop(sender);
         thread_handle.join().unwrap();
         if save_cbor {
-            let cbor_path = output_dir
-                .join(get_file_name(Format::Cbor, &file_name));
+            let cbor_path =
+                output_dir.join(get_file_name(Format::Cbor, &file_name));
             save_binc_to_cbor(&file_path, &cbor_path);
         }
         println!(
@@ -202,11 +193,7 @@ impl AsyncWriter {
     }
 }
 
-pub fn load(
-    out_dir: &PathBuf,
-    format: Format,
-    name: &str,
-) -> WorldInfo {
+pub fn load(out_dir: &PathBuf, format: Format, name: &str) -> WorldInfo {
     let mut f = get_read_file(out_dir, name, format).unwrap();
 
     match format {
@@ -219,10 +206,7 @@ pub fn load_binc_from_path(file_path: &Path) -> File {
     if let Some(ext) = file_path.extension() {
         match ext.to_str().unwrap() {
             "binc" => {
-                let f = OpenOptions::new()
-                    .read(true)
-                    .open(&file_path)
-                    .unwrap();
+                let f = OpenOptions::new().read(true).open(&file_path).unwrap();
                 f
             }
             _ => panic!(
@@ -231,17 +215,12 @@ pub fn load_binc_from_path(file_path: &Path) -> File {
             ),
         }
     } else {
-        panic!(
-            "no file extension in path: {}",
-            file_path.to_str().unwrap()
-        )
+        panic!("no file extension in path: {}", file_path.to_str().unwrap())
     }
 }
 
 /// Cell state structure.
-#[derive(
-    Copy, Clone, Deserialize, Serialize, PartialEq, Default, Debug,
-)]
+#[derive(Copy, Clone, Deserialize, Serialize, PartialEq, Default, Debug)]
 pub struct CellSnapshot {
     pub tpoint: f64,
     /// Index of cell within world.
@@ -274,12 +253,8 @@ impl CellSnapshot {
             core,
         } = cell;
         let mech = core.calc_mech_state(parameters);
-        let chem = core.calc_chem_state(
-            &mech,
-            &rac_rand,
-            &interactions,
-            parameters,
-        );
+        let chem =
+            core.calc_chem_state(&mech, &rac_rand, &interactions, parameters);
         CellSnapshot {
             tpoint,
             ix,
@@ -305,9 +280,7 @@ impl CellSnapshot {
         states
             .iter()
             .zip(interactions.iter())
-            .map(|(&s, &i)| {
-                CellSnapshot::new(*tpoint, s, &parameters[s.ix], i)
-            })
+            .map(|(&s, &i)| CellSnapshot::new(*tpoint, s, &parameters[s.ix], i))
             .collect()
     }
 }

@@ -1,7 +1,6 @@
 use simulator::exp_setup::exp_parser::ExperimentArgs;
 use simulator::exp_setup::{
-    generate, DistribDef, ExperimentType, RgtpDistribDef,
-    RgtpDistribDefs,
+    generate, DistribDef, ExperimentType, RgtpDistribDef, RgtpDistribDefs,
 };
 use simulator::parameters::quantity::{Length, Quantity, Time};
 use simulator::world::{IntegratorOpts, RkOpts};
@@ -13,21 +12,22 @@ use std::time::Instant;
 
 fn main() {
     let cfg_path = PathBuf::from_str("./cfg.json").unwrap();
-    let directories = Directories::try_from(&cfg_path).map_or_else(
-        |e| panic!("{}: {:?}", &cfg_path.display(), e),
-        |d| d,
-    );
+    let directories = Directories::try_from(&cfg_path)
+        .map_or_else(|e| panic!("{}: {:?}", &cfg_path.display(), e), |d| d);
     let exp_args = ExperimentArgs {
         file_name: "example_four_cell".to_string(),
-        ty: ExperimentType::NCells { num_cells: 4 },
+        ty: ExperimentType::NCells {
+            num_cells: 4,
+            chem_dist: None,
+            chem_mag: None,
+        },
         final_t: Time(5400.0),
         char_t: Time(1.0),
         cil_mag: 60.0,
         coa_mag: Some(24.0),
         cal_mag: Some(60.0),
         adh_scale: Some(10.0),
-        adh_index: Some(0.8),
-        one_at: Length(1.0).micro(),
+        adh_break: None,
         zero_at: Length(2.0).micro(),
         too_close_dist: Length(2.0).micro(),
         snap_period: Time(10.0),
@@ -50,6 +50,7 @@ fn main() {
                 inacts: DistribDef::Random { frac: 0.3 },
             },
         },
+        crl_one_at: Default::default(),
     };
     let exp = generate(directories, exp_args)[0].clone();
     let mut w = world::World::new(exp);

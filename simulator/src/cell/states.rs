@@ -1,18 +1,13 @@
 use crate::cell::chemistry::{
-    calc_conc_rgtps, calc_kdgtps_rac, calc_kdgtps_rho,
-    calc_kgtps_rac, calc_kgtps_rho, calc_net_fluxes, RacRandState,
-    RgtpDistribution,
+    calc_conc_rgtps, calc_kdgtps_rac, calc_kdgtps_rho, calc_kgtps_rac,
+    calc_kgtps_rho, calc_net_fluxes, RacRandState, RgtpDistribution,
 };
 use crate::cell::mechanics::{
-    calc_cyto_forces, calc_edge_forces, calc_edge_vecs,
-    calc_rgtp_forces,
+    calc_cyto_forces, calc_edge_forces, calc_edge_vecs, calc_rgtp_forces,
 };
-use crate::interactions::{
-    Contact, Interactions, RelativeRgtpActivity,
-};
+use crate::interactions::{Contact, Interactions, RelativeRgtpActivity};
 use crate::math::geometry::{
-    is_point_in_poly, lsegs_intersect, lsegs_intersect_strong,
-    LineSeg2D, Poly,
+    is_point_in_poly, lsegs_intersect, lsegs_intersect_strong, LineSeg2D, Poly,
 };
 use crate::math::v2d::{poly_to_string, SqP2d, V2d};
 use crate::math::{hill_function3, max_f64};
@@ -27,9 +22,7 @@ use std::ops::{Add, Div, Mul, Sub};
 /// `CoreState` contains all the variables that are simulated between geometric
 /// updates. They are simulated using ODEs which are then integrated using
 /// either the Euler method or Runge-Kutta Dormand-Prince 5 (Matlab's `ode45`).
-#[derive(
-    Copy, Clone, Debug, Default, Deserialize, Serialize, PartialEq,
-)]
+#[derive(Copy, Clone, Debug, Default, Deserialize, Serialize, PartialEq)]
 pub struct Core {
     /// Polygon representing cell shape.
     pub poly: [V2d; NVERTS],
@@ -46,9 +39,7 @@ pub struct Core {
 }
 
 /// `DCoreDt` is the derivative of `CoreState`.
-#[derive(
-    Copy, Clone, Debug, Default, Deserialize, Serialize, PartialEq,
-)]
+#[derive(Copy, Clone, Debug, Default, Deserialize, Serialize, PartialEq)]
 pub struct DCoreDt {
     /// Polygon representing cell shape.
     pub poly: [V2d; NVERTS],
@@ -90,9 +81,7 @@ impl DCoreDt {
 
 /// `PowCoreState` results from multiplication/division of `CoreState`s, or
 /// taking their power using `CoreState::powi`.
-#[derive(
-    Copy, Clone, Debug, Default, Deserialize, Serialize, PartialEq,
-)]
+#[derive(Copy, Clone, Debug, Default, Deserialize, Serialize, PartialEq)]
 pub struct SqCore {
     /// Polygon representing cell shape.
     pub poly: [SqP2d; NVERTS],
@@ -289,9 +278,7 @@ impl Div<Core> for SqCore {
 }
 
 /// Records the mechanical state of a cell.
-#[derive(
-    Copy, Clone, Debug, Default, Deserialize, Serialize, PartialEq,
-)]
+#[derive(Copy, Clone, Debug, Default, Deserialize, Serialize, PartialEq)]
 pub struct MechState {
     /// Strain each edge is under, where resting edge length is
     /// defined in the cell's parameters.
@@ -322,9 +309,7 @@ pub struct MechState {
 ///     * `x_tens`: "tension" factor that affects Rac1 activation
 /// rate, calculated based on average tensile strain in cell (i.e.
 /// how stretched the cell is).
-#[derive(
-    Copy, Clone, Debug, Default, Deserialize, Serialize, PartialEq,
-)]
+#[derive(Copy, Clone, Debug, Default, Deserialize, Serialize, PartialEq)]
 pub struct ChemState {
     pub kdgtps_rac: [f64; NVERTS],
     pub kgtps_rac: [f64; NVERTS],
@@ -339,9 +324,7 @@ pub struct ChemState {
     pub x_tens: f64,
 }
 
-#[derive(
-    Copy, Clone, Debug, Default, Deserialize, Serialize, PartialEq,
-)]
+#[derive(Copy, Clone, Debug, Default, Deserialize, Serialize, PartialEq)]
 pub struct GeomState {
     /// Unit edge vectors which point from position of vertex `vi`
     /// to position of vertex `vi + 1`, where `vi + 1` is calculated
@@ -369,15 +352,13 @@ impl From<&[V2d; NVERTS]> for GeomState {
         // Divide each edge vector by its magnitude to get the
         // corresponding unit vector.
         let mut unit_edge_vecs = [V2d::default(); NVERTS];
-        (0..NVERTS)
-            .for_each(|i| unit_edge_vecs[i] = (&evs[i]).unitize());
+        (0..NVERTS).for_each(|i| unit_edge_vecs[i] = (&evs[i]).unitize());
         // Given two unit edge vectors, find the vector which points
         // into the polygon and bisects the angle
         let mut unit_in_vecs = [V2d::default(); NVERTS];
         (0..NVERTS).for_each(|i| {
             let im1 = circ_ix_minus(i, NVERTS);
-            let tangent =
-                (unit_edge_vecs[i] + unit_edge_vecs[im1]).unitize();
+            let tangent = (unit_edge_vecs[i] + unit_edge_vecs[im1]).unitize();
             unit_in_vecs[i] = tangent.normal();
         });
 
@@ -442,10 +423,7 @@ impl Display for ChemState {
 }
 
 impl Core {
-    pub fn calc_mech_state(
-        &self,
-        parameters: &Parameters,
-    ) -> MechState {
+    pub fn calc_mech_state(&self, parameters: &Parameters) -> MechState {
         let GeomState {
             unit_edge_vecs,
             edge_lens,
@@ -468,8 +446,7 @@ impl Core {
         // Calculate strain in each edge.
         let mut edge_strains = [0.0_f64; NVERTS];
         (0..NVERTS).for_each(|i| {
-            edge_strains[i] =
-                (edge_lens[i] / parameters.rest_edge_len) - 1.0
+            edge_strains[i] = (edge_lens[i] / parameters.rest_edge_len) - 1.0
         });
         let edge_forces = calc_edge_forces(
             &edge_strains,
@@ -491,9 +468,8 @@ impl Core {
         // Sum of all the non-adhesive forces acting on the cell.
         let mut sum_forces = [V2d::default(); NVERTS];
         (0..NVERTS).for_each(|i| {
-            sum_forces[i] =
-                rgtp_forces[i] + cyto_forces[i] + edge_forces[i]
-                    - edge_forces[circ_ix_minus(i, NVERTS)];
+            sum_forces[i] = rgtp_forces[i] + cyto_forces[i] + edge_forces[i]
+                - edge_forces[circ_ix_minus(i, NVERTS)];
         });
         MechState {
             edge_strains,
@@ -526,14 +502,10 @@ impl Core {
 
         // Concentration of Rho GTPase (active/inactive), used to
         // calculate diffusive flux between vertices.
-        let conc_rac_acts =
-            calc_conc_rgtps(&avg_edge_lens, &self.rac_acts);
-        let conc_rac_inacts =
-            calc_conc_rgtps(&avg_edge_lens, &self.rac_inacts);
-        let conc_rho_acts =
-            calc_conc_rgtps(&avg_edge_lens, &self.rho_acts);
-        let conc_rho_inacts =
-            calc_conc_rgtps(&avg_edge_lens, &self.rho_inacts);
+        let conc_rac_acts = calc_conc_rgtps(&avg_edge_lens, &self.rac_acts);
+        let conc_rac_inacts = calc_conc_rgtps(&avg_edge_lens, &self.rac_inacts);
+        let conc_rho_acts = calc_conc_rgtps(&avg_edge_lens, &self.rho_acts);
+        let conc_rho_inacts = calc_conc_rgtps(&avg_edge_lens, &self.rho_inacts);
 
         let kgtps_rac = calc_kgtps_rac(
             &self.rac_acts,
@@ -644,14 +616,10 @@ impl Core {
         let mut delta = DCoreDt::default();
         for i in 0..NVERTS {
             // rate of rac deactivation * current fraction of rac active
-            let inactivated_rac =
-                chem_state.kdgtps_rac[i] * self.rac_acts[i];
-            let activated_rac =
-                chem_state.kgtps_rac[i] * self.rac_inacts[i];
-            let inactivated_rho =
-                chem_state.kdgtps_rho[i] * self.rho_acts[i];
-            let activated_rho =
-                chem_state.kgtps_rho[i] * self.rho_inacts[i];
+            let inactivated_rac = chem_state.kdgtps_rac[i] * self.rac_acts[i];
+            let activated_rac = chem_state.kgtps_rac[i] * self.rac_inacts[i];
+            let inactivated_rho = chem_state.kdgtps_rho[i] * self.rho_acts[i];
+            let activated_rho = chem_state.kgtps_rho[i] * self.rho_inacts[i];
 
             let delta_rac_activated = activated_rac - inactivated_rac;
             let delta_rho_activated = activated_rho - inactivated_rho;
@@ -659,37 +627,27 @@ impl Core {
             let rac_cyto_exchange = {
                 let rac_mem_on =
                     parameters.k_mem_on_vertex * chem_state.rac_cyto;
-                let rac_mem_off =
-                    parameters.k_mem_off * self.rac_inacts[i];
+                let rac_mem_off = parameters.k_mem_off * self.rac_inacts[i];
                 rac_mem_on - rac_mem_off
             };
             let rho_cyto_exchange = {
                 let rho_mem_on =
                     parameters.k_mem_on_vertex * chem_state.rho_cyto;
-                let rho_mem_off =
-                    parameters.k_mem_off * self.rho_inacts[i];
+                let rho_mem_off = parameters.k_mem_off * self.rho_inacts[i];
                 rho_mem_on - rho_mem_off
             };
 
-            let vertex_rac_act_flux =
-                chem_state.rac_act_net_fluxes[i];
-            let vertex_rac_inact_flux =
-                chem_state.rac_inact_net_fluxes[i];
-            let vertex_rho_act_flux =
-                chem_state.rho_act_net_fluxes[i];
-            let vertex_rho_inact_flux =
-                chem_state.rho_inact_net_fluxes[i];
+            let vertex_rac_act_flux = chem_state.rac_act_net_fluxes[i];
+            let vertex_rac_inact_flux = chem_state.rac_inact_net_fluxes[i];
+            let vertex_rho_act_flux = chem_state.rho_act_net_fluxes[i];
+            let vertex_rho_inact_flux = chem_state.rho_inact_net_fluxes[i];
 
-            delta.rac_acts[i] =
-                delta_rac_activated + vertex_rac_act_flux;
-            delta.rac_inacts[i] = rac_cyto_exchange
-                + vertex_rac_inact_flux
-                - delta_rac_activated;
-            delta.rho_acts[i] =
-                delta_rho_activated + vertex_rho_act_flux;
-            delta.rho_inacts[i] = rho_cyto_exchange
-                + vertex_rho_inact_flux
-                - delta_rho_activated;
+            delta.rac_acts[i] = delta_rac_activated + vertex_rac_act_flux;
+            delta.rac_inacts[i] =
+                rac_cyto_exchange + vertex_rac_inact_flux - delta_rac_activated;
+            delta.rho_acts[i] = delta_rho_activated + vertex_rho_act_flux;
+            delta.rho_inacts[i] =
+                rho_cyto_exchange + vertex_rho_inact_flux - delta_rho_activated;
             delta.poly[i] = (1.0 / world_parameters.vertex_eta)
                 * (mech_state.sum_forces[i] + interactions.x_adhs[i]);
         }
@@ -743,13 +701,7 @@ impl Core {
             rho_inacts[i] = self.rho_inacts[i].abs();
         }
 
-        Core::new(
-            vertex_coords,
-            rac_acts,
-            rac_inacts,
-            rho_acts,
-            rho_inacts,
-        )
+        Core::new(vertex_coords, rac_acts, rac_inacts, rho_acts, rho_inacts)
     }
 
     pub fn square(&self) -> SqCore {
@@ -765,14 +717,10 @@ impl Core {
 
         for i in 0..(NVERTS) {
             poly[i] = poly[i].max(&other.poly[i]);
-            rac_acts[i] =
-                max_f64(self.rac_acts[i], other.rac_acts[i]);
-            rac_inacts[i] =
-                max_f64(self.rac_inacts[i], other.rac_inacts[i]);
-            rho_acts[i] =
-                max_f64(self.rho_acts[i], other.rho_acts[i]);
-            rho_inacts[i] =
-                max_f64(self.rho_inacts[i], other.rho_inacts[i]);
+            rac_acts[i] = max_f64(self.rac_acts[i], other.rac_acts[i]);
+            rac_inacts[i] = max_f64(self.rac_inacts[i], other.rac_inacts[i]);
+            rho_acts[i] = max_f64(self.rho_acts[i], other.rho_acts[i]);
+            rho_inacts[i] = max_f64(self.rho_inacts[i], other.rho_inacts[i]);
         }
 
         Core::new(poly, rac_acts, rac_inacts, rho_acts, rho_inacts)
@@ -791,13 +739,8 @@ impl Core {
             .enumerate()
             .for_each(|(ix, (&rac, &rho))| {
                 r[ix] = RelativeRgtpActivity::from_f64(
-                    hill_function3(
-                        parameters.halfmax_vertex_rgtp,
-                        rac,
-                    ) - hill_function3(
-                        parameters.halfmax_vertex_rgtp,
-                        rho,
-                    ),
+                    hill_function3(parameters.halfmax_vertex_rgtp, rac)
+                        - hill_function3(parameters.halfmax_vertex_rgtp, rho),
                 );
             });
         r
@@ -872,13 +815,8 @@ impl Core {
             let old_v = old_vs[vi];
             let uiv_v = self.geom.unit_in_vecs[vi];
             for contact in contacts {
-                self.poly[vi] = fix_point_in_poly(
-                    3,
-                    old_v,
-                    v,
-                    uiv_v,
-                    &contact.poly,
-                )?;
+                self.poly[vi] =
+                    fix_point_in_poly(3, old_v, v, uiv_v, &contact.poly)?;
             }
         }
 
@@ -991,9 +929,11 @@ fn fix_orig_edge(
         orig_w = orig_w + delta_w.scale(n);
         n += 1.0;
         if n > 10.0 {
-            return Err(VolExErr::OldEdge(format!("could not fix orig edge intersection issue: orig_v: \
-            {}, orig_w: {}, new_v: {}, new_w: {}, other.p0: {}, other.p1: {}", init_v, init_w, new_v, new_w,
-                                                 other.p0, other.p1)));
+            return Err(VolExErr::OldEdge(format!(
+                "could not fix orig edge intersection issue: orig_v: \
+            {}, orig_w: {}, new_v: {}, new_w: {}, other.p0: {}, other.p1: {}",
+                init_v, init_w, new_v, new_w, other.p0, other.p1
+            )));
         }
     }
     Ok((orig_v, orig_w))
@@ -1079,8 +1019,7 @@ fn fix_point_in_poly(
     while n < num_iters {
         n += 1;
         let test_v = 0.5 * (new_v + good_v);
-        if is_point_in_poly(&test_v, Some(&other.bbox), &other.verts)
-        {
+        if is_point_in_poly(&test_v, Some(&other.bbox), &other.verts) {
             new_v = test_v;
         } else {
             good_v = test_v;

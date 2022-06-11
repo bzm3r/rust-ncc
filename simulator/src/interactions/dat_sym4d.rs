@@ -38,14 +38,7 @@ impl<T: Copy> SymCcVvDat<T> {
         ixc * self.vv_stride + vi * NVERTS + ovi
     }
 
-    pub fn set(
-        &mut self,
-        ci: usize,
-        vi: usize,
-        oci: usize,
-        ovi: usize,
-        x: T,
-    ) {
+    pub fn set(&mut self, ci: usize, vi: usize, oci: usize, ovi: usize, x: T) {
         if ci != oci {
             let ix = self.calc_ix(ci, vi, oci, ovi);
             self.dat[ix] = x;
@@ -65,13 +58,7 @@ impl<T: Copy> SymCcVvDat<T> {
     //     }
     // }
 
-    pub fn get(
-        &self,
-        ci: usize,
-        vi: usize,
-        oci: usize,
-        ovi: usize,
-    ) -> T {
+    pub fn get(&self, ci: usize, vi: usize, oci: usize, ovi: usize) -> T {
         if ci == oci {
             self.undefined
         } else {

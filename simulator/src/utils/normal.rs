@@ -44,26 +44,20 @@ impl<'de> Deserialize<'de> for NormalDistrib {
         impl<'de> Visitor<'de> for NdVisitor {
             type Value = NormalDistrib;
 
-            fn expecting(
-                &self,
-                formatter: &mut fmt::Formatter,
-            ) -> fmt::Result {
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
                 formatter.write_str("struct NormalDistrib")
             }
 
-            fn visit_seq<V>(
-                self,
-                mut seq: V,
-            ) -> Result<NormalDistrib, V::Error>
+            fn visit_seq<V>(self, mut seq: V) -> Result<NormalDistrib, V::Error>
             where
                 V: de::SeqAccess<'de>,
             {
-                let mean = seq.next_element()?.ok_or_else(|| {
-                    de::Error::invalid_length(0, &self)
-                })?;
-                let std = seq.next_element()?.ok_or_else(|| {
-                    de::Error::invalid_length(1, &self)
-                })?;
+                let mean = seq
+                    .next_element()?
+                    .ok_or_else(|| de::Error::invalid_length(0, &self))?;
+                let std = seq
+                    .next_element()?
+                    .ok_or_else(|| de::Error::invalid_length(1, &self))?;
                 Ok(NormalDistrib {
                     mean,
                     std,
@@ -71,10 +65,7 @@ impl<'de> Deserialize<'de> for NormalDistrib {
                 })
             }
 
-            fn visit_map<V>(
-                self,
-                mut map: V,
-            ) -> Result<NormalDistrib, V::Error>
+            fn visit_map<V>(self, mut map: V) -> Result<NormalDistrib, V::Error>
             where
                 V: de::MapAccess<'de>,
             {
@@ -84,29 +75,21 @@ impl<'de> Deserialize<'de> for NormalDistrib {
                     match key {
                         Field::Mean => {
                             if mean.is_some() {
-                                return Err(
-                                    de::Error::duplicate_field(
-                                        "mean",
-                                    ),
-                                );
+                                return Err(de::Error::duplicate_field("mean"));
                             }
                             mean = Some(map.next_value()?);
                         }
                         Field::Std => {
                             if std.is_some() {
-                                return Err(
-                                    de::Error::duplicate_field("std"),
-                                );
+                                return Err(de::Error::duplicate_field("std"));
                             }
                             std = Some(map.next_value()?);
                         }
                     }
                 }
-                let mean = mean.ok_or_else(|| {
-                    de::Error::missing_field("mean")
-                })?;
-                let std = std
-                    .ok_or_else(|| de::Error::missing_field("std"))?;
+                let mean =
+                    mean.ok_or_else(|| de::Error::missing_field("mean"))?;
+                let std = std.ok_or_else(|| de::Error::missing_field("std"))?;
                 Ok(NormalDistrib {
                     mean,
                     std,
@@ -116,11 +99,7 @@ impl<'de> Deserialize<'de> for NormalDistrib {
         }
 
         const FIELDS: &[&str] = &["mean", "std"];
-        deserializer.deserialize_struct(
-            "NormalDistrib",
-            FIELDS,
-            NdVisitor,
-        )
+        deserializer.deserialize_struct("NormalDistrib", FIELDS, NdVisitor)
     }
 }
 

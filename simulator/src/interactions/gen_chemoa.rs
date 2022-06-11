@@ -27,10 +27,7 @@ impl ChemAttrGenerator {
 
     pub fn update(&self) {}
 
-    pub fn generate(
-        &self,
-        cell_polys: &[Poly],
-    ) -> Vec<[f64; NVERTS]> {
+    pub fn generate(&self, cell_polys: &[Poly]) -> Vec<[f64; NVERTS]> {
         cell_polys
             .iter()
             .map(|poly| {

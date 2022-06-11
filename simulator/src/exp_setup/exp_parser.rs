@@ -44,9 +44,7 @@ impl From<ParsedIntOpts> for IntegratorOpts {
             ParsedIntOpts::RkDp5(opts) => {
                 let default = RkOpts::default();
                 IntegratorOpts::Rkdp5(RkOpts {
-                    max_iters: opts
-                        .max_iters
-                        .unwrap_or(default.max_iters),
+                    max_iters: opts.max_iters.unwrap_or(default.max_iters),
                     atol: opts.atol.unwrap_or(default.atol),
                     rtol: opts.rtol.unwrap_or(default.rtol),
                     init_h_scale: opts
@@ -54,11 +52,9 @@ impl From<ParsedIntOpts> for IntegratorOpts {
                         .unwrap_or(default.init_h_scale),
                 })
             }
-            ParsedIntOpts::Euler(opts) => {
-                IntegratorOpts::Euler(EulerOpts {
-                    num_int_steps: opts.num_int_steps.unwrap_or(10),
-                })
-            }
+            ParsedIntOpts::Euler(opts) => IntegratorOpts::Euler(EulerOpts {
+                num_int_steps: opts.num_int_steps.unwrap_or(10),
+            }),
             ParsedIntOpts::EulerDebug(opts) => {
                 IntegratorOpts::EulerDebug(EulerOpts {
                     num_int_steps: opts.num_int_steps.unwrap_or(10),
@@ -176,10 +172,8 @@ impl TryFrom<&PathBuf> for ExperimentArgs {
             cal_mag,
             adh_scale,
             adh_break: adh_break.map(|v| Length(v).micro()),
-            crl_one_at: crl_one_at.map_or_else(
-                || *PHYS_CLOSE_DIST_ONE_AT,
-                |v| Length(v).micro(),
-            ),
+            crl_one_at: crl_one_at
+                .map_or_else(|| *PHYS_CLOSE_DIST_ONE_AT, |v| Length(v).micro()),
             zero_at: zero_at.map_or_else(
                 || *PHYS_CLOSE_DIST_ZERO_AT,
                 |v| Length(v).micro(),

@@ -4,7 +4,7 @@ use crate::parameters::quantity::{
     Force, General, Length, Quantity, Stress, Time, Tinv, Viscosity,
 };
 use crate::parameters::{
-    CharQuantities, RawCoaParams, RawInteractionParams,
+    CharacteristicQuantities, RawCoaParams, RawInteractionParams,
     RawParameters, RawPhysicalContactParams, RawWorldParameters,
 };
 use crate::NVERTS;
@@ -20,17 +20,15 @@ pub static CHAR_FORCE: Lazy<Force> = Lazy::new(|| {
     .unwrap()
 });
 pub const CHAR_VISCOSITY: Viscosity = Viscosity(0.1);
-pub static CHAR_LENGTH: Lazy<Length> =
-    Lazy::new(|| Length(1.0).micro());
+pub static CHAR_LENGTH: Lazy<Length> = Lazy::new(|| Length(1.0).micro());
 pub const CHAR_TIME: Time = Time(2.0);
-pub static CHAR_L3D: Lazy<Length> =
-    Lazy::new(|| Length(10.0).micro());
+pub static CHAR_L3D: Lazy<Length> = Lazy::new(|| Length(10.0).micro());
 pub const CHAR_KGTP: Tinv = Tinv(1e-4);
 
 /// Default characteristic quantities.Refer to SI of first two papers for
 /// justification of the values used.
-pub static CHAR_QUANTS: Lazy<CharQuantities> =
-    Lazy::new(|| CharQuantities {
+pub static CHAR_QUANTS: Lazy<CharacteristicQuantities> =
+    Lazy::new(|| CharacteristicQuantities {
         eta: CHAR_VISCOSITY,
         l: *CHAR_LENGTH,
         t: CHAR_TIME,
@@ -51,15 +49,13 @@ pub static ADH_MAG: Lazy<Force> = Lazy::new(|| {
              not produce a force. Check units!",
         )
 });
-pub static CELL_DIAMETER: Lazy<Length> =
-    Lazy::new(|| Length(40.0).micro());
+pub static CELL_DIAMETER: Lazy<Length> = Lazy::new(|| Length(40.0).micro());
 
 /// Default raw parameters for cells.
 pub static RAW_PARAMS: Lazy<RawParameters> = Lazy::new(|| {
-    let rgtp_d = (Length(0.1_f64.sqrt()).micro().pow(2.0).g()
-        / Time(1.0).g())
-    .to_diffusion()
-    .unwrap();
+    let rgtp_d = (Length(0.1_f64.sqrt()).micro().pow(2.0).g() / Time(1.0).g())
+        .to_diffusion()
+        .unwrap();
     let init_rac = RgtpDistribution::new(
         distrib_gens::specific_uniform(0.1, ALL),
         distrib_gens::specific_uniform(0.1, ALL),
@@ -99,12 +95,11 @@ pub static RAW_PARAMS: Lazy<RawParameters> = Lazy::new(|| {
 /// We take the viscosity of the world to be 0.29 N m^-2. We
 /// divide viscosity by the number of vertices, on a cell in
 /// order to scale it properly.
-pub fn vertex_viscosity(char_quants: &CharQuantities) -> Viscosity {
+pub fn vertex_viscosity(char_quants: &CharacteristicQuantities) -> Viscosity {
     char_quants.eta.scale(2.9 / (NVERTS as f64))
 }
 
-pub static PHYS_CLOSE_DIST: Lazy<Length> =
-    Lazy::new(|| Length(0.5).micro());
+pub static PHYS_CLOSE_DIST: Lazy<Length> = Lazy::new(|| Length(0.5).micro());
 pub static PHYS_CLOSE_DIST_ONE_AT: Lazy<Length> =
     Lazy::new(|| *PHYS_CLOSE_DIST);
 pub static PHYS_CLOSE_DIST_ZERO_AT: Lazy<Length> =
@@ -113,8 +108,7 @@ pub static PHYS_CLOSE_DIST_ZERO_AT: Lazy<Length> =
 pub const CIL_MAG: f64 = 60.0;
 
 pub const COA_LOS_PENALTY: f64 = 2.0;
-pub static COA_HALFMAX_DIST: Lazy<Length> =
-    Lazy::new(|| Length(110.0).micro());
+pub static COA_HALFMAX_DIST: Lazy<Length> = Lazy::new(|| Length(110.0).micro());
 
 pub static RAW_COA_PARAMS_WITH_ZERO_MAG: Lazy<RawCoaParams> =
     Lazy::new(|| RawCoaParams {
@@ -124,23 +118,22 @@ pub static RAW_COA_PARAMS_WITH_ZERO_MAG: Lazy<RawCoaParams> =
         too_close_dist: Length(1.0).micro(), //PHYS_CLOSE_DIST.scale(2.0),
     });
 
-pub static RAW_WORLD_PARAMS: Lazy<RawWorldParameters> =
-    Lazy::new(|| {
-        let one_at = *PHYS_CLOSE_DIST;
-        RawWorldParameters {
-            vertex_eta: vertex_viscosity(&CHAR_QUANTS),
-            interactions: RawInteractionParams {
-                coa: None,
-                chem_attr: None,
-                bdry: None,
-                phys_contact: RawPhysicalContactParams {
-                    crl_one_at: one_at,
-                    zero_at: one_at.scale(2.0),
-                    adh_mag: None,
-                    cal_mag: None,
-                    cil_mag: CIL_MAG,
-                    adh_break: None,
-                },
+pub static RAW_WORLD_PARAMS: Lazy<RawWorldParameters> = Lazy::new(|| {
+    let one_at = *PHYS_CLOSE_DIST;
+    RawWorldParameters {
+        vertex_eta: vertex_viscosity(&CHAR_QUANTS),
+        interactions: RawInteractionParams {
+            coa: None,
+            chem_attr: None,
+            bdry: None,
+            phys_contact: RawPhysicalContactParams {
+                crl_one_at: one_at,
+                zero_at: one_at.scale(2.0),
+                adh_mag: None,
+                cal_mag: None,
+                cil_mag: CIL_MAG,
+                adh_break: None,
             },
-        }
-    });
+        },
+    }
+});

@@ -29,8 +29,7 @@ impl From<f64> for Radians {
 
 pub static RAD_0: Lazy<Radians> = Lazy::new(|| Radians::from(0.0));
 pub static RAD_PI: Lazy<Radians> = Lazy::new(|| Radians::from(PI));
-pub static RAD_2PI: Lazy<Radians> =
-    Lazy::new(|| Radians::from(2.0 * PI));
+pub static RAD_2PI: Lazy<Radians> = Lazy::new(|| Radians::from(2.0 * PI));
 pub static RAD_EPS: Lazy<Radians> = Lazy::new(|| Radians::from(1e-3));
 
 impl PartialEq for Radians {

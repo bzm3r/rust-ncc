@@ -15,9 +15,7 @@ use std::fmt::Write;
 use std::ops::{Add, Div, Mul, Sub};
 
 /// 2D vector with `f64` elements.
-#[derive(
-    Clone, Copy, Debug, Default, Deserialize, Serialize, PartialEq,
-)]
+#[derive(Clone, Copy, Debug, Default, Deserialize, Serialize, PartialEq)]
 pub struct V2d {
     pub x: f64,
     pub y: f64,
@@ -261,9 +259,7 @@ pub fn poly_to_string(poly: &[V2d]) -> String {
 }
 
 /// Square of a 2D vector with `f64` elements.
-#[derive(
-    Clone, Copy, Debug, Default, Deserialize, Serialize, PartialEq,
-)]
+#[derive(Clone, Copy, Debug, Default, Deserialize, Serialize, PartialEq)]
 pub struct SqP2d {
     pub x: f64,
     pub y: f64,

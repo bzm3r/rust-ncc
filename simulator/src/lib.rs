@@ -42,9 +42,7 @@ impl Directories {
 impl TryFrom<&PathBuf> for Directories {
     type Error = Box<dyn error::Error>;
 
-    fn try_from(
-        json_path: &PathBuf,
-    ) -> Result<Self, Box<dyn error::Error>> {
+    fn try_from(json_path: &PathBuf) -> Result<Self, Box<dyn error::Error>> {
         let mut f = OpenOptions::new().read(true).open(json_path)?;
         let mut json_out = String::new();
         f.read_to_string(&mut json_out)?;

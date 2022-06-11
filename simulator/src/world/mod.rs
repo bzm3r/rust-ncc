@@ -17,7 +17,7 @@ use crate::interactions::{
 use crate::math::v2d::V2d;
 use crate::parameters::quantity::Quantity;
 use crate::parameters::{
-    CharQuantities, Parameters, WorldParameters,
+    CharacteristicQuantities, Parameters, WorldParameters,
 };
 use crate::utils::pcg32::Pcg32;
 use crate::world::py_comp::execute_py_model;
@@ -28,9 +28,7 @@ use serde::{Deserialize, Serialize};
 use std::f64::consts::PI;
 use std::path::PathBuf;
 
-#[derive(
-    Clone, Deserialize, Serialize, PartialEq, Default, Debug,
-)]
+#[derive(Clone, Deserialize, Serialize, PartialEq, Default, Debug)]
 pub struct WorldCells {
     pub tpoint: f64,
     pub cells: Vec<Cell>,
@@ -91,7 +89,6 @@ impl WorldCells {
         &self,
         tpoint: f64,
         rng: &mut Pcg32,
-        _balloon_factor: f64,
         world_parameters: &WorldParameters,
         group_parameters: &[Parameters],
         interaction_generator: &mut InteractionGenerator,
@@ -101,9 +98,8 @@ impl WorldCells {
         let mut rel_rgtps = new_cells
             .iter()
             .map(|c| {
-                c.core.calc_relative_rgtp_activity(
-                    &group_parameters[c.group_ix],
-                )
+                c.core
+                    .calc_relative_rgtp_activity(&group_parameters[c.group_ix])
             })
             .collect::<Vec<[RelativeRgtpActivity; NVERTS]>>();
         let mut interactions = self.interactions.clone();
@@ -129,10 +125,9 @@ impl WorldCells {
                 int_opts,
             )?;
 
-            rel_rgtps[ci] =
-                new_cell.core.calc_relative_rgtp_activity(
-                    &group_parameters[new_cell.group_ix],
-                );
+            rel_rgtps[ci] = new_cell.core.calc_relative_rgtp_activity(
+                &group_parameters[new_cell.group_ix],
+            );
             interaction_generator.update(ci, &new_cell.core.poly);
             interactions = interaction_generator.generate(&rel_rgtps);
 
@@ -182,9 +177,8 @@ impl WorldCells {
         let rel_rgtps = new_cells
             .iter()
             .map(|c| {
-                c.core.calc_relative_rgtp_activity(
-                    &group_parameters[c.group_ix],
-                )
+                c.core
+                    .calc_relative_rgtp_activity(&group_parameters[c.group_ix])
             })
             .collect::<Vec<[RelativeRgtpActivity; NVERTS]>>();
         Ok(WorldCells {
@@ -219,8 +213,7 @@ impl WorldCells {
                     )
                 })
                 .collect::<Vec<[RelativeRgtpActivity; NVERTS]>>();
-            let interactions =
-                interaction_generator.generate(&rel_rgtps);
+            let interactions = interaction_generator.generate(&rel_rgtps);
             let ci = cell.ix;
             let contact_data = interaction_generator.get_contacts(ci);
             let this_interactions = &interactions[ci];
@@ -234,24 +227,20 @@ impl WorldCells {
             )?;
             for (int_step, int_state) in r.iter().enumerate() {
                 out[int_step + 1].cells[ci] = *int_state;
-                out[int_step + 1].interactions[ci] =
-                    *this_interactions;
+                out[int_step + 1].interactions[ci] = *this_interactions;
             }
             final_states[ci] = r[last_ix];
-            interaction_generator
-                .update(ci, &final_states[ci].core.poly);
+            interaction_generator.update(ci, &final_states[ci].core.poly);
         }
         Ok(out)
     }
 }
 
-#[derive(
-    Deserialize, Serialize, Clone, Default, Debug, PartialEq,
-)]
+#[derive(Deserialize, Serialize, Clone, Default, Debug, PartialEq)]
 pub struct WorldInfo {
     pub final_t: f64,
     pub snap_period: f64,
-    pub char_quants: CharQuantities,
+    pub char_quants: CharacteristicQuantities,
     pub world_params: WorldParameters,
     pub cell_params: Vec<Parameters>,
 }
@@ -273,9 +262,9 @@ pub struct WorldState {
 
 pub struct World {
     final_t: f64,
-    char_quants: CharQuantities,
+    characteristics: CharacteristicQuantities,
     state: WorldState,
-    params: WorldParameters,
+    world_parameters: WorldParameters,
     cell_group_params: Vec<Parameters>,
     writer: Option<AsyncWriter>,
     interaction_generator: InteractionGenerator,
@@ -317,8 +306,8 @@ impl World {
         let normed_final_t = char_quants.normalize(&final_t);
         let normed_snap_period = char_quants.normalize(&snap_period);
         let num_tsteps = normed_final_t.ceil() as usize;
-        let expected_final_t = char_quants
-            .normalize(&char_quants.t.scale(num_tsteps as f64));
+        let expected_final_t =
+            char_quants.normalize(&char_quants.t.scale(num_tsteps as f64));
         // Extract the parameters from each `CellGroup` object obtained
         // from the `Experiment`.
         let group_params = cell_groups
@@ -332,8 +321,7 @@ impl World {
         let mut cell_centroids = vec![];
         cell_groups.iter().enumerate().for_each(|(gix, cg)| {
             cell_group_ixs.append(&mut vec![gix; cg.num_cells]);
-            cell_centroids
-                .append(&mut gen_cell_centroids(cg).unwrap())
+            cell_centroids.append(&mut gen_cell_centroids(cg).unwrap())
         });
         // Generate the cell polygons from the cell centroid
         // information generated in the last step.
@@ -345,16 +333,17 @@ impl World {
         if let Some(pm) = &py_main {
             execute_py_model(
                 &out_dir,
-                &pm,
+                pm,
                 run_python,
                 &name,
                 final_t.number(),
                 snap_period.number(),
                 cell_polys.len() as u32,
                 world_params.interactions.phys_contact.cil_mag,
-                world_params.interactions.coa.map(|coa_params| {
-                    coa_params.vertex_mag * NVERTS as f64
-                }),
+                world_params
+                    .interactions
+                    .coa
+                    .map(|coa_params| coa_params.vertex_mag * NVERTS as f64),
             );
         }
         // Create initial cell states, using the parameters associated
@@ -365,11 +354,7 @@ impl World {
             .zip(cell_polys.iter())
             .map(|(&gix, poly)| {
                 let parameters = &group_params[gix];
-                Core::init(
-                    *poly,
-                    parameters.init_rac,
-                    parameters.init_rho,
-                )
+                Core::init(*poly, parameters.init_rac, parameters.init_rho)
             })
             .collect::<Vec<Core>>();
         // Calculate relative activity of Rac1 vs. RhoA at a node.
@@ -389,13 +374,10 @@ impl World {
             world_params.interactions.clone(),
         );
         // Generate initial cell interactions.
-        let cell_interactions =
-            interaction_generator.generate(&cell_rgtps);
+        let cell_interactions = interaction_generator.generate(&cell_rgtps);
         // Create `Cell` structures to represent each cell, and the random number generator associated per cell.
         let mut cells = vec![];
-        for (cell_ix, group_ix) in
-            cell_group_ixs.into_iter().enumerate()
-        {
+        for (cell_ix, group_ix) in cell_group_ixs.into_iter().enumerate() {
             // Parameters that will be used by this cell. Determined
             // by figuring out which group it belongs to, as all cells
             // within a group use the same parameters.
@@ -438,8 +420,8 @@ impl World {
                 rng,
             },
             final_t: expected_final_t,
-            char_quants,
-            params: world_params,
+            characteristics: char_quants,
+            world_parameters: world_params,
             cell_group_params: group_params,
             interaction_generator,
             writer,
@@ -484,11 +466,7 @@ impl World {
         }
     }
 
-    pub fn simulate_rkdp5(
-        &mut self,
-        save_cbor: bool,
-        int_opts: RkOpts,
-    ) {
+    pub fn simulate_rkdp5(&mut self, save_cbor: bool, int_opts: RkOpts) {
         // Save initial state.
         self.save_state();
         let mut last_saved = 0.0;
@@ -499,12 +477,7 @@ impl World {
                 .simulate_rkdp5(
                     self.state.tpoint,
                     &mut self.state.rng,
-                    self.interaction_generator
-                        .phys_contact_generator
-                        .params
-                        .crl_one_at
-                        * 0.25,
-                    &self.params,
+                    &self.world_parameters,
                     &self.cell_group_params,
                     &mut self.interaction_generator,
                     int_opts,
@@ -521,11 +494,7 @@ impl World {
         self.final_save(save_cbor, "done");
     }
 
-    pub fn simulate_euler(
-        &mut self,
-        save_cbor: bool,
-        int_opts: EulerOpts,
-    ) {
+    pub fn simulate_euler(&mut self, save_cbor: bool, int_opts: EulerOpts) {
         // Save initial state.
         self.save_state();
         let mut last_saved = 0.0;
@@ -536,7 +505,7 @@ impl World {
                 .simulate_euler(
                     self.state.tpoint,
                     &mut self.state.rng,
-                    &self.params,
+                    &self.world_parameters,
                     &self.cell_group_params,
                     &mut self.interaction_generator,
                     int_opts,
@@ -564,7 +533,7 @@ impl World {
                 .state
                 .cells
                 .simulate_euler_debug(
-                    &self.params,
+                    &self.world_parameters,
                     &self.cell_group_params,
                     &mut self.interaction_generator,
                     int_opts,
@@ -578,15 +547,11 @@ impl World {
             for cells in new_cells[..int_opts.num_int_steps].iter() {
                 self.state.tpoint = cells.tpoint;
                 self.state.cells = cells.clone();
-                next_last_saved = self.periodic_save_euler_debug(
-                    curr_tpoint,
-                    last_saved,
-                );
+                next_last_saved =
+                    self.periodic_save_euler_debug(curr_tpoint, last_saved);
             }
-            self.state.tpoint =
-                new_cells[int_opts.num_int_steps].tpoint;
-            self.state.cells =
-                new_cells[int_opts.num_int_steps].clone();
+            self.state.tpoint = new_cells[int_opts.num_int_steps].tpoint;
+            self.state.cells = new_cells[int_opts.num_int_steps].clone();
             last_saved = next_last_saved;
         }
         self.final_save(save_cbor, "done");
@@ -610,8 +575,8 @@ impl World {
         WorldInfo {
             final_t: self.final_t,
             snap_period: self.snap_period,
-            char_quants: self.char_quants,
-            world_params: self.params.clone(),
+            char_quants: self.characteristics,
+            world_params: self.world_parameters.clone(),
             cell_params: self
                 .state
                 .cells
@@ -628,13 +593,7 @@ impl World {
         info: WorldInfo,
         max_capacity: usize,
     ) -> AsyncWriter {
-        AsyncWriter::new(
-            output_dir,
-            file_name,
-            max_capacity,
-            true,
-            info,
-        )
+        AsyncWriter::new(output_dir, file_name, max_capacity, true, info)
     }
 
     pub fn final_save(&mut self, save_cbor: bool, reason: &str) {
@@ -645,9 +604,7 @@ impl World {
     }
 }
 
-pub fn gen_cell_centroids(
-    cg: &CellGroup,
-) -> Result<Vec<V2d>, String> {
+pub fn gen_cell_centroids(cg: &CellGroup) -> Result<Vec<V2d>, String> {
     let CellGroup {
         num_cells,
         layout,

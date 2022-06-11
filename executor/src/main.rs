@@ -6,7 +6,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use clap::{App, AppSettings, Arg};
+use clap::{AppSettings, Arg, Command};
 use simulator::exp_setup::exp_parser::ExperimentArgs;
 use simulator::{exp_setup, world, Directories};
 use std::convert::TryFrom;
@@ -17,25 +17,25 @@ use std::time::Instant;
 pub const EXP_DIR: &str = "B:\\rust-ncc\\experiments\\";
 
 fn main() {
-    let parsed_args = App::new("simulator executor")
+    let parsed_args = Command::new("simulator executor")
         .version("0.1")
         .about("Execute simulations from the command line.")
         .arg(
-            Arg::with_name("config")
-                .short("c")
+            Arg::new("config")
+                .short('c')
                 .long("cfg")
-                .takes_value(true),
+                .takes_value(true)
+                .help("path to cfg.json file containing `output`, `experiment` and `py_main` dirs"),
         )
         .arg(
-            Arg::with_name("experiments")
-                .short("e")
+            Arg::new("experiments")
+                .short('e')
                 .long("exps")
                 .required(true)
                 .takes_value(true)
-                .multiple(true)
+                .multiple_occurrences(true)
                 .min_values(1),
         )
-        .setting(AppSettings::TrailingVarArg)
         .get_matches();
 
     let default_cfg_path: PathBuf =
@@ -45,10 +45,8 @@ fn main() {
     let cfg_path = parsed_args
         .value_of("config")
         .map_or_else(|| default_cfg_path, PathBuf::from);
-    let directories = Directories::try_from(&cfg_path).map_or_else(
-        |e| panic!("{}: {:?}", &cfg_path.display(), e),
-        |d| d,
-    );
+    let directories = Directories::try_from(&cfg_path)
+        .map_or_else(|e| panic!("{}: {:?}", &cfg_path.display(), e), |d| d);
 
     let exp_jsons: Vec<String> = parsed_args
         .values_of("experiments")
@@ -76,10 +74,7 @@ fn main() {
             let now = Instant::now();
             w.simulate(true);
 
-            println!(
-                "Simulation complete. {} s.",
-                now.elapsed().as_secs()
-            );
+            println!("Simulation complete. {} s.", now.elapsed().as_secs());
         }
     }
 }

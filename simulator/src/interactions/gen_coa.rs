@@ -45,10 +45,7 @@ pub struct CoaGenerator {
 /// does not contain the endpoints of `lseg`. Note that case `1` is unlikely, but
 /// possible especially in the initial if cells have been initialized in a
 /// regular lattice.
-pub fn check_other_poly_intersect(
-    lseg: &LineSeg2D,
-    poly: &Poly,
-) -> bool {
+pub fn check_other_poly_intersect(lseg: &LineSeg2D, poly: &Poly) -> bool {
     if lseg.intersects_bbox(&poly.bbox) {
         for edge in poly.edges.iter() {
             if lseg.check_intersection(edge) {
@@ -115,9 +112,7 @@ pub fn calc_pair_info(
         .iter()
         .enumerate()
         .map(|(pi, poly)| {
-            if pi != ci
-                && pi != oci
-                && check_other_poly_intersect(&lseg, poly)
+            if pi != ci && pi != oci && check_other_poly_intersect(&lseg, poly)
             {
                 1.0
             } else {
@@ -144,21 +139,16 @@ impl CoaGenerator {
             .map(|cp| cp.bbox.expand_by(2.0 * params.halfmax_dist))
             .collect::<Vec<BBox>>();
         let contact_matrix = gen_contact_matrix(&contact_bbs);
-        let mut dat =
-            SymCcVvDat::empty(num_cells, VertexPairInfo::infinity());
+        let mut dat = SymCcVvDat::empty(num_cells, VertexPairInfo::infinity());
 
         for (ci, poly) in cell_polys.iter().enumerate() {
             for (vi, v) in poly.verts.iter().enumerate() {
-                for (ocj, opoly) in
-                    cell_polys[(ci + 1)..].iter().enumerate()
-                {
+                for (ocj, opoly) in cell_polys[(ci + 1)..].iter().enumerate() {
                     let oci = (ci + 1) + ocj;
                     for (ovi, ov) in opoly.verts.iter().enumerate() {
-                        if !(phys_contact_generator
-                            .min_dist_to(ci, vi)
+                        if !(phys_contact_generator.min_dist_to(ci, vi)
                             < params.too_close_dist_sq
-                            || phys_contact_generator
-                                .min_dist_to(oci, ovi)
+                            || phys_contact_generator.min_dist_to(oci, ovi)
                                 < params.too_close_dist_sq)
                             && contact_matrix.get(ci, oci)
                         {
@@ -169,8 +159,7 @@ impl CoaGenerator {
                                 oci,
                                 ovi,
                                 calc_pair_info(
-                                    ci, vi, oci, ovi, lseg,
-                                    cell_polys,
+                                    ci, vi, oci, ovi, lseg, cell_polys,
                                 ),
                             );
                         } else {
@@ -210,15 +199,12 @@ impl CoaGenerator {
             }
         }
         for (vi, v) in poly.verts.iter().enumerate() {
-            for (ocj, opoly) in
-                cell_polys[(ci + 1)..].iter().enumerate()
-            {
+            for (ocj, opoly) in cell_polys[(ci + 1)..].iter().enumerate() {
                 let oci = (ci + 1) + ocj;
                 for (ovi, ov) in opoly.verts.iter().enumerate() {
                     if !(phys_contact_generator.min_dist_to(ci, vi)
                         < self.params.too_close_dist_sq
-                        || phys_contact_generator
-                            .min_dist_to(oci, ovi)
+                        || phys_contact_generator.min_dist_to(oci, ovi)
                             < self.params.too_close_dist_sq)
                         && self.contact_matrix.get(ci, oci)
                     {
@@ -228,9 +214,7 @@ impl CoaGenerator {
                             vi,
                             oci,
                             ovi,
-                            calc_pair_info(
-                                ci, vi, oci, ovi, lseg, cell_polys,
-                            ),
+                            calc_pair_info(ci, vi, oci, ovi, lseg, cell_polys),
                         );
                     } else {
                         self.dat.set(
@@ -266,13 +250,10 @@ impl CoaGenerator {
                             } = self.dat.get(ci, vi, oci, ovi);
                             if num_intersects < f64::INFINITY {
                                 let los_factor = 1.0
-                                    / (num_intersects + 1.0)
-                                        .powf(los_penalty);
-                                let coa_signal = (distrib_exp * dist)
-                                    .exp()
-                                    * los_factor;
-                                let additional_signal =
-                                    vertex_mag * coa_signal;
+                                    / (num_intersects + 1.0).powf(los_penalty);
+                                let coa_signal =
+                                    (distrib_exp * dist).exp() * los_factor;
+                                let additional_signal = vertex_mag * coa_signal;
                                 *x_coa += additional_signal;
                             }
                         }

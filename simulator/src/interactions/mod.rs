@@ -23,9 +23,7 @@ use crate::interactions::gen_coa::CoaGenerator;
 use crate::interactions::gen_phys::{
     PhysContactFactors, PhysicalContactGenerator,
 };
-use crate::interactions::RelativeRgtpActivity::{
-    RacDominant, RhoDominant,
-};
+use crate::interactions::RelativeRgtpActivity::{RacDominant, RhoDominant};
 use crate::math::geometry::{BBox, Poly};
 use crate::math::v2d::V2d;
 use crate::parameters::InteractionParams;
@@ -64,15 +62,12 @@ impl RelativeRgtpActivity {
         t: f64,
     ) -> RelativeRgtpActivity {
         RelativeRgtpActivity::from_f64(
-            smaller_vertex.to_f64() * (1.0 - t)
-                + bigger_vertex.to_f64() * t,
+            smaller_vertex.to_f64() * (1.0 - t) + bigger_vertex.to_f64() * t,
         )
     }
 }
 
-#[derive(
-    Copy, Clone, Debug, Default, Deserialize, Serialize, PartialEq,
-)]
+#[derive(Copy, Clone, Debug, Default, Deserialize, Serialize, PartialEq)]
 pub struct Interactions {
     pub x_cals: [f64; NVERTS],
     pub x_cils: [f64; NVERTS],
@@ -112,21 +107,13 @@ impl InteractionGenerator {
             .iter()
             .map(|vs| Poly::from_verts(vs))
             .collect::<Vec<Poly>>();
-        let phys_contact_generator = PhysicalContactGenerator::new(
-            &cell_polys,
-            params.phys_contact,
-        );
+        let phys_contact_generator =
+            PhysicalContactGenerator::new(&cell_polys, params.phys_contact);
         let coa_generator = params.coa.map(|coa_params| {
-            CoaGenerator::new(
-                &cell_polys,
-                coa_params,
-                &phys_contact_generator,
-            )
+            CoaGenerator::new(&cell_polys, coa_params, &phys_contact_generator)
         });
-        let chem_attr_generator =
-            params.chem_attr.map(ChemAttrGenerator::new);
-        let bdry_generator =
-            params.bdry.map(BdryEffectGenerator::new);
+        let chem_attr_generator = params.chem_attr.map(ChemAttrGenerator::new);
+        let bdry_generator = params.bdry.map(BdryEffectGenerator::new);
         InteractionGenerator {
             cell_polys: cell_polys.iter().copied().collect(),
             all_rgtps: cell_rgtps.iter().copied().collect(),
@@ -166,9 +153,7 @@ impl InteractionGenerator {
         let r_coas = self
             .coa_generator
             .as_ref()
-            .map_or(vec![[0.0; NVERTS]; num_cells], |gen| {
-                gen.generate()
-            });
+            .map_or(vec![[0.0; NVERTS]; num_cells], |gen| gen.generate());
         let r_chemoas = self
             .chem_attr_generator
             .as_ref()
@@ -197,9 +182,7 @@ impl InteractionGenerator {
         let num_cells = self.cell_polys.len();
         (0..num_cells)
             .filter(|&oci| {
-                self.phys_contact_generator
-                    .contact_matrix
-                    .get(ci, oci)
+                self.phys_contact_generator.contact_matrix.get(ci, oci)
             })
             .collect()
     }

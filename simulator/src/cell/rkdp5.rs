@@ -109,25 +109,13 @@ impl Ks {
 
         let k1 = {
             let kp = init_state + h * k0.time_step(A1);
-            f(
-                &kp,
-                rand_state,
-                inter_state,
-                world_parameters,
-                parameters,
-            )
+            f(&kp, rand_state, inter_state, world_parameters, parameters)
         };
 
         let k2 = {
-            let kp = init_state
-                + h * (k0.time_step(A2[0]) + k1.time_step(A2[1]));
-            f(
-                &kp,
-                rand_state,
-                inter_state,
-                world_parameters,
-                parameters,
-            )
+            let kp =
+                init_state + h * (k0.time_step(A2[0]) + k1.time_step(A2[1]));
+            f(&kp, rand_state, inter_state, world_parameters, parameters)
         };
 
         let k3 = {
@@ -135,13 +123,7 @@ impl Ks {
                 + h * (k0.time_step(A3[0])
                     + k1.time_step(A3[1])
                     + k2.time_step(A3[2]));
-            f(
-                &kp,
-                rand_state,
-                inter_state,
-                world_parameters,
-                parameters,
-            )
+            f(&kp, rand_state, inter_state, world_parameters, parameters)
         };
 
         let k4 = {
@@ -150,13 +132,7 @@ impl Ks {
                     + k1.time_step(A4[1])
                     + k2.time_step(A4[2])
                     + k3.time_step(A4[3]));
-            f(
-                &kp,
-                rand_state,
-                inter_state,
-                world_parameters,
-                parameters,
-            )
+            f(&kp, rand_state, inter_state, world_parameters, parameters)
         };
 
         let k5 = {
@@ -166,13 +142,7 @@ impl Ks {
                     + k2.time_step(A5[2])
                     + k3.time_step(A5[3])
                     + k4.time_step(A5[4]));
-            f(
-                &kp,
-                rand_state,
-                inter_state,
-                world_parameters,
-                parameters,
-            )
+            f(&kp, rand_state, inter_state, world_parameters, parameters)
         };
 
         let k6 = {
@@ -183,13 +153,7 @@ impl Ks {
                     + k3.time_step(A6[3])
                     + k4.time_step(A6[4])
                     + k5.time_step(A6[5]));
-            f(
-                &kp,
-                rand_state,
-                inter_state,
-                world_parameters,
-                parameters,
-            )
+            f(&kp, rand_state, inter_state, world_parameters, parameters)
         };
 
         Ks {
@@ -267,13 +231,11 @@ pub fn integrate(
                 + k6.time_step(B_HAT[6]));
 
         // Equations 4.10, 4.11, Hairer,Wanner&Norsett Solving ODEs Vol. 1
-        let sc =
-            rtol * init_state.abs().max(&next_state.abs()) + atol;
+        let sc = rtol * init_state.abs().max(&next_state.abs()) + atol;
         let error = ((next_state - next_state_hat).square() / sc)
             .flat_avg()
             .sqrt();
-        let mut h_new =
-            h * min_f64(fac_max, FAC * (1.0 / error).powf(INV_QP1));
+        let mut h_new = h * min_f64(fac_max, FAC * (1.0 / error).powf(INV_QP1));
 
         // see explanation for equation 4.13 in HNW vol1
         if error <= 1.0 {
@@ -305,9 +267,7 @@ pub fn integrate(
     }
 
     Solution {
-        state: Err(RkErr::TooManyIters(
-            "Too many iterations!".to_string(),
-        )),
+        state: Err(RkErr::TooManyIters("Too many iterations!".to_string())),
         num_rejections,
         num_iters,
     }

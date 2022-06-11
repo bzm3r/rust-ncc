@@ -2,13 +2,12 @@ use crate::cell::chemistry::RgtpDistribution;
 use crate::exp_setup::defaults::RAW_COA_PARAMS_WITH_ZERO_MAG;
 use crate::exp_setup::exp_parser::ExperimentArgs;
 use crate::exp_setup::{
-    defaults, CellGroup, Experiment, ExperimentType, GroupBBox,
-    RgtpDistribDefs,
+    defaults, CellGroup, Experiment, ExperimentType, GroupBBox, RgtpDistribDefs,
 };
 use crate::math::v2d::V2d;
 use crate::parameters::quantity::{Length, Quantity};
 use crate::parameters::{
-    CharQuantities, RawChemAttrParams, RawInteractionParams,
+    CharacteristicQuantities, RawChemAttrParams, RawInteractionParams,
     RawParameters, RawPhysicalContactParams,
 };
 use crate::utils::pcg32::Pcg32;
@@ -19,7 +18,7 @@ use rand::SeedableRng;
 fn group_bbox(
     num_cells: usize,
     cell_diam: Length,
-    char_quants: &CharQuantities,
+    char_quants: &CharacteristicQuantities,
 ) -> Result<GroupBBox, String> {
     let side_len = (num_cells as f64).sqrt();
     // specify initial location of group centroid
@@ -66,7 +65,7 @@ fn raw_params(
 /// Define the cell groups that will exist in this experiment.
 fn make_cell_groups(
     rng: &mut Pcg32,
-    char_quants: &CharQuantities,
+    char_quants: &CharacteristicQuantities,
     num_cells: usize,
     cell_diam: Length,
     rgtp_distrib_defns: &RgtpDistribDefs,
@@ -74,21 +73,13 @@ fn make_cell_groups(
 ) -> Vec<CellGroup> {
     vec![CellGroup {
         num_cells,
-        layout: group_bbox(num_cells, cell_diam, char_quants)
-            .unwrap(),
-        parameters: raw_params(
-            rng,
-            rgtp_distrib_defns,
-            randomization,
-        )
-        .refine(char_quants),
+        layout: group_bbox(num_cells, cell_diam, char_quants).unwrap(),
+        parameters: raw_params(rng, rgtp_distrib_defns, randomization)
+            .refine(char_quants),
     }]
 }
 
-pub fn generate(
-    dirs: Directories,
-    args: ExperimentArgs,
-) -> Vec<Experiment> {
+pub fn generate(dirs: Directories, args: ExperimentArgs) -> Vec<Experiment> {
     let ExperimentArgs {
         file_name: toml_name,
         ty,
@@ -110,17 +101,16 @@ pub fn generate(
         randomization,
     } = args;
 
-    let (num_cells, chem_dist, chem_mag) =
-        if let ExperimentType::NCells {
-            num_cells,
-            chem_dist,
-            chem_mag,
-        } = &ty
-        {
-            (*num_cells, chem_dist.map(|v| v), chem_mag.map(|v| v))
-        } else {
-            panic!("Expected an n_cell experiment, but got: {:?}", ty)
-        };
+    let (num_cells, chem_dist, chem_mag) = if let ExperimentType::NCells {
+        num_cells,
+        chem_dist,
+        chem_mag,
+    } = &ty
+    {
+        (*num_cells, chem_dist.map(|v| v), chem_mag.map(|v| v))
+    } else {
+        panic!("Expected an n_cell experiment, but got: {:?}", ty)
+    };
 
     seeds
         .iter()
@@ -154,8 +144,7 @@ pub fn generate(
                         zero_at,
                         crl_one_at,
                         adh_mag: {
-                            adh_scale
-                                .map(|x| defaults::ADH_MAG.scale(x))
+                            adh_scale.map(|x| defaults::ADH_MAG.scale(x))
                         },
                         adh_break,
                         cal_mag,

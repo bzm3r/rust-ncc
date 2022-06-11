@@ -210,9 +210,7 @@ pub trait Quantity {
 }
 
 /// A general quantity.
-#[derive(
-    Deserialize, Serialize, Clone, Copy, PartialEq, Default, Debug,
-)]
+#[derive(Deserialize, Serialize, Clone, Copy, PartialEq, Default, Debug)]
 pub struct General {
     /// Numerical value of this quantity.
     n: f64,
@@ -226,9 +224,7 @@ impl General {
         if self.units() == Units::force() {
             Ok(Force(self.number()))
         } else {
-            Err(String::from(
-                "Quantity does not have units of force.",
-            ))
+            Err(String::from("Quantity does not have units of force."))
         }
     }
 
@@ -237,9 +233,7 @@ impl General {
         if self.units() == Units::diffusion() {
             Ok(Diffusion(self.number()))
         } else {
-            Err(String::from(
-                "Quantity does not have units of diffusion.",
-            ))
+            Err(String::from("Quantity does not have units of diffusion."))
         }
     }
 
@@ -324,9 +318,7 @@ impl Display for General {
     }
 }
 
-#[derive(
-    Deserialize, Serialize, Clone, Copy, PartialEq, Default, Debug,
-)]
+#[derive(Deserialize, Serialize, Clone, Copy, PartialEq, Default, Debug)]
 pub struct Force(pub f64);
 
 impl Quantity for Force {
@@ -366,9 +358,7 @@ impl Quantity for Force {
     }
 }
 
-#[derive(
-    Deserialize, Serialize, Clone, Copy, PartialEq, Default, Debug,
-)]
+#[derive(Deserialize, Serialize, Clone, Copy, PartialEq, Default, Debug)]
 pub struct Length(pub f64);
 
 impl Quantity for Length {
@@ -408,9 +398,7 @@ impl Quantity for Length {
     }
 }
 
-#[derive(
-    Deserialize, Serialize, Clone, Copy, PartialEq, Default, Debug,
-)]
+#[derive(Deserialize, Serialize, Clone, Copy, PartialEq, Default, Debug)]
 pub struct Time(pub f64);
 
 impl Quantity for Time {
@@ -450,9 +438,7 @@ impl Quantity for Time {
     }
 }
 
-#[derive(
-    Deserialize, Serialize, Clone, Copy, PartialEq, Default, Debug,
-)]
+#[derive(Deserialize, Serialize, Clone, Copy, PartialEq, Default, Debug)]
 pub struct Tinv(pub f64);
 
 impl Quantity for Tinv {
@@ -492,9 +478,7 @@ impl Quantity for Tinv {
     }
 }
 
-#[derive(
-    Deserialize, Serialize, Clone, Copy, PartialEq, Default, Debug,
-)]
+#[derive(Deserialize, Serialize, Clone, Copy, PartialEq, Default, Debug)]
 pub struct Diffusion(pub f64);
 
 impl Quantity for Diffusion {
@@ -534,9 +518,7 @@ impl Quantity for Diffusion {
     }
 }
 
-#[derive(
-    Deserialize, Serialize, Clone, Copy, PartialEq, Default, Debug,
-)]
+#[derive(Deserialize, Serialize, Clone, Copy, PartialEq, Default, Debug)]
 pub struct Stress(pub f64);
 
 impl Quantity for Stress {
@@ -576,9 +558,7 @@ impl Quantity for Stress {
     }
 }
 
-#[derive(
-    Deserialize, Serialize, Clone, Copy, PartialEq, Default, Debug,
-)]
+#[derive(Deserialize, Serialize, Clone, Copy, PartialEq, Default, Debug)]
 pub struct Viscosity(pub f64);
 
 impl Quantity for Viscosity {

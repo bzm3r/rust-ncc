@@ -13,9 +13,7 @@ use crate::utils::circ_ix_plus;
 use crate::NVERTS;
 
 /// Calculate edge vectors of a polygon.
-pub fn calc_edge_vecs(
-    vertex_coords: &[V2d; NVERTS],
-) -> [V2d; NVERTS] {
+pub fn calc_edge_vecs(vertex_coords: &[V2d; NVERTS]) -> [V2d; NVERTS] {
     let mut r = [V2d::default(); NVERTS];
     (0..NVERTS).for_each(|i| {
         let plus_i = circ_ix_plus(i, NVERTS);
@@ -90,18 +88,10 @@ pub fn calc_rgtp_forces(
         // which points in the direction `uiv`.
         let mag = if ra > pa {
             -1.0 * const_protrusive
-                * capped_linear_fn(
-                    ra - pa,
-                    0.0,
-                    2.0 * halfmax_vertex_rgtp,
-                )
+                * capped_linear_fn(ra - pa, 0.0, 2.0 * halfmax_vertex_rgtp)
         } else {
             const_retractive
-                * capped_linear_fn(
-                    pa - ra,
-                    0.0,
-                    2.0 * halfmax_vertex_rgtp,
-                )
+                * capped_linear_fn(pa - ra, 0.0, 2.0 * halfmax_vertex_rgtp)
         };
 
         r[i] = mag * uiv;

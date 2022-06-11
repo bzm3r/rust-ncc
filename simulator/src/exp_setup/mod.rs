@@ -9,7 +9,7 @@
 use crate::exp_setup::exp_parser::ExperimentArgs;
 use crate::math::v2d::V2d;
 use crate::parameters::{
-    CharQuantities, Parameters, WorldParameters,
+    CharacteristicQuantities, Parameters, WorldParameters,
 };
 use crate::utils::pcg32::Pcg32;
 use crate::world::IntegratorOpts;
@@ -104,19 +104,12 @@ impl Default for ExperimentType {
 }
 
 /// Generate the experiment, so that it can be run.
-pub fn generate(
-    dirs: Directories,
-    args: ExperimentArgs,
-) -> Vec<Experiment> {
+pub fn generate(dirs: Directories, args: ExperimentArgs) -> Vec<Experiment> {
     dirs.make();
     match &args.ty {
-        ExperimentType::NCells { .. } => {
-            n_cells::generate(dirs, args)
-        }
+        ExperimentType::NCells { .. } => n_cells::generate(dirs, args),
         ExperimentType::Pair { .. } => pair::generate(dirs, args),
-        ExperimentType::PyCompare { .. } => {
-            py_compare::generate(dirs, args)
-        }
+        ExperimentType::PyCompare { .. } => py_compare::generate(dirs, args),
     }
 }
 
@@ -150,7 +143,7 @@ pub struct Experiment {
     /// Time period in seconds to be simulated.
     pub final_t: Time,
     /// Characteristic quantities.
-    pub char_quants: CharQuantities,
+    pub char_quants: CharacteristicQuantities,
     pub world_params: WorldParameters,
     /// List of cell groups involved in this experiment.
     pub cell_groups: Vec<CellGroup>,

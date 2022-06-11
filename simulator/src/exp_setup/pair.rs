@@ -8,7 +8,7 @@ use crate::exp_setup::{
 use crate::math::v2d::V2d;
 use crate::parameters::quantity::{Length, Quantity};
 use crate::parameters::{
-    CharQuantities, RawInteractionParams, RawParameters,
+    CharacteristicQuantities, RawInteractionParams, RawParameters,
     RawPhysicalContactParams,
 };
 use crate::utils::pcg32::Pcg32;
@@ -18,7 +18,7 @@ use rand::SeedableRng;
 /// Generate the group bounding box to use for this experiment.
 fn group_bbox(
     num_cells: usize,
-    char_quants: &CharQuantities,
+    char_quants: &CharacteristicQuantities,
     bottom_left: (Length, Length),
     width: usize,
     height: usize,
@@ -67,7 +67,7 @@ fn raw_params(
 
 fn make_cell_group(
     rng: &mut Pcg32,
-    char_quants: &CharQuantities,
+    char_quants: &CharacteristicQuantities,
     randomization: bool,
     rgtp_distrib_defs: &RgtpDistribDefs,
     bot_left: (Length, Length),
@@ -75,8 +75,7 @@ fn make_cell_group(
     box_width: usize,
     box_height: usize,
 ) -> CellGroup {
-    let raw_params =
-        raw_params(rng, rgtp_distrib_defs, randomization);
+    let raw_params = raw_params(rng, rgtp_distrib_defs, randomization);
     let parameters = raw_params.refine(char_quants);
     CellGroup {
         num_cells,
@@ -95,7 +94,7 @@ fn make_cell_group(
 /// Define the cell groups that will exist in this experiment.
 fn make_cell_groups(
     rng: &mut Pcg32,
-    char_quants: &CharQuantities,
+    char_quants: &CharacteristicQuantities,
     rgtp_distrib_defs_per_cell: &PairRgtpDistribDefs,
     randomization: bool,
     sep_in_cell_diams: usize,
@@ -127,10 +126,7 @@ fn make_cell_groups(
     vec![group_zero, group_one]
 }
 
-pub fn generate(
-    dirs: Directories,
-    args: ExperimentArgs,
-) -> Vec<Experiment> {
+pub fn generate(dirs: Directories, args: ExperimentArgs) -> Vec<Experiment> {
     let ExperimentArgs {
         file_name: toml_name,
         ty,
@@ -180,8 +176,7 @@ pub fn generate(
                     phys_contact: RawPhysicalContactParams {
                         zero_at,
                         crl_one_at,
-                        adh_mag: adh_scale
-                            .map(|x| defaults::ADH_MAG.scale(x)),
+                        adh_mag: adh_scale.map(|x| defaults::ADH_MAG.scale(x)),
                         adh_break,
                         cal_mag,
                         cil_mag,
