@@ -6,6 +6,7 @@ use crate::NVERTS;
 use serde::{Deserialize, Serialize};
 use std::fs::{create_dir_all, OpenOptions};
 use std::path::PathBuf;
+use tracing::info;
 
 /// A combination of `parameters::CharQuants`, `parameters:WorldParameters`,
 /// `parameters::PhysicalContactParameters`,`parameters::CoaParameters`.
@@ -294,7 +295,7 @@ impl Writer {
         let file_path: PathBuf = [self.out_dir.clone(), self.file_name.clone()]
             .iter()
             .collect();
-        println!("saving to: {}", &file_path.to_str().unwrap());
+        info!("saving to: {}", &file_path.to_str().unwrap());
         let mut f = OpenOptions::new()
             .create(true)
             .truncate(true)

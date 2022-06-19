@@ -17,7 +17,7 @@ use std::fmt;
 use std::fmt::Display;
 use std::ops::{Add, Mul};
 
-const INTERSECTION_CLOSE_EPS: f64 = 1e-16;
+const INTERSECTION_CLOSE_EPS: f64 = 1e-32;
 
 #[derive(Clone, Copy, Deserialize, Serialize)]
 pub struct Poly {
@@ -296,6 +296,7 @@ impl Display for IntersectCalcResult {
     }
 }
 
+#[derive(Debug)]
 pub enum IsLeftResult {
     Left,
     Right,
@@ -368,7 +369,7 @@ impl LineSeg2D {
 
     /// Check if line segments intersect, without calculating point of intersection.
     pub fn check_intersection(&self, other: &LineSeg2D) -> bool {
-        lsegs_intersect(&self.p0, &self.p1, other)
+        lsegs_intersect_strictly(&self.p0, &self.p1, other)
     }
 
     /// Let this segment `self` be parametrized so that a point
@@ -550,38 +551,14 @@ impl LineSeg2D {
 
 /// Uses the cross-product to check if a pair of points defining a line segment intersects
 /// a line segment.
-pub fn lsegs_intersect(p0: &V2d, p1: &V2d, other: &LineSeg2D) -> bool {
+pub fn lsegs_intersect_strictly(p0: &V2d, p1: &V2d, other: &LineSeg2D) -> bool {
     let is_left_results = (
         is_left_pointwise(p0, p1, &other.p0),
         is_left_pointwise(p0, p1, &other.p1),
         is_left_pointwise(&other.p0, &other.p1, p0),
         is_left_pointwise(&other.p0, &other.p1, p1),
     );
-    match is_left_results {
-        (IsLeftResult::Left, IsLeftResult::Left, _, _)
-        | (IsLeftResult::Right, IsLeftResult::Right, _, _)
-        | (_, _, IsLeftResult::Left, IsLeftResult::Left)
-        | (_, _, IsLeftResult::Right, IsLeftResult::Right) => false,
-        (
-            IsLeftResult::Collinear,
-            IsLeftResult::Collinear,
-            IsLeftResult::Collinear,
-            IsLeftResult::Collinear,
-        ) => BBox::from_point_pair(p0, p1)
-            .intersects(&BBox::from_point_pair(&other.p0, &other.p1)),
-        (_, _, _, _) => true,
-    }
-}
 
-/// Uses the cross-product to check if a pair of points defining a line segment intersects
-/// a line segment.
-pub fn lsegs_intersect_strong(p0: &V2d, p1: &V2d, other: &LineSeg2D) -> bool {
-    let is_left_results = (
-        is_left_pointwise(p0, p1, &other.p0),
-        is_left_pointwise(p0, p1, &other.p1),
-        is_left_pointwise(&other.p0, &other.p1, p0),
-        is_left_pointwise(&other.p0, &other.p1, p1),
-    );
     match is_left_results {
         (IsLeftResult::Left, IsLeftResult::Left, _, _)
         | (IsLeftResult::Right, IsLeftResult::Right, _, _)

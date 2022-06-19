@@ -6,29 +6,17 @@ from utils import *
 import os
 import subprocess
 import orjson
-import argparse
-from pathlib import Path
 
-parser = argparse.ArgumentParser()
-parser.add_argument("--exp", help="experiment json", type=str)
-parser.add_argument("--output", help="output folder", type=str)
-args = parser.parse_args()
-
-exp_path = Path(args.exp)
-exp_json = exp_path.parts[-1].replace(".json","") # Jank
-with open(exp_path) as f:
-    json_str = f.read()
-
-exp_dict = orjson.loads(json_str)
-
-out_dir = Path(args.output)
-
-seeds, file_names = determine_file_names(exp_json, exp_dict)
+exp_name = "perftest_16_cell"
+seeds = [7]
+file_names = generate_file_names(seeds, exp_name)
+root_dir = os.getcwd()
+out_dir = os.path.join(root_dir, "output")
 for file_name in file_names:
     rust_dat = SimulationData()
     rust_dat.load_rust_dat(out_dir, file_name)
     rust_dat.tag = "rust"
-    vec_ani_opts = get_vec_ani_opts(exp_dict)
+    vec_ani_opts = create_default_ani_opts()
 
     rust_dat.animate(vec_ani_opts, "rgtps")
     # rust_dat.animate(vec_ani_opts, "x_cils")

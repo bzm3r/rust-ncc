@@ -75,7 +75,7 @@ impl Cell {
             let delta = Core::derivative(
                 &state,
                 &self.rac_rand,
-                &interactions,
+                interactions,
                 world_parameters,
                 parameters,
             );
@@ -124,7 +124,7 @@ impl Cell {
             let delta = Core::derivative(
                 &state,
                 &self.rac_rand,
-                &interactions,
+                interactions,
                 world_parameters,
                 parameters,
             );

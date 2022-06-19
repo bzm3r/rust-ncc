@@ -18,6 +18,7 @@ use std::path::{Path, PathBuf};
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::thread::JoinHandle;
 use std::{io, thread};
+use tracing::info;
 
 #[derive(Clone, Copy)]
 pub enum Format {
@@ -30,11 +31,7 @@ pub fn get_file_name(format: Format, name: &str) -> String {
         Format::Cbor => "cbor".to_string(),
         Format::Bincode => "binc".to_string(),
     };
-    if cfg!(features = "validate") {
-        format!("validated_{}.{}", name, ext)
-    } else {
-        format!("{}.{}", name, ext)
-    }
+    format!("{}.{}", name, ext)
 }
 
 pub fn get_clean_file(
@@ -129,7 +126,7 @@ impl AsyncWriter {
             Sender<Vec<WorldState>>,
             Receiver<Vec<WorldState>>,
         ) = channel();
-        println!("output path: {:?}", path);
+        info!("output path: {:?}", path);
         let mut file = OpenOptions::new()
             .create(true)
             .write(true)
@@ -198,7 +195,7 @@ impl AsyncWriter {
                 output_dir.join(get_file_name(Format::Cbor, &file_name));
             save_binc_to_cbor(&file_path, &cbor_path);
         }
-        println!(
+        info!(
             "AsyncWriter finishing. Reason: {}. Saved {} snapshots to disk.",
             reason, self.num_saved
         );

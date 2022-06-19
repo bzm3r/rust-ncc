@@ -13,6 +13,14 @@ pub mod display;
 pub mod normal;
 pub mod pcg32;
 
+#[macro_export]
+macro_rules! print_trace {
+    ( $( $msg:expr ),* ) => {{
+        #[cfg(feature = "trace")]
+        tracing::trace!($($msg),*)
+    }};
+}
+
 pub fn circ_ix_minus(ix: usize, num_items: usize) -> usize {
     if ix == 0 {
         num_items - 1

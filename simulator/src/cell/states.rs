@@ -7,9 +7,9 @@ use crate::cell::mechanics::{
 };
 use crate::interactions::{Contact, Interactions, RelativeRgtpActivity};
 use crate::math::geometry::{
-    is_point_in_poly, lsegs_intersect, lsegs_intersect_strong, LineSeg2D, Poly,
+    is_point_in_poly, lsegs_intersect_strictly, LineSeg2D, Poly,
 };
-use crate::math::v2d::{poly_to_string, SqP2d, V2d};
+use crate::math::v2d::{SqP2d, V2d};
 use crate::math::{hill_function3, max_f64};
 use crate::parameters::{Parameters, WorldParameters};
 use crate::utils::{circ_ix_minus, circ_ix_plus};
@@ -18,6 +18,7 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::fmt::Display;
 use std::ops::{Add, Div, Mul, Sub};
+use tracing::info;
 
 /// `CoreState` contains all the variables that are simulated between geometric
 /// updates. They are simulated using ODEs which are then integrated using
@@ -370,7 +371,7 @@ impl From<&[V2d; NVERTS]> for GeomState {
     }
 }
 
-pub fn fmt_var_arr<T: fmt::Display>(
+pub fn fmt_var_arr<T: Display>(
     f: &mut fmt::Formatter<'_>,
     description: &str,
     vars: &[T; NVERTS],
@@ -796,12 +797,19 @@ impl Core {
         &mut self,
         old_vs: &[V2d; NVERTS],
         contacts: &[Contact],
-    ) -> Result<(), VolExErr> {
-        // confirm_volume_exclusion(&old_vs, &contacts, "old_vs")?;
+    ) -> Result<(), String> {
+        // confirm_volume_exclusion(old_vs, contacts, "old_vs")?;
 
-        self.enforce_volume_exclusion(old_vs, contacts)?;
+        let mut n = 0;
+        while check_volume_exclusion(&self.poly, contacts) {
+            if n > 0 {
+                info!("redoing volume exclusion {}", n);
+            }
+            self.enforce_volume_exclusion(old_vs, contacts)?;
+            n += 1
+        }
 
-        // confirm_volume_exclusion(&self.poly, &contacts, "new_vs")?;
+        // confirm_volume_exclusion(&self.poly, contacts, "new_vs")?;
         Ok(())
     }
 
@@ -809,33 +817,30 @@ impl Core {
         &mut self,
         old_vs: &[V2d; NVERTS],
         contacts: &[Contact],
-    ) -> Result<(), VolExErr> {
+    ) -> Result<(), String> {
         for vi in 0..NVERTS {
             let v = self.poly[vi];
             let old_v = old_vs[vi];
             let uiv_v = self.geom.unit_in_vecs[vi];
             for contact in contacts {
                 self.poly[vi] =
-                    fix_point_in_poly(3, old_v, v, uiv_v, &contact.poly)?;
+                    fix_point_in_poly(4, old_v, v, uiv_v, &contact.poly);
             }
         }
 
         for vi in 0..NVERTS {
             let wi = circ_ix_plus(vi, NVERTS);
-            let v = self.poly[vi];
-            let w = self.poly[wi];
             let old_v = old_vs[vi];
             let old_w = old_vs[wi];
-            let uiv_v = self.geom.unit_in_vecs[vi];
-            let uiv_w = self.geom.unit_in_vecs[wi];
             for contact in contacts {
-                for other in contact.poly.edges.iter() {
+                for other_edge in contact.poly.edges.iter() {
                     let (fixed_v, fixed_w) = fix_edge_intersection(
-                        3,
-                        (old_v, old_w),
-                        (v, w),
-                        (uiv_v, uiv_w),
-                        other,
+                        4,
+                        old_v,
+                        old_w,
+                        self.poly[vi],
+                        self.poly[wi],
+                        other_edge,
                     )?;
                     self.poly[vi] = fixed_v;
                     self.poly[wi] = fixed_w;
@@ -879,9 +884,9 @@ fn violates_volume_exclusion(
     contacts: &[Contact],
 ) -> Option<(Poly, V2d, V2d)> {
     for contact in contacts {
-        for other in contact.poly.edges.iter() {
-            if lsegs_intersect(test_v, test_w, other) {
-                return Some((contact.poly, other.p0, other.p1));
+        for other_edge in contact.poly.edges.iter() {
+            if lsegs_intersect_strictly(test_v, test_w, other_edge) {
+                return Some((contact.poly, other_edge.p0, other_edge.p1));
             }
         }
     }
@@ -901,86 +906,109 @@ impl From<VolExErr> for String {
     }
 }
 
-fn fix_orig_edge(
-    orig_vw: (V2d, V2d),
-    new_vw: (V2d, V2d),
-    uiv_vw: (V2d, V2d),
-    other: &LineSeg2D,
-) -> Result<(V2d, V2d), VolExErr> {
-    let (init_v, init_w) = orig_vw;
-    let (new_v, new_w) = new_vw;
-    let (uiv_v, uiv_w) = uiv_vw;
-    let delta_v = uiv_v.scale(0.1);
-    // let delta_v = if init_v.close_to(&new_v, 1e-4) {
-    //     (new_v - centroid).scale(0.01)
-    // } else {
-    //     (new_v - init_v).scale(0.25)
-    // };
-    let delta_w = uiv_w.scale(0.1);
-    // let delta_w = if init_w.close_to(&new_w, 1e-4) {
-    //     (new_w - centroid).scale(0.01)
-    // } else {
-    //     (new_w - init_w).scale(0.25)
-    // };
-    let mut n = 1.0;
-    let (mut orig_v, mut orig_w) = orig_vw;
-    while lsegs_intersect_strong(&orig_v, &orig_w, &other) {
-        orig_v = orig_v + delta_v.scale(n);
-        orig_w = orig_w + delta_w.scale(n);
-        n += 1.0;
-        if n > 10.0 {
-            return Err(VolExErr::OldEdge(format!(
-                "could not fix orig edge intersection issue: orig_v: \
-            {}, orig_w: {}, new_v: {}, new_w: {}, other.p0: {}, other.p1: {}",
-                init_v, init_w, new_v, new_w, other.p0, other.p1
-            )));
-        }
-    }
-    Ok((orig_v, orig_w))
-}
+// fn fix_orig_edge(
+//     orig_vw: (V2d, V2d),
+//     uiv_vw: (V2d, V2d),
+//     other: &LineSeg2D,
+// ) -> (V2d, V2d) {
+//     // let (init_v, init_w) = orig_vw;
+//     // let (new_v, new_w) = new_vw;
+//     let (uiv_v, uiv_w) = uiv_vw;
+//     let delta_v = uiv_v.scale(0.1);
+//     // let delta_v = if init_v.close_to(&new_v, 1e-4) {
+//     //     (new_v - centroid).scale(0.01)
+//     // } else {
+//     //     (new_v - init_v).scale(0.25)
+//     // };
+//     let delta_w = uiv_w.scale(0.1);
+//     // let delta_w = if init_w.close_to(&new_w, 1e-4) {
+//     //     (new_w - centroid).scale(0.01)
+//     // } else {
+//     //     (new_w - init_w).scale(0.25)
+//     // };
+//     let mut n = 1.0;
+//     let (mut orig_v, mut orig_w) = orig_vw;
+//     while lsegs_intersect_strictly(&orig_v, &orig_w, other) {
+//         orig_v = orig_v + delta_v.scale(n);
+//         orig_w = orig_w + delta_w.scale(n);
+//         n += 1.0;
+//         if n > 10.0 {
+//             panic!("could not fix orig edge");
+//         }
+//     }
+//     (orig_v, orig_w)
+// }
+
+// fn find_good_edge(
+//     orig_vw: (V2d, V2d),
+//     dvw: (V2d, V2d),
+//     other: &LineSeg2D,
+// ) -> Result<(V2d, V2d), String> {
+//     let (dv, dw) = dvw;
+//     let mut n = 1.0;
+//     let (mut orig_v, mut orig_w) = orig_vw;
+//     if
+//     let (mut okay_v, okay_w) = (orig_v, )
+//     while lsegs_intersect_strictly(&orig_v, &orig_w, other) {
+//         info!("trying to find a good edge!");
+//         orig_v = orig_v - dv.scale(n);
+//         orig_w = orig_w - dw.scale(n);
+//
+//         if n > 10.0 {
+//             n += 2.0;
+//         } else if n > 100.0 {
+//             n += 10.0;
+//         } else if n > 1000.0 {
+//             n += 100.0;
+//         }
+//
+//         if n > 10000.0 {
+//             return Err("Could not find good edge.".into());
+//         }
+//     }
+//     Ok((orig_v, orig_w))
+// }
 
 fn fix_edge_intersection(
     num_iters: usize,
-    mut good_vw: (V2d, V2d),
-    new_vw: (V2d, V2d),
-    uiv_vw: (V2d, V2d),
+    old_v: V2d,
+    old_w: V2d,
+    new_v: V2d,
+    new_w: V2d,
     other: &LineSeg2D,
-) -> Result<(V2d, V2d), VolExErr> {
-    let (mut new_v, mut new_w) = new_vw;
-    if !lsegs_intersect_strong(&new_v, &new_w, other) {
-        return Ok((new_v, new_w));
-    }
-    let (good_v, good_w) = good_vw;
-    if lsegs_intersect_strong(&good_v, &good_w, other) {
-        good_vw = fix_orig_edge(good_vw, new_vw, uiv_vw, other)?;
-    }
-    let (orig_v, orig_w) = good_vw;
-    let (mut good_v, mut good_w) = good_vw;
-    let mut n = 0;
-    while n < num_iters {
-        n += 1;
-        let test_v = 0.5 * (new_v + good_v);
-        let test_w = 0.5 * (new_w + good_w);
-        if lsegs_intersect_strong(&test_v, &test_w, other) {
-            new_v = test_v;
-            new_w = test_w;
-        } else {
-            good_v = test_v;
-            good_w = test_w;
+) -> Result<(V2d, V2d), String> {
+    if lsegs_intersect_strictly(&new_v, &new_w, other) {
+        if lsegs_intersect_strictly(&old_v, &old_w, other) {
+            return Err("Old edge violates volume exclusion.".into());
         }
-    }
-    if lsegs_intersect_strong(&good_v, &good_w, other) {
-        Ok((orig_v, orig_w))
-    } else {
+
+        let (mut good_v, mut good_w) = (old_v, old_w);
+        let (mut problem_v, mut problem_w) = (new_v, new_w);
+        let mut n = 0;
+        while n < num_iters {
+            n += 1;
+            let test_v = 0.5 * (problem_v + good_v);
+            let test_w = 0.5 * (problem_w + good_w);
+
+            if lsegs_intersect_strictly(&test_v, &test_w, other) {
+                problem_v = test_v;
+                problem_w = test_w;
+            } else {
+                good_v = test_v;
+                good_w = test_w;
+            }
+        }
+
+        if lsegs_intersect_strictly(&good_v, &good_w, other) {
+            return Err("'Good' edge still violates volume exclusion.".into());
+        }
         Ok((good_v, good_w))
+    } else {
+        Ok((new_v, new_w))
     }
 }
 
-fn fix_orig_point(
-    mut orig_v: V2d,
-    uiv_v: V2d,
-    other: &[V2d; NVERTS],
-) -> Result<V2d, VolExErr> {
+fn fix_orig_point(mut orig_v: V2d, uiv_v: V2d, other: &[V2d; NVERTS]) -> V2d {
     let delta = uiv_v.scale(0.1);
     // let delta = if orig_v.close_to(&new_v, 1e-4) {
     //     (new_v - centroid).scale(0.01)
@@ -993,12 +1021,10 @@ fn fix_orig_point(
         n += 1.0;
 
         if n > 100.0 {
-            return Err(VolExErr::OldVert(
-                format!("could not fix orig point in polygon issue: orig_v: {}\nother: {}", orig_v,
-                                                 poly_to_string(other))));
+            panic!("could not fix orig point");
         }
     }
-    Ok(orig_v)
+    orig_v
 }
 
 fn fix_point_in_poly(
@@ -1007,57 +1033,54 @@ fn fix_point_in_poly(
     mut new_v: V2d,
     uiv_v: V2d,
     other: &Poly,
-) -> Result<V2d, VolExErr> {
-    if is_point_in_poly(&good_v, Some(&other.bbox), &other.verts) {
-        good_v = fix_orig_point(good_v, uiv_v, &other.verts)?;
-    }
-    let orig_v = good_v;
+) -> V2d {
     if !is_point_in_poly(&new_v, Some(&other.bbox), &other.verts) {
-        return Ok(new_v);
+        new_v
+    } else {
+        if is_point_in_poly(&good_v, Some(&other.bbox), &other.verts) {
+            good_v = fix_orig_point(good_v, uiv_v, &other.verts);
+        }
+
+        let mut n = 0;
+        while n < num_iters {
+            n += 1;
+            let test_v = 0.5 * (new_v + good_v);
+            if is_point_in_poly(&test_v, Some(&other.bbox), &other.verts) {
+                new_v = test_v;
+            } else {
+                good_v = test_v;
+            }
+        }
+        good_v
     }
-    let mut n = 0;
-    while n < num_iters {
-        n += 1;
-        let test_v = 0.5 * (new_v + good_v);
-        if is_point_in_poly(&test_v, Some(&other.bbox), &other.verts) {
-            new_v = test_v;
-        } else {
-            good_v = test_v;
+}
+
+pub fn check_volume_exclusion(
+    vs: &[V2d; NVERTS],
+    contacts: &[Contact],
+) -> bool {
+    for (vi, v) in vs.iter().enumerate() {
+        let wi = circ_ix_plus(vi, NVERTS);
+        let w = vs[wi];
+        if violates_volume_exclusion(v, &w, contacts).is_some() {
+            return true;
         }
     }
-    if is_point_in_poly(&good_v, Some(&other.bbox), &other.verts) {
-        Ok(orig_v)
-    } else {
-        Ok(good_v)
-    }
+    false
 }
 
 pub fn confirm_volume_exclusion(
     vs: &[V2d; NVERTS],
     contacts: &[Contact],
-    _msg: &str,
+    msg: &str,
 ) -> Result<(), VolExErr> {
     // use crate::math::v2d::poly_to_string;
     for (vi, v) in vs.iter().enumerate() {
         let wi = circ_ix_plus(vi, NVERTS);
         let w = vs[wi];
         if violates_volume_exclusion(v, &w, contacts).is_some() {
-            return Err(VolExErr::ConfirmViolation("".into()));
+            return Err(VolExErr::ConfirmViolation(msg.into()));
         }
-        //     return Err(format!(
-        //         "{} violates volume exclusion.\n\
-        //             vs = {}, \n\
-        //             other poly = {}  \n\
-        //             this_vs = {} \n\
-        //             a = {}, b = {}",
-        //         msg,
-        //         v,
-        //         &poly_to_string(&p.verts),
-        //         &poly_to_string(vs),
-        //         a,
-        //         b,
-        //     ));
-        // }
     }
     Ok(())
 }

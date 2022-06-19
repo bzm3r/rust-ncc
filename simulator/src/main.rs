@@ -1,3 +1,13 @@
+/*
+ * // Copyright © 2022 Brian Merchant.
+ * //
+ * // Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+ * // http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+ * // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
+ * // option. This file may not be copied, modified, or distributed
+ * // except according to those terms.
+ */
+
 use simulator::exp_setup::exp_parser::ExperimentArgs;
 use simulator::exp_setup::{
     generate, DistribDef, ExperimentType, RgtpDistribDef, RgtpDistribDefs,
@@ -10,27 +20,37 @@ use std::path::PathBuf;
 use std::str::FromStr;
 use std::time::Instant;
 
+use tracing::{info, Level};
+
 fn main() {
+    tracing_subscriber::fmt()
+        .compact()
+        // all spans/events with a level higher than TRACE (e.g, info, warn, etc.)
+        // will be written to stdout.
+        .with_max_level(Level::TRACE)
+        // sets this to be the default, global collector for this application.
+        .init();
+
     let cfg_path = PathBuf::from_str("B:/rust-ncc/cfg.json").unwrap();
     let directories = Directories::try_from(&cfg_path)
         .map_or_else(|e| panic!("{}: {:?}", &cfg_path.display(), e), |d| d);
     let exp_args = ExperimentArgs {
-        file_name: "example_four_cell".to_string(),
+        file_name: "perftest_16_cell".to_string(),
         ty: ExperimentType::NCells {
-            num_cells: 4,
+            num_cells: 16,
             chem_dist: None,
             chem_mag: None,
         },
-        final_t: Time(5400.0),
+        final_t: Time(540.0),
         char_t: Time(0.1),
         cil_mag: 60.0,
-        coa_mag: Some(24.0),
+        coa_mag: Some(14.0),
         cal_mag: Some(60.0),
         adh_scale: None,
         adh_break: None,
         zero_at: Length(2.0).micro(),
         too_close_dist: Length(2.0).micro(),
-        snap_period: Time(10.0),
+        snap_period: Time(1.0),
         max_on_ram: 1000,
         randomization: true,
         seeds: vec![7],
@@ -58,5 +78,5 @@ fn main() {
     let now = Instant::now();
     w.simulate(true);
 
-    println!("Simulation complete. {} s.", now.elapsed().as_secs());
+    info!("Simulation complete. {} s.", now.elapsed().as_secs());
 }

@@ -1,5 +1,5 @@
 {
-  "out": "./output",
-  "exp": "./experiments",
-  "py_main": "./py_model/main.py"
+  "out": "B:/rust-ncc/output",
+  "exp": "B:/rust-ncc/experiments",
+  "py_main": "B:/rust-ncc/py_model/main.py"
 }

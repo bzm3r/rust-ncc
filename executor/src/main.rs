@@ -6,7 +6,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use clap::{AppSettings, Arg, Command};
+use clap::{Arg, Command};
 use simulator::exp_setup::exp_parser::ExperimentArgs;
 use simulator::{exp_setup, world, Directories};
 use std::convert::TryFrom;
@@ -60,11 +60,17 @@ fn main() {
 
     let mut exp_json_args = vec![];
     for fp in exp_jsons.iter() {
-        let args = ExperimentArgs::try_from(fp);
+        let mut exp_fp = directories.exp.join(fp);
+        exp_fp.set_extension("json");
+        let args = ExperimentArgs::try_from(&exp_fp);
         match args {
             Ok(args) => exp_json_args.push(args),
             Err(e) => {
-                panic!("Failed to load experiment ({}): {:?}", fp.display(), e)
+                panic!(
+                    "Failed to load experiment ({}): {:?}",
+                    exp_fp.display(),
+                    e
+                )
             }
         }
     }

@@ -104,23 +104,22 @@ impl WorldCells {
             .collect::<Vec<[RelativeRgtpActivity; NVERTS]>>();
         let mut interactions = self.interactions.clone();
         let shuffled_cells = {
-            let mut crs = self.cells.iter().collect::<Vec<&Cell>>();
-            crs.shuffle(rng);
-            crs
+            let mut cell_refs = self.cells.iter().collect::<Vec<&Cell>>();
+            cell_refs.shuffle(rng);
+            cell_refs
         };
         let dt = 1.0;
-        for cells in shuffled_cells {
-            let ci = cells.ix;
-
+        for cell in shuffled_cells {
+            let ci = cell.ix;
             let contacts = interaction_generator.get_contacts(ci);
 
-            let new_cell = cells.simulate_rkdp5(
+            let new_cell = cell.simulate_rkdp5(
                 tpoint,
                 dt,
                 &interactions[ci],
                 contacts,
                 world_parameters,
-                &group_parameters[cells.group_ix],
+                &group_parameters[cell.group_ix],
                 rng,
                 int_opts,
             )?;
@@ -133,7 +132,6 @@ impl WorldCells {
 
             new_cells[ci] = new_cell;
         }
-        // println!("-----------------------");
         Ok(WorldCells {
             tpoint: tpoint + dt,
             cells: new_cells,
@@ -484,7 +482,7 @@ impl World {
                 )
                 .unwrap_or_else(|e| {
                     self.final_save(save_cbor, "panicking");
-                    panic!("tstep: {}\n{}", self.state.tpoint, e);
+                    panic!("tpoint: {}\n{}", self.state.tpoint, e);
                 });
 
             self.state.tpoint = new_cells.tpoint;
